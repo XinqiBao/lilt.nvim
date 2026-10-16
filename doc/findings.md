@@ -1,9 +1,17 @@
-# Current alignment contract
+# Comparison and reading findings
+
+The manuscript is the single authoritative editable Neovim buffer. Reference
+text is a session snapshot; all decorations and comparisons derive from those
+two sources. There is no Lua manuscript mirror, typing interception, or content
+repair. Full redraw after edits remains intentional for the short prepared lines.
+
+## Alignment contract
 
 `compare.line` returns coalesced Equal, Pending, Replace, Extra, and Missing
 spans with zero-based, exclusive reference and manuscript byte ranges, plus
 an aligned reference coverage boundary and pending suffix. Comparisons use
-UTF-8 codepoints, never byte positions as character indexes.
+UTF-8 codepoints, never byte positions as character indexes. Extra spans have
+zero reference width; Missing and Pending have zero manuscript width.
 
 Each physical row uses semi-global Levenshtein alignment: all manuscript
 characters are consumed; the remaining reference suffix costs nothing and is
@@ -12,217 +20,164 @@ fixed first. Among minimum-cost paths, prefer more equal characters, then a
 coverage endpoint nearest the manuscript's character length, then the earlier
 endpoint. Remaining ties use Equal, Replace, Extra, Missing in that order.
 This preserves an already matching prefix and makes repeated-character choices
-reproducible without hidden typing history.
+reproducible without hidden typing history. The dynamic-programming table uses
+O(reference length × manuscript length) time and space after the exact prefix.
 
-This is a text-derived interpretation, not inferred intent. For example,
-`little bird` against `little little bird` is cheaper as three replacements
-within the second word followed by pending text than as seven omissions.
-Trailing wrong characters can change interpretation as more text arrives.
-There is no cross-row alignment, normalization, or word-aware diff.
+Examples: `beau` / `beautiful` leaves `tiful` pending; `beat` omits `u`, matches
+`t`, and leaves `iful` pending. `beatiful` has the same omission with no pending
+suffix; `beauutiful` has one extra `u` after the exact prefix. `bold` / `cold`
+replaces `c` with `b` and matches `old`.
 
-The following records the **superseded positional prototype** and its original
-experiments. Rendering/lifecycle refinements will be documented with their final
-verification below.
+This is a text-derived interpretation, not inferred intent. `little bird`
+against `little little bird` is cheaper as three replacements within the second
+word followed by pending text than as seven omissions. Trailing wrong characters
+can change interpretation as more text arrives. No edit-distance method uniquely
+identifies user intent. The chosen rules favor local corrections and predictable
+prefixes over word-level inference.
 
-# Reading prototype findings
+Physical rows correspond literally. An early Enter leaves the preceding suffix
+pending and starts the next reference row. Added/deleted line breaks shift later
+comparisons. Blank surplus lines have no glyph to emphasize. There is no Unicode
+normalization, grapheme engine, automatic reflow, or cross-row alignment. Prepared
+line layout is part of the content contract: changing it can invalidate existing
+manuscripts. Its maximum width is independent of current window dimensions.
 
-Ghost is practical as a **forward-copying experiment** when the prepared lines
-fit the window. It does not satisfy unrestricted browsing of a fully printed
-page. Split should remain an independent mode: it provides the simpler, native
-reading experience and a reliable way to inspect the reference ahead of writing.
+## View behavior and APIs
 
-## Design and investigation
+Ghost uses inline virtual text at actual EOL and one `virt_lines` mark for all
+reference rows after real EOF, including paragraph blanks. Pending text on
+previous real rows remains visible. The coverage endpoint determines the suffix;
+omitted reference characters never become inline placeholders. Extra authored
+text remains visible, so Ghost does not preserve reference columns after errors.
+Missing spans underline their next real character. Every Missing span precedes
+an authored character because a trailing omission is Pending.
 
-The manuscript is an ordinary listed, initially unnamed Neovim buffer with
-`bufhidden=hide`. It contains only authored characters and authored line breaks.
-The reference is loaded once per session from the bundled UTF-8 file. Comparison
-and extmarks are derived from the buffer; there is no Lua manuscript mirror.
+Neovim virtual lines are not buffer rows. `G`, search, scrolling, and selection
+operate on authored text. A short real prefix also limits horizontal scrolling
+into a long inline suffix. Ghost therefore recommends the longest prepared line
+plus one cursor cell (75 columns for the sample). Narrow Ghost stays Ghost;
+clipping is a documented limitation. Split permits unrestricted reference browsing.
 
-The implementation uses approach A:
+Split creates a protected, unlisted scratch reference buffer and decorates its
+actual text. Equal spans retain normal foreground; Pending is subdued; Replace
+and Missing receive semantic emphasis. Extra text is highlighted only in the
+manuscript. The reference is `modifiable=false`, `readonly=true`; this prevents
+accidental changes, not deliberate option overrides. It has no Vim Diff Mode,
+cursor synchronization, or scroll binding.
 
-- Each real row is compared with the reference row at the same physical index.
-- The pending suffix is **inline virtual text at actual EOL**, independent of
-  cursor position. Authored characters occupy their normal buffer positions.
-- All reference rows after actual EOF are one `virt_lines` extmark below the
-  final real row, including paragraph blanks. Rendering is rebuilt from the
-  current buffer after changes; stale anchors are not treated as alignment.
-- Errors are highlight ranges with UTF-8 byte boundaries. Correct characters
-  need no extra highlight, retaining the user's normal foreground.
+Initial Split orientation uses two comfortable prepared-line widths plus a
+separator (151 columns here). Reference starts at the left when wide enough,
+otherwise above. Both windows wrap with `linebreak`. There are no resize
+callbacks or automatic view changes. Native rearrangement is supported because
+ownership follows window IDs rather than screen positions.
 
-An embedded Neovim UI experiment rendered 24 reference rows over a one-line
-empty buffer. After native typing and Enter, the first pending suffix remained
-visible and the second virtual row became a real row without displacing later
-reference rows. Cursor movement did not change pending text. This is materially
-different from a prompt which only renders at the cursor.
+Ghost hints use a 250 ms one-shot `vim.defer_fn` timer, cursor/mode events, and
+shared alignment spans. Word context is projected through that alignment;
+whitespace includes neighboring words. Long excerpts are clipped around the
+selected difference at UTF-8 boundaries. The two-line, nonfocusable float uses
+`nvim_open_win(..., false, ...)` and a scratch buffer. Missing spans associate
+only with the immediately following real character. Equal/Pending text alone
+never triggers a hint. Timers are stopped on invalidation; generation, active
+view lifetime, window, buffer, changedtick, mode, and cursor checks reject stale
+callbacks. Float cleanup is scheduled out of `on_lines` textlock. There is no
+polling or tooltip framework. Very narrow windows can clip hint text too.
 
-The important constraints are native ones. Virtual lines are not buffer lines:
-`G`, search, and motions operate on authored text. In the experiment, repeated
-Ctrl-E stopped at the final real row (topline 2 with two authored rows); it could
-not scroll freely into the 22 future rows. Neovim can render them in the
-viewport, but attaching more rows does not make them fully navigable. The
-prototype makes **no claim that every future line can be brought into view in
-Ghost before writing**. Split exposes all of them in an ordinary buffer.
+Neovim **0.11+** remains required for `virt_lines_overflow='scroll'`, which makes
+future reference rows share native horizontal scrolling. Inline virtual text
+exists in 0.10, but its API lacks this option. All APIs are public; there are no
+decoration providers or custom layout/input engines.
 
-Horizontal scrolling was also tested on a 32-column UI. Inline pending text
-extends beyond EOL, but native `zl` is constrained by actual cursorable text.
-A short authored prefix cannot reliably expose a long pending suffix. With
-long authored lines, `virt_lines_overflow='scroll'` makes future rows share the
-window's horizontal offset. `nowrap` preserves rows, but cannot solve the short
-prefix case. Consequently Ghost requires the longest prepared reference line
-plus one cursor cell (75 columns here). Requests and resize events below that
-width select wrapped Split, with an explanation in the manuscript statusline.
-Widening leaves Split active until explicitly changed. There is no clipping
-policy disguised as a supported narrow Ghost layout.
+## Ownership and lifecycle
 
-Approach B was tested with six preallocated physical blank rows. Native Enter
-inserted a seventh row; `dd` shifted subsequent rows, and undo restored the
-native structure. `o` inserts rather than consumes a placeholder, and native
-Backspace can join rows. Keeping fixed slots would require replacing structural
-editing operations and distinguishing genuinely authored blank lines from
-placeholders. Blank rows serialize as real newlines and are indistinguishable
-from deliberately typed paragraph separators without additional authoritative
-state. Converting them on view switching or writing would also disturb the undo
-model. This cost is larger than the benefit; approach B was rejected.
+`session.lua` owns the reference snapshot, retained manuscript, active view,
+buffer attachment, session autocmds, and editor-state cleanup. `view/ghost.lua`
+owns Ghost decoration, presentation, and hints. `view/split.lua` owns the
+protected reference buffer/window, initial layout, and both panes' decorations.
+`compare.lua` contains only alignment semantics. `render.lua` retains the shared
+decoration namespace and clearing operation; `init.lua` exposes three methods
+used by the commands in `plugin/lilt.lua`.
 
-A protected printed buffer plus a separate editing surface would put the cursor
-in a different document from the visible manuscript, requiring input routing.
-Split already offers the honest version of that separation, so a third editor
-surface was not built.
+A separate session tab isolates the original layout. Closing an owned window,
+repurposing either owned window, or wiping the active manuscript ends the
+session. Reference resources, hint resources, extmarks, and autocmd groups are
+released; the manuscript and its undo tree persist unless explicitly wiped.
+Extra user-created windows are retained. A repurposed or final surviving window
+restores options saved for that exact window; a reference window never receives
+the manuscript window's snapshot. A single Lua attachment follows the manuscript
+lifetime and is dormant outside sessions. `BufReadPost` reattaches after reload.
+Scheduled lifecycle checks are scoped to their original session.
 
-Neovim **0.11** is the minimum. Public API documentation for v0.10.4 includes
-inline virtual text but lacks `virt_lines_overflow`; v0.11.0 and v0.11.5 include
-it. This option materially improves consistent horizontal scrolling of future
-rows. The actual suites ran on 0.11.5 and 0.12.5; 0.11.0 itself was not run.
-Other APIs used include `nvim_buf_attach`, `nvim_buf_set_extmark`, ordinary
-window/buffer APIs, and user commands/autocmds. No private rendering APIs,
-decoration provider, custom editor, or key interception is used.
+The reference buffer is a private session resource: keeping it in another user
+window does not extend its lifetime. Deliberately overriding reference protection
+or suppressing lifecycle autocmds is unsupported. Arbitrary user autocmd
+interactions are not promised; ordinary native window, tab, editing, reload,
+write, and undo operations are exercised.
 
-## Comparison and editing contract
+## Verification
 
-Comparison is physical-row and Unicode-codepoint positional matching. For
-reference `abc`, authored `ax` displays `axc`, with `x` marked wrong and `c`
-pending. Authored `ac` displays `acc`: its second character is wrong at position
-2 and the reference's third character is still pending. This apparent repetition
-is the documented positional rule, not duplicated virtual rows. Extra authored
-characters remain real and are marked wrong. A substitution does not shift
-layout; a missing/extra character shifts matching through the rest of its row.
-There is no normalization, edit distance, punctuation substitution, or correction.
+On Neovim **0.11.5** and **0.12.5**, using the commands in [README](../README.md):
 
-Blank lines separate paragraphs in the sample. Physical breaks within a
-paragraph are preparation layout, but the matcher still expects those exact
-breaks. Enter early leaves the unfinished preceding suffix visible and begins
-comparison with the next reference row. Added/deleted newlines shift comparisons
-of subsequent authored rows. Blank surplus lines have no glyph to highlight;
-missing newlines have no separate indicator. The reference does not realign to
-follow the meaning of the writing. Use Split when the merged display is confusing.
+- `tests/compare.lua`: 33 assertions with concrete alignments for all categories,
+  partial internal omissions, repeated characters/words, ambiguity, blank and
+  completed lines, UTF-8 punctuation, byte boundaries, and deterministic output.
+- `tests/headless.lua`: 155 assertions exercising native edits, Enter, operators,
+  structural edits, undo/redo, exact serialization, reload, retained buffers,
+  repeated switches, reference progress/protection, independent cursors, native
+  rearrangement, window replacement/closure, active wipe, unrelated buffers and
+  windows, per-window restoration, autocmd cleanup, and extmark cleanup.
+- `tests/ui.py`: 94 assertions against actual attached redraw grids, highlight
+  attributes, and native input. Covers Ghost placement without duplicate virtual
+  rows/placeholders, all semantic feedback, both Split layouts and resize
+  stability, independent browsing, hint delay/cancellation/context/lifetime,
+  no focus stealing, stale callbacks, dark/light default theme rendering,
+  explicit highlight overrides, and resource cleanup.
 
-| Interaction | Assessment |
-| --- | --- |
-| Insert, Backspace within a line, Enter, Esc | Native; exercised in actual Neovim |
-| `ciw`, `x`, `dw`, `.`, repeated edits of earlier words | Native; exercised; changed lengths follow the positional rule |
-| Undo / Ctrl-R | Native; buffer changes and refreshed feedback exercised |
-| `o`, `dd`, Backspace across a line boundary | Native text edits; exercised; row alignment shifts without repairs |
-| Searching, motions, selection, yanking | Operate on authored buffer contents; pending characters are not included |
-| Navigating/editing future pending characters | Unsupported in Ghost; not cursorable text |
-| Scrolling beyond authored EOF | Limited in Ghost; use Split for free reference browsing |
-| Horizontal scroll of long authored rows | Native; future rows share offset; may hide reference at the left |
-| Tabs, wide characters, combining characters, invalid UTF-8 | Outside prepared-English layout contract; no cell/grapheme alignment guarantee |
-| Correct curly quotes/apostrophes, em dashes, ellipses | Codepoint matching and byte ranges tested; curly quotes also tested on rendered screen |
-| Automatic reflow / semantic paragraph alignment | Unsupported; would change this comparison contract |
+A terminal smoke check also exercised the README launch, native typing, an
+omission hint, Ghost/Split switching, writing only authored text, and closing.
+The UI harness uses public RPC/UI APIs and development-only `pynvim`. No generated
+screenshots, downloaded executables, or temporary experiments are tracked. The
+0.11.0 minimum is based on public API availability; that exact patch version was
+not run. No hosted CI workflows are configured.
 
-The prototype does not restrict line-changing keys because preserving native
-editing is preferable to repairing user text behind their back. It therefore
-cannot promise a fixed printed-page layout across arbitrary structural edits.
-Ordinary forward copying with one Enter per prepared row preserves the row
-layout. The reference glyph at an incorrect authored position is replaced by
-the actual input; use Split to inspect the original glyph.
+Unverified: extended human reading comfort, arbitrary mappings/autocmds, mouse
+use, very small terminal heights, complex Unicode, all third-party colorschemes,
+and large works. Default dark/light rendering was checked; Gruvbox itself was
+not exercised. Diagnostic foreground links improve visibility over the old
+SpellBad-only link, but user palette preferences remain personal.
 
-## Split, ownership, and lifecycle
+## Historical prototype experiments
 
-Split places reference above writing. A 90-column geometry experiment gave
-45-column windows side by side, versus 90-column windows with an above/below
-split. Above/below preserves prepared reading width on ordinary terminals at
-the expense of vertical space. Both Split windows wrap with `linebreak` at
-narrow widths. The reference is `modifiable=false`, `readonly=true`, and
-unlisted; protection is against accidental edits, not deliberate option changes.
-There is no diff mode or synchronized scrolling.
+The positional prototype at `bbdcb75` established native manuscript editing and
+Ghost's real-row/virtual-future model. Its comparison, SpellBad error link,
+above/below-only Split, and automatic narrow-window fallback are superseded.
+The original 26 comparison, 131 headless, and 40 UI assertions passed on 0.11.5
+and 0.12.5 before refinement.
 
-A new tab isolates plugin window options from the original layout. The plugin
-owns two window handles at most, a session autocmd group, a rendering namespace,
-and the temporary reference buffer. Switching to Ghost deletes the Split
-reference window and buffer; closing removes all session marks/autocmds and
-reference resources. The manuscript persists intentionally. One Lua attachment
-belongs to the manuscript's lifetime and is dormant outside a session; switching
-or reopening does not add attachments. Neovim detaches it on unload/reload, so
-`BufReadPost` reattaches while a session is active. Reload via `:edit!` was tested.
+The attached-UI experiment displayed 24 reference rows over one real empty row.
+Native Enter promoted a future row to real text without moving later rows;
+previous pending suffixes survived. Ctrl-E stopped near real EOF, confirming
+that virtual future rows cannot supply unrestricted browsing.
 
-Closing a reading window/tab ends the session. If an owned window is repurposed
-to another buffer, cleanup restores its inherited options and keeps that
-window. Extra user-created windows are retained. If the last editor window
-cannot close, its original local options are restored and the manuscript stays
-visible. Original windows/buffers, global options, and mappings are not changed.
+Preallocating six real blank rows was rejected: Enter and `o` insert new rows,
+`dd` removes them, Backspace joins them, and undo preserves native structure.
+Blank placeholders serialize as real newlines and cannot be distinguished from
+authored paragraph breaks without a second source of truth. Repairing them would
+require intercepting editing or damaging the undo model. Likewise, routing input
+to a separate hidden manuscript would undermine native editing; Split supplies
+the ordinary visible separation instead.
 
-## Verification and remaining uncertainty
+## Manual reading check
 
-On both Neovim **0.11.5** (downloaded release) and **0.12.5** (local installation):
-
-- `tests/compare.lua`: 26 assertions for deterministic codepoint comparison,
-  pending suffixes, mismatch ranges, and UTF-8 byte offsets.
-- `tests/headless.lua`: 131 assertions, using real native key feeds, buffer and
-  extmark inspection. Includes empty/correct/incorrect/missing/extra characters,
-  punctuation, paragraph blanks, structural edits, earlier edits, undo/redo,
-  repeated switches, exact file serialization, reload, reopening, explicit wipe,
-  manual closure, repurposed windows, extra windows, and final-window restoration.
-- `tests/ui.py`: 40 assertions against actual attached UI redraw grids and
-  highlight state, with native `nvim_input`. Includes complete initial viewport,
-  actual errors, preceding suffix persistence, later rows, cursor independence,
-  Unicode quotes, completed document, scrolling across the real/virtual boundary,
-  horizontal offset, resize while typing, continuing Insert Mode in narrow Split,
-  independent reference browsing, repeated fallback, and cleanup.
-
-The Python harness uses public Neovim RPC/UI APIs and `pynvim`; it is a test-only
-dependency. No generated screenshots, downloaded binaries, or experiment scripts
-are stored in the repository. A terminal launch smoke check exercised the exact
-README invocation with an absolute runtime path, typing, view switching, and
-closing. It does not establish comfort over a long reading session.
-
-Unverified: extended human reading comfort, arbitrary user mappings/autocmds,
-other colorschemes and terminal palettes, mouse interactions, very small terminal
-heights, and complex Unicode. `Comment` and `SpellBad` inherit the colorscheme;
-some themes make errors much louder than intended. Owners can override the two
-semantic groups. Large works were not benchmarked: rebuilding all derived marks
-on each change is intentional for this 40-line sample, not a performance claim.
-
-### Manual reading check
-
-1. Launch the README command in an 80-column or wider terminal. Type the first
-   two lines with a substitution and with Enter before finishing a line. Confirm
-   the earlier suffix stays readable and future rows stay in place.
-2. Edit the earlier word using `ciw`; try `x`, `dw`, `.`, undo, and redo. Compare
-   the actual writing in Split. Missing characters should cause positional
-   mismatch, never content repair.
-3. Copy several paragraphs, scrolling back to unfinished earlier rows. Try
-   `o`, `dd`, and joining lines. Confirm text is ordinary and compare the shifted
-   rows with the printed reference.
-4. Browse ahead in Split with `<C-w>k`, search, and `G`; return to writing with
-   `<C-w>j`. Switch repeatedly and confirm writing and undo remain intact.
-5. Shrink below 75 columns while in Insert Mode. Confirm wrapped Split appears
-   and typing continues. Enlarge and explicitly return using `:LiltGhost`.
-6. Save a manuscript, close, reopen, then close its tab manually. Inspect `:ls`
-   and the saved file: there should be only authored text. Repeat with your
-   preferred colorscheme, and spend time reading to assess error subtlety and
-   above/below split comfort.
-
-## Recommendation
-
-Keep Ghost experimental until forward-only reference access and exact physical
-row copying are accepted as deliberate interaction rules. Stable future rows
-and native typing coexist here; unrestricted printed-page browsing and arbitrary
-structural editing do not. If those rules are unacceptable, prefer Split as the
-primary mode rather than growing Ghost into a custom editor.
-
-Before extending this prototype, revisit only three decisions: acceptance of
-Ghost's navigation/line-break contract, the visibility/subtlety of inherited
-pending and error highlights, and how an ordinary saved manuscript is selected
-and resumed. Split should remain independently available regardless of Ghost's
-future. Its native reference browsing is useful in its own right.
+1. Launch the README command at 80+ columns. Copy two rows with an error and an
+   early Enter. Confirm previous suffixes and virtual future rows remain visible.
+2. Try missing, extra, and replacement characters in an earlier word with `ciw`,
+   `x`, `dw`, `.`, undo, and redo. Pause on an error in Normal Mode; check the
+   hint, then enter Insert Mode and correct it yourself.
+3. Switch to Split. Inspect progress, browse/search independently, and rearrange
+   windows using native commands. Compare initial layout at 90 and 160 columns.
+4. Narrow Ghost while typing. Confirm it stays Ghost and preserves actual input;
+   explicitly choose Split to read clipped reference text.
+5. Write a manuscript, reload it, switch repeatedly, close and reopen, then close
+   the session tab manually. Inspect the file, undo tree, and unrelated windows.
+6. Spend time reading with your preferred theme. Assess error visibility, hint
+   usefulness, and comfort; automation cannot establish those preferences.

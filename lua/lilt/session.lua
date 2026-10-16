@@ -22,10 +22,21 @@ local function window_options(win, values)
 end
 
 local quiet = {
-  number = false, relativenumber = false, signcolumn = 'no', foldcolumn = '0',
-  foldenable = false, cursorline = false, cursorcolumn = false, list = false,
-  spell = false, colorcolumn = '', conceallevel = 0, scrollbind = false,
-  cursorbind = false, winbar = '', sidescrolloff = 0,
+  number = false,
+  relativenumber = false,
+  signcolumn = 'no',
+  foldcolumn = '0',
+  foldenable = false,
+  cursorline = false,
+  cursorcolumn = false,
+  list = false,
+  spell = false,
+  colorcolumn = '',
+  conceallevel = 0,
+  scrollbind = false,
+  cursorbind = false,
+  winbar = '',
+  sidescrolloff = 0,
 }
 
 -- Save options against the actual window that owns them, before changing it.
@@ -40,7 +51,9 @@ local function present(s, win, values)
 end
 
 local function draw(s)
-  if not api.nvim_buf_is_loaded(s.manuscript) then return end
+  if not api.nvim_buf_is_loaded(s.manuscript) then
+    return
+  end
   local lines = api.nvim_buf_get_lines(s.manuscript, 0, -1, false)
   local previous = s.comparisons or {}
   s.comparisons = {}
@@ -55,8 +68,11 @@ local function draw(s)
     results[row] = cached.result
   end
   render.clear(s.manuscript)
-  if s.view == 'ghost' then ghost.draw(s, lines, results)
-  else split.draw(s, lines, results) end
+  if s.view == 'ghost' then
+    ghost.draw(s, lines, results)
+  else
+    split.draw(s, lines, results)
+  end
 end
 
 local function attach_manuscript(buf)
@@ -81,8 +97,13 @@ local function new_manuscript()
   vim.bo[buf].filetype = 'text'
   -- Explicit physical line breaks, with no automatic formatting or indentation.
   for name, value in pairs({
-    textwidth = 0, wrapmargin = 0, formatoptions = '', autoindent = false,
-    smartindent = false, cindent = false, indentexpr = '',
+    textwidth = 0,
+    wrapmargin = 0,
+    formatoptions = '',
+    autoindent = false,
+    smartindent = false,
+    cindent = false,
+    indentexpr = '',
   }) do
     api.nvim_set_option_value(name, value, { buf = buf })
   end
@@ -96,7 +117,9 @@ function M.close()
     return
   end
   session = nil
-  if s.group then api.nvim_del_augroup_by_id(s.group) end
+  if s.group then
+    api.nvim_del_augroup_by_id(s.group)
+  end
   render.clear(s.manuscript)
   local current = api.nvim_get_current_win()
   local was_owned = current == s.user_win or current == s.reference_win
@@ -117,24 +140,37 @@ function M.close()
   -- The ordinary, listed manuscript buffer survives, including its undo tree.
 end
 
+local function valid(s)
+  return api.nvim_win_is_valid(s.user_win)
+    and api.nvim_win_get_buf(s.user_win) == s.manuscript
+    and (
+      s.view ~= 'split'
+      or (
+        s.reference_win
+        and api.nvim_win_is_valid(s.reference_win)
+        and api.nvim_win_get_buf(s.reference_win) == s.reference_buf
+      )
+    )
+end
+
 local function set_view(view)
   local s = session
-  if not api.nvim_win_is_valid(s.user_win) or api.nvim_win_get_buf(s.user_win) ~= s.manuscript then
-    M.close()
-    return
-  end
-  if s.view == 'split' and (not s.reference_win or not api.nvim_win_is_valid(s.reference_win)
-    or api.nvim_win_get_buf(s.reference_win) ~= s.reference_buf) then
+  if not valid(s) then
     M.close()
     return
   end
   api.nvim_set_current_win(s.user_win)
-  if s.view == view then return end
+  if s.view == view then
+    return
+  end
   ghost.leave(s)
   split.leave(s)
   s.view = view
-  if view == 'ghost' then ghost.enter(s)
-  else split.enter(s) end
+  if view == 'ghost' then
+    ghost.enter(s)
+  else
+    split.enter(s)
+  end
   draw(s)
 end
 
@@ -159,10 +195,15 @@ local function start(view)
   end
   local origin = api.nvim_get_current_win()
   local s = {
-    manuscript = manuscript, reference = reference, width = width,
-    origin_win = origin, options = {},
+    manuscript = manuscript,
+    reference = reference,
+    width = width,
+    origin_win = origin,
+    options = {},
   }
-  s.present = function(target, values) present(s, target, values) end
+  s.present = function(target, values)
+    present(s, target, values)
+  end
   s.restore = function(target)
     window_options(target, s.options[target] or {})
     s.options[target] = nil
@@ -172,8 +213,12 @@ local function start(view)
   -- Even :tab split can allocate its window before reporting E36.
   local ok, err = pcall(vim.cmd, 'tab split')
   local win = api.nvim_get_current_win()
-  if win ~= origin then s.user_win = win end
-  if not ok then error(err, 0) end
+  if win ~= origin then
+    s.user_win = win
+  end
+  if not ok then
+    error(err, 0)
+  end
   s.group = api.nvim_create_augroup('LiltSession', { clear = true })
   s.present(win, quiet)
   for _, name in ipairs({ 'wrap', 'linebreak', 'statusline' }) do
@@ -199,10 +244,7 @@ local function start(view)
         if session ~= s then
           return
         end
-        if not api.nvim_win_is_valid(s.user_win) or api.nvim_win_get_buf(s.user_win) ~= s.manuscript then
-          M.close()
-        elseif s.view == 'split' and (not s.reference_win or not api.nvim_win_is_valid(s.reference_win)
-          or api.nvim_win_get_buf(s.reference_win) ~= s.reference_buf) then
+        if not valid(s) then
           M.close()
         end
       end)
@@ -212,7 +254,9 @@ local function start(view)
 end
 
 local function open(view)
-  local ok, err = xpcall(function() start(view) end, debug.traceback)
+  local ok, err = xpcall(function()
+    start(view)
+  end, debug.traceback)
   if not ok then
     -- Creation can fail after allocating only some resources (e.g. E36).
     -- Terminate the session, retaining the manuscript and the original error.

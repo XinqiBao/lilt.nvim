@@ -3,6 +3,8 @@
 Run from the repository root: python3 tests/ui.py [path/to/nvim]
 """
 import sys
+import threading
+import time
 from pathlib import Path
 import pynvim
 
@@ -55,7 +57,20 @@ def screen():
                 for attr, rgb, cterm, info in entries:
                     highlights[attr] = info
                     colors[attr] = rgb
-    nvim.run_loop(None, notification)
+    expired = False
+    def timeout():
+        nonlocal expired
+        expired = True
+        nvim.stop_loop()
+    timer = threading.Timer(5, lambda: nvim.async_call(timeout))
+    timer.daemon = True
+    timer.start()
+    try:
+        nvim.run_loop(None, notification)
+    finally:
+        timer.cancel()
+    if expired:
+        raise TimeoutError("Neovim did not flush UI notifications within 5 seconds")
     return ["".join(grid.get((row, col), (" ", 0))[0] for col in range(width)).rstrip()
             for row in range(height)]
 
@@ -81,13 +96,22 @@ def floats():
     return [win for win in nvim.windows if nvim.api.win_get_config(win.handle)["relative"]]
 
 
+def wait_for_hint():
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline:
+        if floats():
+            return screen()
+        time.sleep(0.01)
+    raise TimeoutError("Expected hint did not appear\n" + "\n".join(screen()))
+
+
 def hint_tests(buf, reference):
     user = nvim.current.window
     nvim.current.buffer[:] = ["Blice"]
     input_keys("gg0")
     pause(100)
     check(not floats(), "hint waits before showing")
-    rows = pause(200)
+    rows = wait_for_hint()
     check(any("Expected  Alice" in row for row in rows) and any("Typed     Blice" in row for row in rows),
           "delayed hint displays a local word comparison")
     check(nvim.current.window == user and nvim.current.buffer.number == buf, "hint never steals editing focus")
@@ -103,14 +127,14 @@ def hint_tests(buf, reference):
     input_keys("0")
     pause(100)
     check(not floats(), "rapid movement cancels earlier hint deadlines")
-    pause(190)
+    wait_for_hint()
     check(bool(floats()), "settled error cursor gets a fresh delayed hint")
     input_keys("i")
     check(not floats(), "InsertEnter dismisses hint")
     pause(280)
     check(not floats() and nvim.eval("mode()") == "i", "hints stay hidden in Insert Mode")
     input_keys("<Esc>")
-    pause(280)
+    wait_for_hint()
     check(bool(floats()), "returning to Normal Mode can show hint")
     # Buffer edits invalidate a visible hint even without cursor movement.
     nvim.current.buffer[:] = ["Alice"]
@@ -120,7 +144,7 @@ def hint_tests(buf, reference):
     check(not floats(), "correct text leaves no hint")
     nvim.current.buffer[:] = ["Aice"]
     input_keys("0l")
-    rows = pause(280)
+    rows = wait_for_hint()
     check(any("Expected  Alice" in row for row in rows) and any("Typed     Aice" in row for row in rows),
           "missing-character hint anchors to next real character")
     input_keys("l")
@@ -128,29 +152,29 @@ def hint_tests(buf, reference):
     check(not floats(), "missing character does not make whole line trigger")
     nvim.current.buffer[:] = ["Allice"]
     input_keys("02l")
-    rows = pause(280)
+    rows = wait_for_hint()
     check(any("Expected  Alice" in row for row in rows) and any("Typed     Allice" in row for row in rows),
           "extra-character hint includes corresponding expected word")
     nvim.current.buffer[:] = ["Alicewas"]
     input_keys("05l")
-    rows = pause(280)
+    rows = wait_for_hint()
     check(any("Expected  Alice was" in row for row in rows) and any("Typed     Alicewas" in row for row in rows),
           "whitespace omission context includes neighboring words")
     nvim.current.buffer[:] = ["Alicia"]
     input_keys("04l")
-    rows = pause(280)
+    rows = wait_for_hint()
     check(any("Expected  Alice" in row for row in rows) and any("Typed     Alicia" in row for row in rows),
           "nearby replacement and extra share local word context")
     nvim.current.buffer[:] = ["X" * len(reference[0])]
     input_keys("060l")
-    pause(280)
+    wait_for_hint()
     hint = floats()[0].buffer[:]
     check("…" in hint[0] and hint[0].endswith("the") and len(hint[1]) <= 64,
           "long error spans clip context around cursor rather than span beginning")
     nvim.current.buffer[:] = reference[:4]
     nvim.current.buffer[3] = reference[3].replace("“", '"', 1)
     input_keys("4G04l")
-    rows = pause(280)
+    rows = wait_for_hint()
     check(any("Expected  “and" in row for row in rows) and any('Typed     "and' in row for row in rows),
           "hint context preserves multibyte reference punctuation")
     nvim.command("LiltSplit")
@@ -165,7 +189,7 @@ def hint_tests(buf, reference):
     pause(280)
     check(not floats(), "leaving manuscript window invalidates pending hint")
     nvim.current.window = user
-    pause(280)
+    wait_for_hint()
     check(bool(floats()), "returning to owned window schedules new hint")
     nvim.current.window = other
     input_keys("")
@@ -182,7 +206,7 @@ def hint_tests(buf, reference):
     check(nvim.current.buffer.number == buf, "hint cycles preserve manuscript")
     nvim.current.buffer[:] = ["Blice"]
     input_keys("0")
-    pause(280)
+    wait_for_hint()
     nvim.api.win_close(nvim.current.window.handle, True)
     pause(300)
     check(not floats(), "manual manuscript window closure removes visible hint")
@@ -224,7 +248,7 @@ def run():
     nvim.command("runtime plugin/lilt.lua")
     nvim.command("LiltGhost")
     buf = nvim.current.buffer.number
-    reference = Path("samples/alice.txt").read_text().splitlines()
+    reference = Path("samples/alice.txt").read_text(encoding="utf-8").splitlines()
     rows = screen()
     start = rows.index(reference[0])
     visible = 15

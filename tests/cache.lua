@@ -13,8 +13,10 @@ local draw = ghost.draw
 -- shifted by insertion/deletion. Count calls separately to prove reuse.
 ghost.draw = function(s, lines, results)
   for row, result in ipairs(results) do
-    assert(vim.deep_equal(result, original(s.reference[row] or '', lines[row] or '')),
-      'stale comparison on row ' .. row)
+    assert(
+      vim.deep_equal(result, original(s.reference[row] or '', lines[row] or '')),
+      'stale comparison on row ' .. row
+    )
   end
   draw(s, lines, results)
 end
@@ -51,7 +53,7 @@ end
 
 local ok, err = xpcall(run, debug.traceback)
 if not ok then
-  io.stderr:write(err .. '\n')
+  io.write(err .. '\n')
   vim.cmd('cquit 1')
 else
   vim.cmd('qa!')

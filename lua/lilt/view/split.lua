@@ -41,13 +41,17 @@ function M.enter(s)
   api.nvim_win_set_buf(s.reference_win, s.reference_buf)
   s.present(s.user_win, s.quiet)
   s.present(s.user_win, {
-    wrap = true, linebreak = true, statusline = ' Lilt · Manuscript %m',
+    wrap = true,
+    linebreak = true,
+    statusline = ' Lilt · Manuscript %m',
   })
   api.nvim_set_current_win(s.user_win)
 end
 
 function M.draw(s, _, results)
-  if not s.reference_buf or not api.nvim_buf_is_valid(s.reference_buf) then return end
+  if not s.reference_buf or not api.nvim_buf_is_valid(s.reference_buf) then
+    return
+  end
   render.clear(s.reference_buf)
   for row, result in ipairs(results) do
     for _, span in ipairs(result.spans) do
@@ -55,13 +59,23 @@ function M.draw(s, _, results)
         or span.kind == 'extra' and 'LiltExtra'
       if authored_group then
         api.nvim_buf_set_extmark(s.manuscript, render.namespace, row - 1, span.text_start, {
-          end_col = span.text_end, hl_group = authored_group, priority = 150, undo_restore = false,
+          end_col = span.text_end,
+          hl_group = authored_group,
+          priority = 150,
+          undo_restore = false,
         })
       end
-      local reference_group = ({ pending = 'LiltPending', replace = 'LiltError', missing = 'LiltMissing' })[span.kind]
+      local reference_group = ({
+        pending = 'LiltPending',
+        replace = 'LiltError',
+        missing = 'LiltMissing',
+      })[span.kind]
       if reference_group and span.ref_end > span.ref_start then
         api.nvim_buf_set_extmark(s.reference_buf, render.namespace, row - 1, span.ref_start, {
-          end_col = span.ref_end, hl_group = reference_group, priority = 150, undo_restore = false,
+          end_col = span.ref_end,
+          hl_group = reference_group,
+          priority = 150,
+          undo_restore = false,
         })
       end
     end

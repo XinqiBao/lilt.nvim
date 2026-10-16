@@ -4,11 +4,16 @@ local render = require('lilt.render')
 local checks = 0
 local function eq(actual, expected, label)
   checks = checks + 1
-  assert(vim.deep_equal(actual, expected), label .. '\nexpected: ' .. vim.inspect(expected) .. '\nactual: ' .. vim.inspect(actual))
+  assert(
+    vim.deep_equal(actual, expected),
+    label .. '\nexpected: ' .. vim.inspect(expected) .. '\nactual: ' .. vim.inspect(actual)
+  )
 end
 local function keys(input)
   api.nvim_feedkeys(api.nvim_replace_termcodes(input, true, false, true), 'xt', false)
-  vim.wait(10, function() return false end)
+  vim.wait(10, function()
+    return false
+  end)
 end
 local function lines(buf)
   return api.nvim_buf_get_lines(buf or 0, 0, -1, false)
@@ -40,7 +45,8 @@ local function run()
   vim.o.showmode = false
   vim.o.report = 9999
   vim.wo.number, vim.wo.wrap = true, false
-  local global_options = { vim.o.laststatus, vim.o.showtabline, vim.o.splitbelow, vim.o.equalalways }
+  local global_options =
+    { vim.o.laststatus, vim.o.showtabline, vim.o.splitbelow, vim.o.equalalways }
   local buffers_before = #api.nvim_list_bufs()
   local function autocmd_count()
     local ok, result = pcall(api.nvim_get_autocmds, { group = 'LiltSession' })
@@ -60,23 +66,51 @@ local function run()
   eq(lines(buf), { 'Aice' }, 'missing character never inserts a placeholder')
   local omission
   for _, mark in ipairs(marks(buf)) do
-    if mark[4].hl_group == 'LiltMissing' then omission = mark end
+    if mark[4].hl_group == 'LiltMissing' then
+      omission = mark
+    end
   end
-  eq({ omission[3], omission[4].end_col, omission[4].hl_group }, { 1, 2, 'LiltMissing' }, 'Ghost underlines next real character at omission')
+  eq(
+    { omission[3], omission[4].end_col, omission[4].hl_group },
+    { 1, 2, 'LiltMissing' },
+    'Ghost underlines next real character at omission'
+  )
   lilt.split()
   local refwin
   for _, candidate in ipairs(api.nvim_tabpage_list_wins(0)) do
-    if candidate ~= win then refwin = candidate end
+    if candidate ~= win then
+      refwin = candidate
+    end
   end
   local refbuf = api.nvim_win_get_buf(refwin)
-  eq(pcall(api.nvim_buf_set_lines, refbuf, 0, 1, false, { 'changed' }), false, 'protected reference refuses actual edits')
+  eq(
+    pcall(api.nvim_buf_set_lines, refbuf, 0, 1, false, { 'changed' }),
+    false,
+    'protected reference refuses actual edits'
+  )
   local refmarks = marks(refbuf)
-  eq({ refmarks[1][3], refmarks[1][4].end_col, refmarks[1][4].hl_group }, { 1, 2, 'LiltMissing' }, 'Split marks omitted reference character')
-  eq({ refmarks[2][3], refmarks[2][4].hl_group }, { 5, 'LiltPending' }, 'Split pending begins at aligned coverage')
-  eq(api.nvim_win_get_position(refwin)[1] < api.nvim_win_get_position(win)[1], true, 'ordinary terminal starts above/below')
+  eq(
+    { refmarks[1][3], refmarks[1][4].end_col, refmarks[1][4].hl_group },
+    { 1, 2, 'LiltMissing' },
+    'Split marks omitted reference character'
+  )
+  eq(
+    { refmarks[2][3], refmarks[2][4].hl_group },
+    { 5, 'LiltPending' },
+    'Split pending begins at aligned coverage'
+  )
+  eq(
+    api.nvim_win_get_position(refwin)[1] < api.nvim_win_get_position(win)[1],
+    true,
+    'ordinary terminal starts above/below'
+  )
   api.nvim_win_set_cursor(refwin, { #reference, 0 })
   api.nvim_buf_set_lines(buf, 0, -1, false, { 'Bllice' })
-  eq(api.nvim_win_get_cursor(refwin), { #reference, 0 }, 'redraw preserves independent reference cursor')
+  eq(
+    api.nvim_win_get_cursor(refwin),
+    { #reference, 0 },
+    'redraw preserves independent reference cursor'
+  )
   eq(marks(refbuf)[1][4].hl_group, 'LiltError', 'Split reference replacement')
   eq(error_ranges(buf, 0), { { 0, 1 }, { 2, 3 } }, 'Split manuscript replacement and extra')
   api.nvim_set_current_win(refwin)
@@ -88,7 +122,11 @@ local function run()
   lilt.split()
   eq(api.nvim_get_current_win(), win, 'repeated Split focuses manuscript')
   eq(api.nvim_win_get_buf(refwin), refbuf, 'repeated Split retains reference resources')
-  eq(api.nvim_win_get_cursor(refwin), { #reference, 0 }, 'repeated Split retains reference position')
+  eq(
+    api.nvim_win_get_cursor(refwin),
+    { #reference, 0 },
+    'repeated Split retains reference position'
+  )
   eq(vim.fn.winlayout(), layout, 'repeated Split retains native layout')
   lilt.ghost()
   eq(api.nvim_get_current_win(), win, 'switch targets manuscript by window ID')
@@ -137,7 +175,11 @@ local function run()
   eq(#lines(buf), 2, 'Backspace at start joins physical lines')
   keys('u')
   api.nvim_buf_set_lines(buf, 0, -1, false, { '“It’s… — yes.”', '', 'Alice' })
-  eq(lines(buf), { '“It’s… — yes.”', '', 'Alice' }, 'Unicode and blank paragraph preserved')
+  eq(
+    lines(buf),
+    { '“It’s… — yes.”', '', 'Alice' },
+    'Unicode and blank paragraph preserved'
+  )
   for _, range in ipairs(error_ranges(buf, 0)) do
     local byte = lines(buf)[1]:byte(range[2] + 1)
     eq(byte == nil or byte < 128 or byte >= 192, true, 'Unicode extmark ends on byte boundary')
@@ -149,14 +191,16 @@ local function run()
     lilt.split()
     eq(api.nvim_get_current_buf(), buf, 'Split shares buffer')
     eq(#api.nvim_tabpage_list_wins(0), 2, 'two reading windows in Split')
-    local refwin
+    local cycle_win
     for _, candidate in ipairs(api.nvim_tabpage_list_wins(0)) do
-      if candidate ~= win then refwin = candidate end
+      if candidate ~= win then
+        cycle_win = candidate
+      end
     end
-    local refbuf = api.nvim_win_get_buf(refwin)
-    eq(lines(refbuf), reference, 'ordinary complete reference buffer')
-    eq(vim.bo[refbuf].modifiable, false, 'reference protected')
-    eq(vim.bo[refbuf].readonly, true, 'reference readonly')
+    local cycle_buf = api.nvim_win_get_buf(cycle_win)
+    eq(lines(cycle_buf), reference, 'ordinary complete reference buffer')
+    eq(vim.bo[cycle_buf].modifiable, false, 'reference protected')
+    eq(vim.bo[cycle_buf].readonly, true, 'reference readonly')
     eq(pending(buf, 0), nil, 'Ghost rendering removed in Split')
     lilt.ghost()
     eq(#api.nvim_tabpage_list_wins(0), 1, 'reference window cleaned up')
@@ -166,11 +210,15 @@ local function run()
   end
   eq(vim.fn.undotree().seq_cur, undo_seq, 'switching adds no undo entries')
   local path = vim.fn.tempname()
-  api.nvim_buf_call(buf, function() vim.cmd('write ' .. vim.fn.fnameescape(path)) end)
+  api.nvim_buf_call(buf, function()
+    vim.cmd('write ' .. vim.fn.fnameescape(path))
+  end)
   eq(vim.fn.readfile(path), written, 'ordinary file contains only authored text')
   vim.fn.writefile({ 'Alice', '', 'So' }, path)
   vim.cmd('edit!')
-  vim.wait(10, function() return false end)
+  vim.wait(10, function()
+    return false
+  end)
   eq(lines(buf), { 'Alice', '', 'So' }, 'file reload remains authoritative')
   eq(pending(buf, 0), reference[1]:sub(6), 'file reload refreshes pending rendering')
   keys('ggA!<Esc>')
@@ -180,7 +228,11 @@ local function run()
   eq(api.nvim_get_current_win(), origin, 'returns to original window')
   eq(lines(original), { 'unrelated writing' }, 'unrelated buffer intact')
   eq({ vim.wo.number, vim.wo.wrap }, { true, false }, 'original local options intact')
-  eq({ vim.o.laststatus, vim.o.showtabline, vim.o.splitbelow, vim.o.equalalways }, global_options, 'global options intact')
+  eq(
+    { vim.o.laststatus, vim.o.showtabline, vim.o.splitbelow, vim.o.equalalways },
+    global_options,
+    'global options intact'
+  )
   eq(#marks(buf), 0, 'all session extmarks cleared')
   eq(autocmd_count(), 0, 'session autocmds removed')
   eq(#api.nvim_list_bufs(), buffers_before + 1, 'only authored buffer retained')
@@ -188,13 +240,17 @@ local function run()
   eq(api.nvim_get_current_buf(), buf, 'reopen resumes retained manuscript')
   eq(lines(buf), written, 'reopen keeps writing')
   vim.cmd('tabclose')
-  vim.wait(20, function() return false end)
+  vim.wait(20, function()
+    return false
+  end)
   eq(autocmd_count(), 0, 'manual tab closure cleans session')
   eq(#marks(buf), 0, 'manual tab closure clears decorations')
   lilt.split()
   local reuse_win = api.nvim_get_current_win()
   api.nvim_win_set_buf(reuse_win, original)
-  vim.wait(20, function() return false end)
+  vim.wait(20, function()
+    return false
+  end)
   eq(api.nvim_win_is_valid(reuse_win), true, 'repurposed window survives cleanup')
   eq(api.nvim_win_get_buf(reuse_win), original, 'repurposed content survives cleanup')
   eq(vim.wo[reuse_win].number, true, 'repurposed window options restored')
@@ -226,23 +282,34 @@ local function run()
   local manuscript_win = api.nvim_get_current_win()
   local reference_win
   for _, candidate in ipairs(api.nvim_tabpage_list_wins(0)) do
-    if candidate ~= manuscript_win then reference_win = candidate end
+    if candidate ~= manuscript_win then
+      reference_win = candidate
+    end
   end
   api.nvim_win_set_buf(reference_win, original)
-  vim.wait(20, function() return false end)
+  vim.wait(20, function()
+    return false
+  end)
   eq(api.nvim_win_is_valid(reference_win), true, 'repurposed reference window survives')
-  eq({ vim.wo[reference_win].number, vim.wo[reference_win].statusline }, reference_baseline,
-    'reference restores editor options before Lilt')
+  eq(
+    { vim.wo[reference_win].number, vim.wo[reference_win].statusline },
+    reference_baseline,
+    'reference restores editor options before Lilt'
+  )
   eq(autocmd_count(), 0, 'reference replacement ends session')
   api.nvim_win_close(reference_win, true)
   lilt.split()
   manuscript_win = api.nvim_get_current_win()
   api.nvim_win_close(manuscript_win, true)
-  vim.wait(20, function() return false end)
+  vim.wait(20, function()
+    return false
+  end)
   eq(autocmd_count(), 0, 'manual manuscript window closure ends Split')
   lilt.ghost()
   api.nvim_buf_delete(fresh, { force = true })
-  vim.wait(20, function() return false end)
+  vim.wait(20, function()
+    return false
+  end)
   eq(autocmd_count(), 0, 'active manuscript wipe ends session')
   lilt.ghost()
   eq(api.nvim_get_current_buf() ~= fresh, true, 'active wipe allows fresh session')
@@ -253,7 +320,7 @@ end
 
 local ok, err = xpcall(run, debug.traceback)
 if not ok then
-  io.stderr:write(err .. '\n')
+  io.write(err .. '\n')
   vim.cmd('cquit 1')
 else
   vim.cmd('qa!')

@@ -88,14 +88,14 @@ function M.close()
     return
   end
   session = nil
-  api.nvim_del_augroup_by_id(s.group)
+  if s.group then api.nvim_del_augroup_by_id(s.group) end
   render.clear(s.manuscript)
   local current = api.nvim_get_current_win()
   local was_owned = current == s.user_win or current == s.reference_win
   ghost.leave(s)
   split.leave(s)
-  if api.nvim_win_is_valid(s.user_win) then
-    if api.nvim_win_get_buf(s.user_win) == s.manuscript then
+  if s.user_win and api.nvim_win_is_valid(s.user_win) then
+    if not s.view or api.nvim_win_get_buf(s.user_win) == s.manuscript then
       if not pcall(api.nvim_win_close, s.user_win, true) then
         s.restore(s.user_win)
       end
@@ -115,7 +115,13 @@ local function set_view(view)
     M.close()
     return
   end
+  if s.view == 'split' and (not s.reference_win or not api.nvim_win_is_valid(s.reference_win)
+    or api.nvim_win_get_buf(s.reference_win) ~= s.reference_buf) then
+    M.close()
+    return
+  end
   api.nvim_set_current_win(s.user_win)
+  if s.view == view then return end
   ghost.leave(s)
   split.leave(s)
   s.view = view
@@ -124,7 +130,7 @@ local function set_view(view)
   draw(s)
 end
 
-local function open(view)
+local function start(view)
   if vim.fn.has('nvim-0.11') == 0 then
     error('Lilt requires Neovim 0.11 or newer')
   end
@@ -144,12 +150,9 @@ local function open(view)
     width = math.max(width, vim.fn.strdisplaywidth(line) + 1)
   end
   local origin = api.nvim_get_current_win()
-  vim.cmd('tab split')
-  local win = api.nvim_get_current_win()
   local s = {
     manuscript = manuscript, reference = reference, width = width,
-    origin_win = origin, user_win = win, options = {},
-    group = api.nvim_create_augroup('LiltSession', { clear = true }),
+    origin_win = origin, options = {},
   }
   s.present = function(target, values) present(s, target, values) end
   s.restore = function(target)
@@ -158,6 +161,12 @@ local function open(view)
   end
   s.quiet = quiet
   session = s
+  -- Even :tab split can allocate its window before reporting E36.
+  local ok, err = pcall(vim.cmd, 'tab split')
+  local win = api.nvim_get_current_win()
+  if win ~= origin then s.user_win = win end
+  if not ok then error(err, 0) end
+  s.group = api.nvim_create_augroup('LiltSession', { clear = true })
   s.present(win, quiet)
   for _, name in ipairs({ 'wrap', 'linebreak', 'statusline' }) do
     s.options[win][name] = api.nvim_get_option_value(name, { win = win })
@@ -169,7 +178,7 @@ local function open(view)
   api.nvim_create_autocmd('BufReadPost', {
     group = s.group,
     callback = function(event)
-      if event.buf == s.manuscript then
+      if session == s and event.buf == s.manuscript then
         attach_manuscript(s.manuscript)
         draw(s)
       end
@@ -192,6 +201,16 @@ local function open(view)
     end,
   })
   set_view(view)
+end
+
+local function open(view)
+  local ok, err = xpcall(function() start(view) end, debug.traceback)
+  if not ok then
+    -- Creation can fail after allocating only some resources (e.g. E36).
+    -- Terminate the session, retaining the manuscript and the original error.
+    pcall(M.close)
+    error(err, 0)
+  end
 end
 
 function M.ghost()

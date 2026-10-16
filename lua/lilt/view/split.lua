@@ -22,10 +22,6 @@ function M.leave(s)
 end
 
 function M.enter(s)
-  s.present(s.user_win, {
-    wrap = true, linebreak = true,
-    statusline = ' Lilt · Manuscript %m',
-  })
   s.reference_buf = api.nvim_create_buf(false, true)
   api.nvim_buf_set_name(s.reference_buf, 'lilt://reference/alice')
   api.nvim_buf_set_lines(s.reference_buf, 0, -1, false, s.reference)
@@ -35,11 +31,18 @@ function M.enter(s)
   -- One separator plus a comfortable prepared-line width in each window.
   -- Choose once; native rearrangement/resizing owns the layout afterwards.
   local wide = api.nvim_win_get_width(s.user_win) >= 2 * s.width + 1
+  -- Native splits inherit window options. Remove our presentation first so
+  -- the new window snapshots editor state, rather than Lilt's own settings.
+  s.restore(s.user_win)
   vim.cmd(wide and 'aboveleft vsplit' or 'aboveleft split')
   s.reference_win = api.nvim_get_current_win()
   s.present(s.reference_win, s.quiet)
   s.present(s.reference_win, { wrap = true, linebreak = true, statusline = ' Lilt · Reference ' })
   api.nvim_win_set_buf(s.reference_win, s.reference_buf)
+  s.present(s.user_win, s.quiet)
+  s.present(s.user_win, {
+    wrap = true, linebreak = true, statusline = ' Lilt · Manuscript %m',
+  })
   api.nvim_set_current_win(s.user_win)
 end
 

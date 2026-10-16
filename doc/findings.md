@@ -1,3 +1,29 @@
+# Current alignment contract
+
+`compare.line` returns coalesced Equal, Pending, Replace, Extra, and Missing
+spans with zero-based, exclusive reference and manuscript byte ranges, plus
+an aligned reference coverage boundary and pending suffix. Comparisons use
+UTF-8 codepoints, never byte positions as character indexes.
+
+Each physical row uses semi-global Levenshtein alignment: all manuscript
+characters are consumed; the remaining reference suffix costs nothing and is
+Pending. Internal reference deletions are Missing. An exact leading prefix is
+fixed first. Among minimum-cost paths, prefer more equal characters, then a
+coverage endpoint nearest the manuscript's character length, then the earlier
+endpoint. Remaining ties use Equal, Replace, Extra, Missing in that order.
+This preserves an already matching prefix and makes repeated-character choices
+reproducible without hidden typing history.
+
+This is a text-derived interpretation, not inferred intent. For example,
+`little bird` against `little little bird` is cheaper as three replacements
+within the second word followed by pending text than as seven omissions.
+Trailing wrong characters can change interpretation as more text arrives.
+There is no cross-row alignment, normalization, or word-aware diff.
+
+The following records the **superseded positional prototype** and its original
+experiments. Rendering/lifecycle refinements will be documented with their final
+verification below.
+
 # Reading prototype findings
 
 Ghost is practical as a **forward-copying experiment** when the prepared lines

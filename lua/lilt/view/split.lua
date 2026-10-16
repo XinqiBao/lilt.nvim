@@ -42,10 +42,12 @@ end
 
 function M.draw(s, _, results)
   for row, result in ipairs(results) do
-    for _, range in ipairs(result.errors) do
-      api.nvim_buf_set_extmark(s.manuscript, render.namespace, row - 1, range[1], {
-        end_col = range[2], hl_group = 'LiltError', priority = 150, undo_restore = false,
+    for _, span in ipairs(result.spans) do
+      if span.kind == 'replace' or span.kind == 'extra' then
+      api.nvim_buf_set_extmark(s.manuscript, render.namespace, row - 1, span.text_start, {
+        end_col = span.text_end, hl_group = 'LiltError', priority = 150, undo_restore = false,
       })
+      end
     end
   end
 end

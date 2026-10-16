@@ -8,10 +8,12 @@ end
 
 function M.draw(s, lines, results)
   for row, line in ipairs(lines) do
-    for _, range in ipairs(results[row].errors) do
-      api.nvim_buf_set_extmark(s.manuscript, render.namespace, row - 1, range[1], {
-        end_col = range[2], hl_group = 'LiltError', priority = 150, undo_restore = false,
+    for _, span in ipairs(results[row].spans) do
+      if span.kind == 'replace' or span.kind == 'extra' then
+      api.nvim_buf_set_extmark(s.manuscript, render.namespace, row - 1, span.text_start, {
+        end_col = span.text_end, hl_group = 'LiltError', priority = 150, undo_restore = false,
       })
+      end
     end
     if results[row].pending ~= '' then
       api.nvim_buf_set_extmark(s.manuscript, render.namespace, row - 1, #line, {

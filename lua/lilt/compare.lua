@@ -11,6 +11,14 @@ local function characters(text)
   return chars, offsets
 end
 
+-- Contract for valid UTF-8 inputs: ordered, coalesced spans partition both
+-- strings in zero-based, half-open byte ranges at codepoint boundaries.
+-- Equal spans contain identical text; Replace pairs codepoints one-to-one
+-- (Ghost projects hints through these pairs). Extra has zero reference width;
+-- Missing has zero authored width and precedes authored text. Only the final
+-- untyped reference suffix is Pending. coverage and pending describe that suffix.
+-- Results depend only on these inputs, never on editing history. Tie-breaking
+-- below is deterministic policy, not a promise to infer ambiguous typing intent.
 function M.line(reference, authored)
   local ref, rb = characters(reference)
   local text, tb = characters(authored)

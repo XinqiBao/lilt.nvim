@@ -1,5 +1,4 @@
 local api = vim.api
-local compare = require('lilt.compare')
 local M = { namespace = api.nvim_create_namespace('lilt') }
 
 function M.clear(buf)

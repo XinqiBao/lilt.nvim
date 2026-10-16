@@ -42,9 +42,17 @@ end
 local function draw(s)
   if not api.nvim_buf_is_loaded(s.manuscript) then return end
   local lines = api.nvim_buf_get_lines(s.manuscript, 0, -1, false)
+  local previous = s.comparisons or {}
+  s.comparisons = {}
   local results = {}
   for row = 1, math.max(#lines, #s.reference) do
-    results[row] = compare.line(s.reference[row] or '', lines[row] or '')
+    local reference, text = s.reference[row] or '', lines[row] or ''
+    local cached = previous[row]
+    if not cached or cached.reference ~= reference or cached.text ~= text then
+      cached = { reference = reference, text = text, result = compare.line(reference, text) }
+    end
+    s.comparisons[row] = cached
+    results[row] = cached.result
   end
   render.clear(s.manuscript)
   if s.view == 'ghost' then ghost.draw(s, lines, results)

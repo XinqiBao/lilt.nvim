@@ -63,5 +63,56 @@ local repeated = {
 }
 eq(describe('little little bird', 'little bird'), repeated, 'minimal prefix edits can beat a whole-word omission')
 eq(compare.line('little little bird', 'little bird'), compare.line('little little bird', 'little bird'), 'deterministic complete alignment')
-print(('Lilt comparison: %d assertions passed on %s'):format(checks, tostring(vim.version())))
+-- Exhaustive short inputs exercise partition and UTF-8 contracts without an
+-- alignment oracle or assertions about ambiguous tie-breaking choices.
+local inputs = { '' }
+local function generate(prefix, depth)
+  if depth == 0 then return end
+  for _, char in ipairs({ 'a', ' ', '“' }) do
+    local value = prefix .. char
+    inputs[#inputs + 1] = value
+    generate(value, depth - 1)
+  end
+end
+generate('', 3)
+local function boundary(value, offset)
+  local byte = value:byte(offset + 1)
+  return offset >= 0 and offset <= #value and (not byte or byte < 128 or byte >= 192)
+end
+for _, reference in ipairs(inputs) do
+  for _, text in ipairs(inputs) do
+    local result = compare.line(reference, text)
+    assert(vim.deep_equal(result, compare.line(reference, text)), 'nondeterministic result')
+    local r, t, last = 0, 0, nil
+    for index, span in ipairs(result.spans) do
+      assert(span.ref_start == r and span.text_start == t, 'partition gap or overlap')
+      assert(span.ref_end >= r and span.text_end >= t, 'reversed range')
+      assert(boundary(reference, span.ref_end) and boundary(text, span.text_end), 'invalid UTF-8 boundary')
+      assert(span.ref_end > r or span.text_end > t, 'empty span')
+      assert(span.kind ~= last, 'uncoalesced spans')
+      local refpart = reference:sub(r + 1, span.ref_end)
+      local part = text:sub(t + 1, span.text_end)
+      if span.kind == 'equal' then
+        assert(refpart == part, 'unequal Equal span')
+      elseif span.kind == 'replace' then
+        assert(#part > 0 and vim.fn.strchars(refpart) == vim.fn.strchars(part), 'unpaired replacement')
+      elseif span.kind == 'extra' then
+        assert(#refpart == 0 and #part > 0, 'invalid extra anchor')
+      elseif span.kind == 'missing' then
+        assert(#refpart > 0 and #part == 0 and t < #text, 'invalid missing anchor')
+      elseif span.kind == 'pending' then
+        assert(index == #result.spans and #refpart > 0 and t == #text and #part == 0, 'invalid pending suffix')
+      else
+        error('unknown span kind')
+      end
+      r, t, last = span.ref_end, span.text_end, span.kind
+    end
+    assert(r == #reference and t == #text, 'incomplete partition')
+    assert(boundary(reference, result.coverage), 'invalid coverage boundary')
+    assert(result.pending == reference:sub(result.coverage + 1), 'inconsistent pending suffix')
+    assert((result.pending == '') == (last ~= 'pending'), 'pending span/suffix disagree')
+  end
+end
+print(('Lilt comparison: %d examples and %d generated pairs passed on %s')
+  :format(checks, #inputs * #inputs, tostring(vim.version())))
 vim.cmd('qa!')

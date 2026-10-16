@@ -64,7 +64,10 @@ local function run()
   end
   eq({ omission[3], omission[4].end_col, omission[4].hl_group }, { 1, 2, 'LiltMissing' }, 'Ghost underlines next real character at omission')
   lilt.split()
-  local refwin = api.nvim_get_current_win() == win and api.nvim_tabpage_list_wins(0)[1] or nil
+  local refwin
+  for _, candidate in ipairs(api.nvim_tabpage_list_wins(0)) do
+    if candidate ~= win then refwin = candidate end
+  end
   local refbuf = api.nvim_win_get_buf(refwin)
   eq(pcall(api.nvim_buf_set_lines, refbuf, 0, 1, false, { 'changed' }), false, 'protected reference refuses actual edits')
   local refmarks = marks(refbuf)

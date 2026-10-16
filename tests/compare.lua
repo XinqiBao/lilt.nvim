@@ -21,6 +21,9 @@ for _, case in ipairs({
   { 'beautiful', 'beat', { {'equal','bea','bea'}, {'missing','u',''}, {'equal','t','t'}, {'pending','iful',''} } },
   { 'beautiful', 'beatiful', { {'equal','bea','bea'}, {'missing','u',''}, {'equal','tiful','tiful'} } },
   { 'beautiful', 'beauutiful', { {'equal','beau','beau'}, {'extra','','u'}, {'equal','tiful','tiful'} } },
+  { 'abc', 'xyz', { {'replace','abc','xyz'} } },
+  { 'abc', 'a“', { {'equal','a','a'}, {'replace','b','“'}, {'pending','c',''} } },
+  { 'abcd', 'acXd', { {'equal','a','a'}, {'missing','b',''}, {'equal','c','c'}, {'extra','','X'}, {'equal','d','d'} } },
   { 'cold', 'bold', { {'replace','c','b'}, {'equal','old','old'} } },
   { 'abcdef', 'abXdeYf', { {'equal','ab','ab'}, {'replace','c','X'}, {'equal','de','de'}, {'extra','','Y'}, {'equal','f','f'} } },
   { 'abc', 'ax', { {'equal','a','a'}, {'replace','b','x'}, {'pending','c',''} } },
@@ -43,6 +46,9 @@ end
 local unicode = compare.line('“a—b', '“x—b')
 eq(unicode.spans[2], { kind='replace', ref_start=3, ref_end=4, text_start=3, text_end=4 }, 'byte offsets after curly quote')
 eq(unicode.spans[3].ref_end, 8, 'multibyte dash exclusive end')
+eq(compare.line('abc', 'a“').spans[2], {
+  kind='replace', ref_start=1, ref_end=2, text_start=1, text_end=4,
+}, 'replacement ranges have independent byte widths')
 eq(compare.line('a—b', 'ab').spans[2], {
   kind='missing', ref_start=1, ref_end=4, text_start=1, text_end=1,
 }, 'multibyte omission has zero authored width')

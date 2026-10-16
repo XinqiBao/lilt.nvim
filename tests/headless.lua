@@ -26,7 +26,7 @@ end
 local function error_ranges(buf, row)
   local ranges = {}
   for _, mark in ipairs(marks(buf)) do
-    if mark[2] == row and mark[4].hl_group == 'LiltError' then
+    if mark[2] == row and (mark[4].hl_group == 'LiltError' or mark[4].hl_group == 'LiltExtra') then
       ranges[#ranges + 1] = { mark[3], mark[4].end_col }
     end
   end
@@ -55,6 +55,34 @@ local function run()
   local reference = vim.fn.readfile('samples/alice.txt')
   eq(#initial_marks[2][4].virt_lines, #reference - 1, 'every future row allocated once')
   local count = autocmd_count()
+  api.nvim_buf_set_lines(buf, 0, -1, false, { 'Aice' })
+  eq(pending(buf, 0), reference[1]:sub(6), 'missing character advances aligned coverage')
+  eq(lines(buf), { 'Aice' }, 'missing character never inserts a placeholder')
+  local omission
+  for _, mark in ipairs(marks(buf)) do
+    if mark[4].hl_group == 'LiltMissing' then omission = mark end
+  end
+  eq({ omission[3], omission[4].end_col, omission[4].hl_group }, { 1, 2, 'LiltMissing' }, 'Ghost underlines next real character at omission')
+  lilt.split()
+  local refwin = api.nvim_get_current_win() == win and api.nvim_tabpage_list_wins(0)[1] or nil
+  local refbuf = api.nvim_win_get_buf(refwin)
+  local refmarks = marks(refbuf)
+  eq({ refmarks[1][3], refmarks[1][4].end_col, refmarks[1][4].hl_group }, { 1, 2, 'LiltMissing' }, 'Split marks omitted reference character')
+  eq({ refmarks[2][3], refmarks[2][4].hl_group }, { 5, 'LiltPending' }, 'Split pending begins at aligned coverage')
+  eq(api.nvim_win_get_position(refwin)[1] < api.nvim_win_get_position(win)[1], true, 'ordinary terminal starts above/below')
+  api.nvim_win_set_cursor(refwin, { #reference, 0 })
+  api.nvim_buf_set_lines(buf, 0, -1, false, { 'Bllice' })
+  eq(api.nvim_win_get_cursor(refwin), { #reference, 0 }, 'redraw preserves independent reference cursor')
+  eq(marks(refbuf)[1][4].hl_group, 'LiltError', 'Split reference replacement')
+  eq(error_ranges(buf, 0), { { 0, 1 }, { 2, 3 } }, 'Split manuscript replacement and extra')
+  api.nvim_set_current_win(refwin)
+  vim.cmd('wincmd H')
+  api.nvim_buf_set_lines(buf, 0, -1, false, { 'Alice' })
+  eq(lines(refbuf), reference, 'native window rearrangement preserves reference')
+  eq(api.nvim_get_current_win(), refwin, 'redraw after rearrangement preserves focus')
+  lilt.ghost()
+  eq(api.nvim_get_current_win(), win, 'switch targets manuscript by window ID')
+  api.nvim_buf_set_lines(buf, 0, -1, false, { '' })
   keys('iAlice was<CR>So she<Esc>')
   eq(lines(buf), { 'Alice was', 'So she' }, 'native Enter records only actual input')
   eq(pending(buf, 0), reference[1]:sub(10), 'unfinished preceding row survives Enter')
@@ -175,6 +203,30 @@ local function run()
   eq(fresh ~= buf, true, 'explicit manuscript wipe starts a fresh buffer')
   keys('iAlice<Esc>')
   eq(pending(fresh, 0), reference[1]:sub(6), 'fresh manuscript has a live renderer')
+  lilt.split()
+  local manuscript_win = api.nvim_get_current_win()
+  local reference_win
+  for _, candidate in ipairs(api.nvim_tabpage_list_wins(0)) do
+    if candidate ~= manuscript_win then reference_win = candidate end
+  end
+  api.nvim_win_set_buf(reference_win, original)
+  vim.wait(20, function() return false end)
+  eq(api.nvim_win_is_valid(reference_win), true, 'repurposed reference window survives')
+  eq(vim.wo[reference_win].number, false, 'reference restores its own inherited options')
+  eq(vim.wo[reference_win].statusline, ' Lilt · Manuscript %m', 'reference never restores another window snapshot')
+  eq(autocmd_count(), 0, 'reference replacement ends session')
+  api.nvim_win_close(reference_win, true)
+  lilt.split()
+  manuscript_win = api.nvim_get_current_win()
+  api.nvim_win_close(manuscript_win, true)
+  vim.wait(20, function() return false end)
+  eq(autocmd_count(), 0, 'manual manuscript window closure ends Split')
+  lilt.ghost()
+  api.nvim_buf_delete(fresh, { force = true })
+  vim.wait(20, function() return false end)
+  eq(autocmd_count(), 0, 'active manuscript wipe ends session')
+  lilt.ghost()
+  eq(api.nvim_get_current_buf() ~= fresh, true, 'active wipe allows fresh session')
   lilt.close()
   vim.fn.delete(path)
   print(('Lilt: %d assertions passed on %s'):format(checks, tostring(vim.version())))

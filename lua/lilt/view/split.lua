@@ -13,6 +13,7 @@ function M.leave(s)
       s.restore(s.reference_win)
     end
   end
+  s.options[s.reference_win or -1] = nil
   s.reference_win = nil
   if s.reference_buf and api.nvim_buf_is_valid(s.reference_buf) then
     api.nvim_buf_delete(s.reference_buf, { force = true })
@@ -20,11 +21,10 @@ function M.leave(s)
   s.reference_buf = nil
 end
 
-function M.enter(s, narrow)
+function M.enter(s)
   s.present(s.user_win, {
     wrap = true, linebreak = true,
-    statusline = narrow and (' Lilt · Split (Ghost needs %d cols) %%m'):format(s.width)
-      or ' Lilt · Manuscript %m',
+    statusline = ' Lilt · Manuscript %m',
   })
   s.reference_buf = api.nvim_create_buf(false, true)
   api.nvim_buf_set_name(s.reference_buf, 'lilt://reference/alice')
@@ -32,7 +32,10 @@ function M.enter(s, narrow)
   vim.bo[s.reference_buf].filetype = 'text'
   vim.bo[s.reference_buf].modifiable = false
   vim.bo[s.reference_buf].readonly = true
-  vim.cmd('aboveleft split')
+  -- One separator plus a comfortable prepared-line width in each window.
+  -- Choose once; native rearrangement/resizing owns the layout afterwards.
+  local wide = api.nvim_win_get_width(s.user_win) >= 2 * s.width + 1
+  vim.cmd(wide and 'aboveleft vsplit' or 'aboveleft split')
   s.reference_win = api.nvim_get_current_win()
   s.present(s.reference_win, s.quiet)
   s.present(s.reference_win, { wrap = true, linebreak = true, statusline = ' Lilt · Reference ' })
@@ -41,12 +44,22 @@ function M.enter(s, narrow)
 end
 
 function M.draw(s, _, results)
+  if not s.reference_buf or not api.nvim_buf_is_valid(s.reference_buf) then return end
+  render.clear(s.reference_buf)
   for row, result in ipairs(results) do
     for _, span in ipairs(result.spans) do
-      if span.kind == 'replace' or span.kind == 'extra' then
-      api.nvim_buf_set_extmark(s.manuscript, render.namespace, row - 1, span.text_start, {
-        end_col = span.text_end, hl_group = 'LiltError', priority = 150, undo_restore = false,
-      })
+      local authored_group = span.kind == 'replace' and 'LiltError'
+        or span.kind == 'extra' and 'LiltExtra'
+      if authored_group then
+        api.nvim_buf_set_extmark(s.manuscript, render.namespace, row - 1, span.text_start, {
+          end_col = span.text_end, hl_group = authored_group, priority = 150, undo_restore = false,
+        })
+      end
+      local reference_group = ({ pending = 'LiltPending', replace = 'LiltError', missing = 'LiltMissing' })[span.kind]
+      if reference_group and span.ref_end > span.ref_start then
+        api.nvim_buf_set_extmark(s.reference_buf, render.namespace, row - 1, span.ref_start, {
+          end_col = span.ref_end, hl_group = reference_group, priority = 150, undo_restore = false,
+        })
       end
     end
   end

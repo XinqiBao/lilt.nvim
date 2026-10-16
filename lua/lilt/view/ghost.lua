@@ -9,10 +9,20 @@ end
 function M.draw(s, lines, results)
   for row, line in ipairs(lines) do
     for _, span in ipairs(results[row].spans) do
-      if span.kind == 'replace' or span.kind == 'extra' then
-      api.nvim_buf_set_extmark(s.manuscript, render.namespace, row - 1, span.text_start, {
-        end_col = span.text_end, hl_group = 'LiltError', priority = 150, undo_restore = false,
-      })
+      local group, finish
+      if span.kind == 'replace' then group, finish = 'LiltError', span.text_end
+      elseif span.kind == 'extra' then group, finish = 'LiltExtra', span.text_end
+      elseif span.kind == 'missing' then
+        -- Missing spans always precede a real authored character: trailing
+        -- omissions are Pending. Underline that next character, without adding
+        -- a placeholder or shifting any actual text.
+        group = 'LiltMissing'
+        finish = span.text_start + #vim.fn.strcharpart(line:sub(span.text_start + 1), 0, 1)
+      end
+      if group then
+        api.nvim_buf_set_extmark(s.manuscript, render.namespace, row - 1, span.text_start, {
+          end_col = finish, hl_group = group, priority = 150, undo_restore = false,
+        })
       end
     end
     if results[row].pending ~= '' then

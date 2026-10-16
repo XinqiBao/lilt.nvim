@@ -99,6 +99,47 @@ def run():
     rows = input_keys("G$")
     check(rows[start:start + 4] == reference[:4], "curly punctuation renders without byte displacement")
     check(not group_at(start + 3, reference[3].index("“"), "LiltError"), "correct curly quote matches normally")
+    nvim.current.buffer[:] = ["Aice"]
+    rows = input_keys("gg0")
+    check(rows[start] == "Aice" + reference[0][5:], "omission adds no Ghost placeholder or duplicate suffix")
+    check(group_at(start, 1, "LiltMissing"), "Ghost omission underlines next authored character")
+    nvim.current.buffer[:] = ["Allice"]
+    rows = screen()
+    check(rows[start] == "Allice" + reference[0][5:], "extra character remains visible beside aligned pending suffix")
+    check(group_at(start, 2, "LiltExtra"), "extra character has semantic emphasis")
+    # Split decorates ordinary reference glyphs using the same comparison.
+    width = 160
+    nvim.ui_try_resize(width, height)
+    input_keys("")
+    nvim.command("LiltSplit")
+    user = nvim.current.window
+    ref = next(win for win in nvim.current.tabpage.windows if win != user)
+    check(nvim.api.win_get_position(ref.handle)[1] < nvim.api.win_get_position(user.handle)[1],
+          "wide Split starts side by side")
+    nvim.current.buffer[:] = ["Aice"]
+    rows = screen()
+    r, c = nvim.api.win_get_position(ref.handle)
+    check(rows[r][c:c + len(reference[0])] == reference[0], "Split prints immutable reference beside omission")
+    check(not group_at(r, c, "LiltPending"), "equal reference prefix uses normal foreground")
+    check(group_at(r, c + 1, "LiltMissing"), "Split highlights missing reference character")
+    check(group_at(r, c + 5, "LiltPending"), "Split subdues aligned pending suffix")
+    nvim.current.buffer[:] = ["Blice"]
+    rows = screen()
+    ur, uc = nvim.api.win_get_position(user.handle)
+    check(group_at(r, c, "LiltError") and group_at(ur, uc, "LiltError"),
+          "replacement visible in both Split panes")
+    width = 90
+    nvim.ui_try_resize(width, height)
+    input_keys("")
+    check(nvim.api.win_get_position(ref.handle)[0] == nvim.api.win_get_position(user.handle)[0],
+          "resize never changes Split orientation")
+    nvim.current.window = ref
+    nvim.command("wincmd J")
+    rows = screen()
+    check(nvim.api.win_get_position(ref.handle)[0] > nvim.api.win_get_position(user.handle)[0],
+          "native window rearrangement remains usable")
+    nvim.current.window = user
+    nvim.command("LiltGhost")
     nvim.current.buffer[:] = reference
     rows = input_keys("Gzt")
     check(nvim.exec_lua("return #vim.api.nvim_buf_get_extmarks(0,require('lilt.render').namespace,0,-1,{})") == 0,
@@ -131,21 +172,23 @@ def run():
     width, height = 42, 22
     nvim.ui_try_resize(width, height)
     rows = input_keys("X")
-    check(nvim.current.buffer.number == buf, "resize fallback keeps authoritative buffer")
-    check(nvim.current.buffer[-1].endswith("X"), "typing continues during resize fallback")
-    check(nvim.eval("mode()") == "i", "resize fallback preserves Insert mode")
+    check(nvim.current.buffer.number == buf, "resize keeps authoritative buffer")
+    check(nvim.current.buffer[-1].endswith("X"), "typing continues after resize")
+    check(nvim.eval("mode()") == "i", "resize preserves Insert mode")
     input_keys("<Esc>")
-    windows = nvim.current.tabpage.windows
-    check(len(windows) == 2, "narrow resize changes Ghost to Split")
-    check(all(nvim.api.get_option_value("wrap", {"win": win.handle}) for win in windows),
-          "both narrow windows wrap rather than truncate")
-    check(not any("Lilt · Ghost" in row for row in rows), "narrow screen identifies the Split fallback")
+    check(len(nvim.current.tabpage.windows) == 1, "narrow resize preserves Ghost")
+    check(not nvim.current.window.options["wrap"], "narrow Ghost retains fixed rows")
+    check(any("Lilt · Ghost" in row for row in rows), "narrow screen still identifies Ghost")
     authored = nvim.current.buffer[:]
-    # Repeated explicit Ghost at narrow widths must remain usable, without leaks.
     for _ in range(3):
         nvim.command("LiltGhost")
-        check(len(nvim.current.tabpage.windows) == 2, "narrow Ghost request remains Split")
-        check(nvim.current.buffer[:] == authored, "fallback retains text exactly")
+        check(len(nvim.current.tabpage.windows) == 1, "narrow Ghost request stays Ghost")
+        check(nvim.current.buffer[:] == authored, "narrow Ghost retains text exactly")
+    nvim.command("LiltSplit")
+    windows = nvim.current.tabpage.windows
+    check(len(windows) == 2, "explicit narrow Split opens reference")
+    check(all(win.options["wrap"] for win in windows), "narrow Split windows wrap")
+    check(windows[0].width == windows[1].width, "narrow Split uses above/below layout")
     # Reference is an ordinary independently browsable window, including final row.
     userwin = nvim.current.window
     refwin = next(win for win in nvim.current.tabpage.windows if win != userwin)

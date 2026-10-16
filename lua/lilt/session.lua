@@ -10,7 +10,9 @@ local root = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h:h:h')
 
 local function highlights()
   api.nvim_set_hl(0, 'LiltPending', { default = true, link = 'Comment' })
-  api.nvim_set_hl(0, 'LiltError', { default = true, link = 'SpellBad' })
+  api.nvim_set_hl(0, 'LiltError', { default = true, link = 'DiagnosticError' })
+  api.nvim_set_hl(0, 'LiltExtra', { default = true, link = 'DiagnosticWarn' })
+  api.nvim_set_hl(0, 'LiltMissing', { default = true, link = 'DiagnosticUnderlineWarn' })
 end
 
 local function window_options(win, values)
@@ -41,16 +43,12 @@ local function draw(s)
   if not api.nvim_buf_is_loaded(s.manuscript) then return end
   local lines = api.nvim_buf_get_lines(s.manuscript, 0, -1, false)
   local results = {}
-  for row, line in ipairs(lines) do
-    results[row] = compare.line(s.reference[row] or '', line)
+  for row = 1, math.max(#lines, #s.reference) do
+    results[row] = compare.line(s.reference[row] or '', lines[row] or '')
   end
   render.clear(s.manuscript)
   if s.view == 'ghost' then ghost.draw(s, lines, results)
   else split.draw(s, lines, results) end
-end
-
-local function usable_width(win)
-  return api.nvim_win_get_width(win) - vim.fn.getwininfo(win)[1].textoff
 end
 
 local function attach_manuscript(buf)
@@ -118,13 +116,9 @@ local function set_view(view)
   end
   api.nvim_set_current_win(s.user_win)
   split.leave(s)
-  local narrow = view == 'ghost' and usable_width(s.user_win) < s.width
-  if narrow then
-    view = 'split'
-  end
   s.view = view
   if view == 'ghost' then ghost.enter(s)
-  else split.enter(s, narrow) end
+  else split.enter(s) end
   draw(s)
 end
 
@@ -193,19 +187,6 @@ local function open(view)
           M.close()
         end
       end)
-    end,
-  })
-  api.nvim_create_autocmd({ 'VimResized', 'WinResized' }, {
-    group = s.group,
-    callback = function()
-      if session == s and s.view == 'ghost' and api.nvim_win_is_valid(win) and usable_width(win) < s.width then
-        -- Window changes are deferred out of Neovim's resize event.
-        vim.schedule(function()
-          if session == s and s.view == 'ghost' and api.nvim_win_is_valid(win) and usable_width(win) < s.width then
-            set_view('ghost')
-          end
-        end)
-      end
     end,
   })
   set_view(view)

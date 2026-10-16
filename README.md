@@ -2,99 +2,91 @@
 
 **Read at your own rhythm.**
 
-A small Neovim plugin for reading literature by retyping it. Ghost and Split
-share one ordinary editable manuscript buffer. There are no timed exercises,
-scores, typing mappings, automatic corrections, or runtime dependencies.
+A quiet Neovim plugin for reading literature by retyping it. Your writing lives
+in an ordinary buffer, with native editing, undo, redo, and saving. Reference
+text and gentle comparison feedback help you keep your place. There are no
+scores, timed exercises, typing mappings, or automatic corrections.
 
-Requires **Neovim 0.11+**. From this repository, launch with an isolated config:
+![Ghost view: authored text followed by subdued reference text](doc/ghost.png)
 
-```sh
-nvim --clean --cmd "set runtimepath^=$PWD" -c 'runtime plugin/lilt.lua' -c LiltGhost
+## Install
+
+Requires **Neovim 0.11+**. No runtime dependencies or setup call.
+
+For [lazy.nvim](https://github.com/folke/lazy.nvim), add this plugin spec:
+
+```lua
+{
+  "XinqiBao/lilt.nvim",
+  cmd = { "LiltGhost", "LiltSplit", "LiltClose" },
+}
 ```
 
-Use `-c LiltSplit` to start in Split. Inside Neovim:
+Other plugin managers work too: install `XinqiBao/lilt.nvim` normally.
+
+## Read
 
 | Command | Action |
 | --- | --- |
-| `:LiltGhost` | Start or switch to Ghost |
-| `:LiltSplit` | Start or switch to Split |
-| `:LiltClose` | Close reading windows; retain the manuscript |
+| `:LiltGhost` | Open or switch to Ghost |
+| `:LiltSplit` | Open or switch to Split |
+| `:LiltClose` | Close the session; retain your manuscript |
 
-Start typing with `i`. Retype the prepared physical line breaks, including blank
-paragraph rows. Motions, operators, search, undo, redo, and writing remain native
-Vim operations. Comparison never modifies your writing.
+Start with `:LiltGhost`, press `i`, and type. Copy the reference's physical line
+breaks, including blank paragraph rows. Use your usual motions, operators,
+search, and undo. Comparison never changes your text.
 
-**Ghost** shows your actual text, a subdued pending reference suffix at each
-real line's end, and virtual future reference lines. Earlier unfinished suffixes
-stay visible. Missing characters receive a subtle underline on the next real
-character; they never insert placeholders or shift your text. Extra characters
-remain exactly as typed. Future reference text cannot be navigated or searched:
-Ghost is for forward copying. Use Split to browse ahead.
+**Ghost** places the remaining reference beside your writing and below its last
+line. Earlier unfinished lines stay visible. Mistakes receive subtle highlights;
+pause on one in Normal mode for about 250 ms to see an Expected / Typed hint.
+Moving, editing, or leaving the window dismisses it. Future virtual lines cannot
+be navigated or searched; use Split to browse ahead.
 
-Pause on an error in Normal Mode for about 250 ms to see a compact **Expected /
-Typed** hint, usually showing the affected word. An omission attaches to the next
-real character. Moving away, editing, entering Insert Mode, leaving the window,
-or switching views dismisses the hint. It never takes focus or offers corrections.
+**Split** puts a protected reference pane beside your manuscript when both fit
+comfortably, or above it at narrower widths. The panes scroll independently and
+wrap. Native `<C-w>` commands can move, resize, or rearrange them. Resizing never
+switches views or rearranges the layout. Requesting the active view again keeps
+your layout and reference position, and focuses the manuscript.
 
-**Split** shows an ordinary protected reference buffer beside the manuscript
-when both panes can comfortably fit the prepared width (151 columns for this
-sample). Otherwise it places the reference above the manuscript. Both panes wrap
-at narrow widths. Reference progress and errors reflect the same comparison as
-the manuscript. Navigation and search are independent; use native `<C-w>` commands
-to move between or rearrange windows.
+Sessions open in a separate tab and share **one manuscript buffer**. Closing and
+reopening retains it and its undo history for this Neovim process. Closing an
+owned window or replacing its buffer ends the session. Unrelated windows and
+buffers survive.
 
-Resizing **never switches views or rearranges Split**. Ghost recommends at least
-75 usable columns for this passage. Narrower windows may clip pending text;
-native horizontal scrolling cannot reliably reveal it with a short authored
-prefix. Choose Split explicitly when helpful.
+**Save with `:write /path/to/manuscript.txt` before quitting.** The file contains
+only what you typed. Find retained writing in `:ls` and `:buffer N`. Wipe the
+manuscript with `:bwipeout` to start fresh (`:bwipeout!` discards unsaved changes).
+There is no automatic saving or restoration across Neovim processes.
 
-| Meaning | Presentation / default highlight link |
+## Reading notes
+
+The available passage is the opening of Lewis Carroll's *Alice's Adventures in
+Wonderland*. There is currently no content selector. Its prepared physical lines
+are fixed: extra or missing line breaks shift subsequent comparisons. There is
+no reflow, punctuation normalization, or cross-line alignment.
+
+Comparison aligns UTF-8 codepoints within each row. Internal omissions differ
+from an untyped suffix: `beat` against `beautiful` omits `u`, matches `t`, and
+leaves `iful` pending. Ambiguous repeated text gets a deterministic interpretation;
+it cannot reveal typing intent. Complex graphemes and arbitrary tab/wide-character
+layout are outside the bundled English passage's scope.
+
+Ghost is most comfortable with **75 usable columns** for this sample. Narrower
+windows can clip pending text, and a short authored prefix limits native
+horizontal scrolling. Choose Split when helpful; its reference is fully browsable.
+
+| Feedback | Highlight group / default link |
 | --- | --- |
-| Equal | Normal foreground, including authored reference spans in Split |
-| Pending | `LiltPending` → `Comment` |
-| Replace | `LiltError` → `DiagnosticError`, in both Split panes |
-| Extra | `LiltExtra` → `DiagnosticWarn`, on actual authored text |
-| Missing | `LiltMissing` → `DiagnosticUnderlineWarn`, on reference spans in Split or the next real Ghost character |
+| Untyped suffix | `LiltPending` → `Comment` |
+| Replacement | `LiltError` → `DiagnosticError` |
+| Extra authored text | `LiltExtra` → `DiagnosticWarn` |
+| Missing text | `LiltMissing` → `DiagnosticUnderlineWarn` |
 
-These semantic groups respect user overrides and colorschemes. Error foregrounds
-avoid relying on `SpellBad`, which can be nearly invisible in some themes.
+Equal text uses the normal foreground. Ghost underlines the next real character
+at an omission; Split marks the missing reference text. Highlight groups respect
+colorschemes and explicit user overrides.
 
-Comparison aligns UTF-8 codepoints **within each physical row**. It separates
-internal omissions from an untyped pending suffix: `beat` against `beautiful`
-means matching `bea`, missing `u`, matching `t`, pending `iful`. Ambiguous text
-uses deterministic edit-distance rules; it cannot know typing intent. For
-example, `little bird` against `little little bird` can appear as replacements
-and pending text rather than a whole-word omission. See the concise
-[comparison contract and findings](doc/findings.md).
+[Development and verification](DEVELOPING.md) · [Design contracts](doc/design.md)
 
-The reference is immutable during a session. The bundled passage is the opening
-of Lewis Carroll's *Alice's Adventures in Wonderland*, chapter I (1865),
-public-domain text prepared at up to 74 display columns with UTF-8 punctuation.
-This maximum is a content convention, independent of window size. **Prepared
-physical lines are part of the copying contract. Changing their layout can
-invalidate correspondence with existing manuscripts.** There is no reflow,
-paragraph alignment, cross-line realignment, or punctuation normalization.
-Extra/missing line breaks shift subsequent row comparisons. Complex grapheme
-layout and arbitrary tab/wide-character alignment are outside this English-text
-scope.
-
-Sessions open in a separate tab. Closing or reopening retains the same listed
-manuscript and undo history for this Neovim process. **Save with `:write
-/path/to/manuscript.txt` before quitting.** Only authored text enters the file.
-Find retained writing in `:ls` / `:buffer N`; explicitly wipe it with `:bwipeout`
-(or `:bwipeout!` to discard changes) to start fresh. There is no automatic saving
-or cross-process session restoration. Closing an owned window or replacing its
-buffer ends the session; unrelated windows and buffers remain intact.
-
-Run verification from the repository root:
-
-```sh
-nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/compare.lua
-nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/headless.lua
-python3 tests/ui.py
-```
-
-Only the attached-UI test needs Python and development-only `pynvim`. Pass an
-alternative executable as `python3 tests/ui.py /path/to/nvim`. Current evidence,
-API rationale, limitations, and manual reading checks are in
-[findings](doc/findings.md); [review notes](doc/review.md) map the implementation.
+Plugin code is [MIT licensed](LICENSE). The public-domain literary work is
+[attributed separately](samples/README.md).

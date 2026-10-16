@@ -92,6 +92,7 @@ function M.close()
   render.clear(s.manuscript)
   local current = api.nvim_get_current_win()
   local was_owned = current == s.user_win or current == s.reference_win
+  ghost.leave(s)
   split.leave(s)
   if api.nvim_win_is_valid(s.user_win) then
     if api.nvim_win_get_buf(s.user_win) == s.manuscript then
@@ -115,6 +116,7 @@ local function set_view(view)
     return
   end
   api.nvim_set_current_win(s.user_win)
+  ghost.leave(s)
   split.leave(s)
   s.view = view
   if view == 'ghost' then ghost.enter(s)

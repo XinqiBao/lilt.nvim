@@ -8,7 +8,7 @@ import pynvim
 
 nvim = pynvim.attach("child", argv=[sys.argv[1] if len(sys.argv) > 1 else "nvim",
                                   "--embed", "--headless", "-u", "NONE", "-i", "NONE"])
-grid, highlights = {}, {}
+grid, highlights, colors = {}, {}, {}
 width, height = 90, 22
 checks = 0
 
@@ -54,6 +54,7 @@ def screen():
             elif name == "hl_attr_define":
                 for attr, rgb, cterm, info in entries:
                     highlights[attr] = info
+                    colors[attr] = rgb
     nvim.run_loop(None, notification)
     return ["".join(grid.get((row, col), (" ", 0))[0] for col in range(width)).rstrip()
             for row in range(height)]
@@ -69,6 +70,151 @@ def input_keys(text):
 def group_at(row, col, group):
     group = nvim.exec_lua("return vim.fn.synIDattr(vim.fn.synIDtrans(vim.fn.hlID(...)), 'name')", group)
     return any(item.get("hi_name") == group for item in highlights.get(grid[row, col][1], []))
+
+
+def pause(ms):
+    nvim.exec_lua("vim.wait(..., function() return false end)", ms)
+    return screen()
+
+
+def floats():
+    return [win for win in nvim.windows if nvim.api.win_get_config(win.handle)["relative"]]
+
+
+def hint_tests(buf, reference):
+    user = nvim.current.window
+    nvim.current.buffer[:] = ["Blice"]
+    input_keys("gg0")
+    pause(100)
+    check(not floats(), "hint waits before showing")
+    rows = pause(200)
+    check(any("Expected  Alice" in row for row in rows) and any("Typed     Blice" in row for row in rows),
+          "delayed hint displays a local word comparison")
+    check(nvim.current.window == user and nvim.current.buffer.number == buf, "hint never steals editing focus")
+    check(not nvim.api.win_get_config(floats()[0].handle)["focusable"], "hint is nonfocusable")
+    input_keys("2l")
+    check(not floats(), "cursor motion immediately dismisses hint")
+    pause(280)
+    check(not floats(), "correct character never triggers hint")
+    input_keys("0")
+    pause(100)
+    input_keys("2l")
+    pause(100)
+    input_keys("0")
+    pause(100)
+    check(not floats(), "rapid movement cancels earlier hint deadlines")
+    pause(190)
+    check(bool(floats()), "settled error cursor gets a fresh delayed hint")
+    input_keys("i")
+    check(not floats(), "InsertEnter dismisses hint")
+    pause(280)
+    check(not floats() and nvim.eval("mode()") == "i", "hints stay hidden in Insert Mode")
+    input_keys("<Esc>")
+    pause(280)
+    check(bool(floats()), "returning to Normal Mode can show hint")
+    # Buffer edits invalidate a visible hint even without cursor movement.
+    nvim.current.buffer[:] = ["Alice"]
+    input_keys("")
+    check(not floats(), "editing dismisses existing hint")
+    pause(280)
+    check(not floats(), "correct text leaves no hint")
+    nvim.current.buffer[:] = ["Aice"]
+    input_keys("0l")
+    rows = pause(280)
+    check(any("Expected  Alice" in row for row in rows) and any("Typed     Aice" in row for row in rows),
+          "missing-character hint anchors to next real character")
+    input_keys("l")
+    pause(280)
+    check(not floats(), "missing character does not make whole line trigger")
+    nvim.current.buffer[:] = ["Allice"]
+    input_keys("02l")
+    rows = pause(280)
+    check(any("Expected  Alice" in row for row in rows) and any("Typed     Allice" in row for row in rows),
+          "extra-character hint includes corresponding expected word")
+    nvim.current.buffer[:] = ["Alicewas"]
+    input_keys("05l")
+    rows = pause(280)
+    check(any("Expected  Alice was" in row for row in rows) and any("Typed     Alicewas" in row for row in rows),
+          "whitespace omission context includes neighboring words")
+    nvim.current.buffer[:] = ["Alicia"]
+    input_keys("04l")
+    rows = pause(280)
+    check(any("Expected  Alice" in row for row in rows) and any("Typed     Alicia" in row for row in rows),
+          "nearby replacement and extra share local word context")
+    nvim.current.buffer[:] = ["X" * len(reference[0])]
+    input_keys("060l")
+    pause(280)
+    hint = floats()[0].buffer[:]
+    check("…" in hint[0] and hint[0].endswith("the") and len(hint[1]) <= 64,
+          "long error spans clip context around cursor rather than span beginning")
+    nvim.current.buffer[:] = reference[:4]
+    nvim.current.buffer[3] = reference[3].replace("“", '"', 1)
+    input_keys("4G04l")
+    rows = pause(280)
+    check(any("Expected  “and" in row for row in rows) and any('Typed     "and' in row for row in rows),
+          "hint context preserves multibyte reference punctuation")
+    nvim.command("LiltSplit")
+    pause(280)
+    check(not floats(), "switching to Split removes hint resources")
+    nvim.command("LiltGhost")
+    nvim.current.buffer[:] = ["Blice"]
+    input_keys("0")
+    # Depart while a timer is pending; returning starts its own deadline.
+    nvim.command("vsplit")
+    other = nvim.current.window
+    pause(280)
+    check(not floats(), "leaving manuscript window invalidates pending hint")
+    nvim.current.window = user
+    pause(280)
+    check(bool(floats()), "returning to owned window schedules new hint")
+    nvim.current.window = other
+    input_keys("")
+    check(not floats(), "leaving owned window dismisses visible hint")
+    nvim.api.win_close(other.handle, True)
+    nvim.current.window = user
+    input_keys("0")
+    nvim.command("LiltClose")
+    nvim.command("LiltGhost")
+    nvim.current.buffer[:] = ["Alice"]
+    input_keys("0")
+    pause(300)
+    check(not floats(), "callback from previous session cannot reopen hint")
+    check(nvim.current.buffer.number == buf, "hint cycles preserve manuscript")
+    nvim.current.buffer[:] = ["Blice"]
+    input_keys("0")
+    pause(280)
+    nvim.api.win_close(nvim.current.window.handle, True)
+    pause(300)
+    check(not floats(), "manual manuscript window closure removes visible hint")
+    check(nvim.exec_lua("local ok = pcall(vim.api.nvim_get_autocmds, {group='LiltGhost'}); return ok") is False,
+          "closing manuscript releases Ghost autocmd group")
+    nvim.command("LiltGhost")
+    check(not nvim.eval("v:errmsg"), "hint lifecycle emits no Neovim errors")
+
+
+def theme_tests(start):
+    for background in ("dark", "light"):
+        nvim.options["background"] = background
+        nvim.command("colorscheme default")
+        nvim.current.buffer[:] = ["Blice"]
+        rows = input_keys("gg0")
+        normal = nvim.api.get_hl(0, {"name": "Normal", "link": False})
+        check(colors[grid[start, 0][1]].get("foreground") != normal.get("fg"),
+              background + " theme shows replacement foreground")
+        check(group_at(start, 5, "LiltPending"), background + " theme retains pending highlight")
+        nvim.current.buffer[:] = ["Aice"]
+        screen()
+        attr = colors[grid[start, 1][1]]
+        check(attr.get("undercurl") or attr.get("underline"), background + " theme shows omission boundary")
+        check(not group_at(start, 0, "LiltPending"), background + " theme keeps equal text native")
+    nvim.api.set_hl(0, "LiltError", {"fg": 0xBC6543, "bold": True})
+    nvim.command("doautocmd ColorScheme")
+    nvim.current.buffer[:] = ["Blice"]
+    screen()
+    check(colors[grid[start, 0][1]].get("foreground") == 0xBC6543,
+          "semantic highlight respects explicit user override")
+    nvim.options["background"] = "dark"
+    nvim.command("colorscheme default")
 
 
 def run():
@@ -140,6 +286,8 @@ def run():
           "native window rearrangement remains usable")
     nvim.current.window = user
     nvim.command("LiltGhost")
+    hint_tests(buf, reference)
+    theme_tests(start)
     nvim.current.buffer[:] = reference
     rows = input_keys("Gzt")
     check(nvim.exec_lua("return #vim.api.nvim_buf_get_extmarks(0,require('lilt.render').namespace,0,-1,{})") == 0,
@@ -216,6 +364,7 @@ def run():
     nvim.command("LiltClose")
     check(len(nvim.tabpages) == 1, "all reading windows removed on close")
     check(nvim.api.buf_get_lines(buf, 0, -1, False) == authored, "close retains actual writing")
+    check(not floats() and len(nvim.buffers) == 2, "close leaves no hint or reference buffers")
     print(f"Lilt UI: {checks} assertions passed on {nvim.exec_lua('return tostring(vim.version())')}")
 
 

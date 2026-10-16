@@ -66,6 +66,7 @@ local function run()
   lilt.split()
   local refwin = api.nvim_get_current_win() == win and api.nvim_tabpage_list_wins(0)[1] or nil
   local refbuf = api.nvim_win_get_buf(refwin)
+  eq(pcall(api.nvim_buf_set_lines, refbuf, 0, 1, false, { 'changed' }), false, 'protected reference refuses actual edits')
   local refmarks = marks(refbuf)
   eq({ refmarks[1][3], refmarks[1][4].end_col, refmarks[1][4].hl_group }, { 1, 2, 'LiltMissing' }, 'Split marks omitted reference character')
   eq({ refmarks[2][3], refmarks[2][4].hl_group }, { 5, 'LiltPending' }, 'Split pending begins at aligned coverage')

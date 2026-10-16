@@ -24,6 +24,9 @@ for _, case in ipairs({
   { 'cold', 'bold', { {'replace','c','b'}, {'equal','old','old'} } },
   { 'abcdef', 'abXdeYf', { {'equal','ab','ab'}, {'replace','c','X'}, {'equal','de','de'}, {'extra','','Y'}, {'equal','f','f'} } },
   { 'abc', 'ax', { {'equal','a','a'}, {'replace','b','x'}, {'pending','c',''} } },
+  { 'abc', 'bc', { {'missing','a',''}, {'equal','bc','bc'} } },
+  { 'abc', 'abc!', { {'equal','abc','abc'}, {'extra','','!'} } },
+  { 'a—b', 'ab', { {'equal','a','a'}, {'missing','—',''}, {'equal','b','b'} } },
   { 'abc', 'ac', { {'equal','a','a'}, {'missing','b',''}, {'equal','c','c'} } },
   { 'abc', 'abbc', { {'equal','ab','ab'}, {'extra','','b'}, {'equal','c','c'} } },
   { 'aaa', 'aa', { {'equal','aa','aa'}, {'pending','a',''} } },
@@ -40,6 +43,12 @@ end
 local unicode = compare.line('“a—b', '“x—b')
 eq(unicode.spans[2], { kind='replace', ref_start=3, ref_end=4, text_start=3, text_end=4 }, 'byte offsets after curly quote')
 eq(unicode.spans[3].ref_end, 8, 'multibyte dash exclusive end')
+eq(compare.line('a—b', 'ab').spans[2], {
+  kind='missing', ref_start=1, ref_end=4, text_start=1, text_end=1,
+}, 'multibyte omission has zero authored width')
+eq(compare.line('ab', 'a—b').spans[2], {
+  kind='extra', ref_start=1, ref_end=1, text_start=1, text_end=4,
+}, 'multibyte extra has zero reference width')
 eq(compare.line('“It’s…', '“It’').coverage, #'“It’', 'pending byte boundary')
 -- Ambiguous unfinished words are derived from present text, never typing history.
 local repeated = {
@@ -47,6 +56,6 @@ local repeated = {
   {'replace','tt','rd'}, {'pending','le bird',''},
 }
 eq(describe('little little bird', 'little bird'), repeated, 'minimal prefix edits can beat a whole-word omission')
-for _ = 1, 5 do eq(describe('little little bird', 'little bird'), repeated, 'deterministic repeated-word alignment') end
+eq(compare.line('little little bird', 'little bird'), compare.line('little little bird', 'little bird'), 'deterministic complete alignment')
 print(('Lilt comparison: %d assertions passed on %s'):format(checks, tostring(vim.version())))
 vim.cmd('qa!')

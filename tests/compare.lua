@@ -131,23 +131,15 @@ eq(compare.line('ab', 'a—b').spans[2], {
 }, 'multibyte extra has zero reference width')
 eq(compare.line('“It’s…', '“It’').coverage, #'“It’', 'pending byte boundary')
 -- Ambiguous unfinished words are derived from present text, never typing history.
-local repeated = {
-  { 'equal', 'little ', 'little ' },
-  { 'replace', 'l', 'b' },
-  { 'equal', 'i', 'i' },
-  { 'replace', 'tt', 'rd' },
-  { 'pending', 'le bird', '' },
-}
-eq(
-  describe('little little bird', 'little bird'),
-  repeated,
-  'minimal prefix edits can beat a whole-word omission'
-)
-eq(
-  compare.line('little little bird', 'little bird'),
-  compare.line('little little bird', 'little bird'),
-  'deterministic complete alignment'
-)
+local ambiguous = compare.line('little little bird', 'little bird')
+eq(ambiguous.spans[1], {
+  kind = 'equal',
+  ref_start = 0,
+  ref_end = 7,
+  text_start = 0,
+  text_end = 7,
+}, 'ambiguous alignment preserves the exact prefix')
+eq(ambiguous, compare.line('little little bird', 'little bird'), 'deterministic complete alignment')
 -- Exhaustive short inputs exercise partition and UTF-8 contracts without an
 -- alignment oracle or assertions about ambiguous tie-breaking choices.
 local inputs = { '' }
@@ -194,6 +186,7 @@ for _, reference in ipairs(inputs) do
       elseif span.kind == 'missing' then
         assert(#refpart > 0 and #part == 0 and t < #text, 'invalid missing anchor')
       elseif span.kind == 'pending' then
+        assert(span.ref_start == result.coverage, 'coverage disagrees with pending span')
         assert(
           index == #result.spans and #refpart > 0 and t == #text and #part == 0,
           'invalid pending suffix'

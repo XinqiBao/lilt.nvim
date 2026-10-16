@@ -40,10 +40,16 @@ local function run()
   local path = vim.fn.tempname()
   vim.cmd('write ' .. vim.fn.fnameescape(path))
   vim.fn.writefile({ 'Aice', '', 'new row' }, path)
+  calls = 0
   vim.cmd('edit!')
+  assert(calls > 0, 'reload did not refresh comparisons')
+  calls = 0
   api.nvim_buf_set_lines(buf, 1, 2, false, { 'changed after reload' })
+  assert(calls == 1, 'reload did not reattach live comparison feedback')
   lilt.close()
+  calls = 0
   api.nvim_buf_set_lines(buf, 0, -1, false, { 'changed while closed' })
+  assert(calls == 0, 'closed session still computes comparisons')
   lilt.ghost()
   api.nvim_buf_set_lines(buf, 0, 1, false, { 'Alice' })
   lilt.close()

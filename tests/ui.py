@@ -58,16 +58,19 @@ def screen():
                     highlights[attr] = info
                     colors[attr] = rgb
     expired = False
+    waiting = True
     def timeout():
         nonlocal expired
-        expired = True
-        nvim.stop_loop()
+        if waiting:
+            expired = True
+            nvim.stop_loop()
     timer = threading.Timer(5, lambda: nvim.async_call(timeout))
     timer.daemon = True
     timer.start()
     try:
         nvim.run_loop(None, notification)
     finally:
+        waiting = False
         timer.cancel()
     if expired:
         raise TimeoutError("Neovim did not flush UI notifications within 5 seconds")

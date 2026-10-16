@@ -60,6 +60,12 @@ local function run()
       end
     end
     assert(buf and api.nvim_buf_is_valid(buf), 'failed creation lost manuscript')
+    if from_ghost then
+      assert(
+        api.nvim_buf_get_lines(buf, 0, -1, false)[1] == 'retained writing',
+        'failed switch lost writing'
+      )
+    end
     no_resources(buf)
     assert(#api.nvim_list_tabpages() == 1, 'failed creation leaked tab')
     restored(origin)

@@ -28,7 +28,7 @@ Python is never a plugin runtime dependency. Equivalent auxiliary executables on
 hashes. Change the input and regenerate the lock with:
 
 ```sh
-mise exec -- uv pip compile --python-version 3.14 --generate-hashes tests/requirements.in -o tests/requirements.txt
+mise exec -- uv pip compile --python-version "$(cat .python-version)" --generate-hashes tests/requirements.in -o tests/requirements.txt
 ```
 
 Add `--upgrade` when deliberately updating already locked dependencies. Commit

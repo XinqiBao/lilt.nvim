@@ -107,7 +107,7 @@ function M.add(root, directory)
   local staging = checked(uv.fs_mkdtemp(references .. '/.lilt-XXXXXX'))
   local ok, result = pcall(function()
     copy(source.root, staging)
-    local installed = work.load(staging)
+    local installed = work.validate(staging)
     available()
     checked(uv.fs_rename(staging, destination))
     installed.root, installed.name = destination, name
@@ -138,7 +138,7 @@ function M.progress(root, reading, unit)
     return nil
   end
   checked(stat, err)
-  return math.floor(100 * #work.read(path) / math.max(1, #work.read(unit.reference)))
+  return math.floor(100 * work.count_lines(path) / math.max(1, work.count_lines(unit.reference)))
 end
 
 return M

@@ -21,6 +21,26 @@ local function run()
   assert(added.name == 'a-work' and #added.units == 2, 'installed work metadata')
   assert(vim.fn.readfile(added.root .. '/README.md')[1] == 'Source attribution', 'copy attribution')
   assert(not pcall(library.add, home, source), 'duplicate must not overwrite')
+  -- Observe actual opens: discovery must not read even installed reference bodies.
+  local original_open = io.open
+  -- selene: allow(incorrect_standard_library_use)
+  io.open = function(path, ...)
+    assert(not path:match('%.txt$'), 'discovery opened a reference body: ' .. path)
+    return original_open(path, ...)
+  end
+  local discovered, discovery_errors = library.list(home)
+  -- selene: allow(incorrect_standard_library_use)
+  io.open = original_open
+  assert(#discovered == 1 and #discovery_errors == 0, 'metadata-only discovery')
+  vim.fn.writefile({ '\255' }, source .. '/chapters/01.txt', 'b')
+  assert(
+    not pcall(library.add, root .. '/invalid-library', source),
+    'install must validate reference bodies'
+  )
+  assert(
+    vim.fn.isdirectory(root .. '/invalid-library/references/a-work') == 0,
+    'invalid text was published'
+  )
   vim.fn.delete(root .. '/source', 'rf')
   local works, errors = library.list(home)
   assert(#works == 1 and #errors == 0, 'copy must be independent of source')

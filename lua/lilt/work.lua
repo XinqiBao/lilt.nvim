@@ -127,10 +127,54 @@ function M.load(directory)
       fail(manifest .. ': duplicate or reserved unit path: ' .. unit.path)
     end
     seen[unit.path] = true
-    M.read(path)
     units[#units + 1] = { title = unit.title, path = unit.path, reference = path }
   end
   return { root = root, title = data.title, author = data.author, units = units }
+end
+
+-- Full validation belongs at installation (and selected-unit consumption), not
+-- at discovery. Keep only manifests and file metadata in the navigation model.
+function M.validate(directory)
+  local reading = M.load(directory)
+  for _, unit in ipairs(reading.units) do
+    M.read(unit.reference)
+  end
+  return reading
+end
+
+function M.read_unit(reading, unit)
+  return M.read(reference_path(reading.root, unit.path))
+end
+
+-- Scan bytes in bounded memory, even for a reference with very long lines.
+-- A BOM is not a row; CRLF and LF each contain one newline. This is a numerical
+-- aid only: text encoding is validated when a reference is opened or installed.
+function M.count_lines(path)
+  local file, err = io.open(path, 'rb')
+  if not file then
+    fail(path .. ': ' .. err)
+  end
+  local count, last, first = 0, '', true
+  while true do
+    local chunk, read_err = file:read(65536)
+    if not chunk then
+      file:close()
+      if read_err then
+        fail(path .. ': ' .. read_err)
+      end
+      break
+    end
+    if first then
+      chunk = chunk:gsub('^\239\187\191', '')
+      first = false
+    end
+    local _, newlines = chunk:gsub('\n', '')
+    count = count + newlines
+    if #chunk > 0 then
+      last = chunk:sub(-1)
+    end
+  end
+  return count + ((last ~= '' and last ~= '\n') and 1 or 0)
 end
 
 return M

@@ -61,7 +61,10 @@ local function run()
     local invalid_file = assert(io.open(root .. '/text.txt', 'wb'))
     invalid_file:write(invalid)
     invalid_file:close()
-    assert(not pcall(work.load, root), 'invalid UTF-8 or NUL accepted')
+    assert(work.load(root).title == 'Work', 'discovery must not read reference bodies')
+    assert(not pcall(work.validate, root), 'installation accepted invalid text')
+    local reading = work.load(root)
+    assert(not pcall(work.read_unit, reading, reading.units[1]), 'reading accepted invalid text')
   end
   vim.fn.writefile({ 'A poem 🐇' }, root .. '/text.txt', 'b')
   assert(work.read(work.load(root).units[1].reference)[1] == 'A poem 🐇', 'four-byte UTF-8')
@@ -71,6 +74,35 @@ local function run()
   file:write('\239\187\191one\r\n\r\ntwo\r\n')
   file:close()
   assert(vim.deep_equal(work.read(root .. '/text.txt'), { 'one', '', 'two' }), 'BOM and CRLF')
+
+  for _, case in ipairs({
+    { '', 0 },
+    { '\n', 1 },
+    { '\n\n', 2 },
+    { 'one', 1 },
+    { 'one\n', 1 },
+    { 'one\n\n', 2 },
+    { 'one\r\n\r\ntwo\r\n', 3 },
+    { '\239\187\191', 0 },
+    { '\239\187\191one\n', 1 },
+    { string.rep('long', 40000) .. '\n' .. string.rep('row\n', 40000) .. 'tail', 40002 },
+  }) do
+    local counted = assert(io.open(root .. '/text.txt', 'wb'))
+    counted:write(case[1])
+    counted:close()
+    assert(work.count_lines(root .. '/text.txt') == case[2], 'physical line count: ' .. case[2])
+    assert(#work.read(root .. '/text.txt') == case[2], 'reading and counting disagree')
+  end
+  local reading = work.load(root)
+  vim.fn.delete(root .. '/text.txt')
+  assert(
+    vim.uv.fs_symlink(root .. '/chapters/02.txt', root .. '/text.txt'),
+    'replace reference with symlink'
+  )
+  assert(
+    not pcall(work.read_unit, reading, reading.units[1]),
+    'opening must recheck symlink boundary'
+  )
   local sample = work.load('samples')
   assert(
     sample.author == 'Lewis Carroll' and sample.units[1].path == 'alice.txt',

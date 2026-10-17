@@ -74,12 +74,14 @@ license in README.md, and validate the directory. Do not invent source claims.�
 From Neovim with Lilt on the runtime path:
 
 ```lua
-local work = require('lilt.work').load('/path/to/winter-letters')
+local work = require('lilt.work').validate('/path/to/winter-letters')
 print(work.title, #work.units)
 ```
 
-Loading validates the entire manifest and all referenced files, reporting an
-error for malformed input. Adding through `:Lilt` performs the same validation.
+Validation checks the entire manifest and all reference bodies, reporting errors
+with their paths. Adding through `:Lilt` validates the staged copy before
+publishing it. Discovery reads manifests and inspects paths without opening
+reference bodies; opening a reading unit validates that selected text.
 
 ## Personal library and sharing
 
@@ -114,7 +116,8 @@ Rename work directories or unit paths only before starting transcription: those
 paths determine manuscript association.
 
 Unit progress uses **saved** manuscript rows divided by reference rows, rounded
-down to an integer percentage. A missing manuscript displays `—`; an empty saved
+down to an integer percentage. Counts scan file bytes in bounded chunks without
+constructing arrays of text. A missing manuscript displays `—`; an empty saved
 file has zero rows. An empty reference uses a denominator of one. Blank rows
 count, a final newline does not add a row, and values above 100% are allowed.
 Progress is a navigation hint, not a correctness check. Unsaved edits appear in

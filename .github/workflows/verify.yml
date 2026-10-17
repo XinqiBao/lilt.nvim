@@ -30,7 +30,7 @@ jobs:
         with:
           version: 2026.9.18
           cache: false
-      - uses: rhysd/action-setup-vim@b7934f0630263431f328b14fdd86c788f3fadbc8
+      - uses: rhysd/action-setup-vim@febef33995d6649302e9d88dda81e071b68f16a7 # v1
         with:
           neovim: true
           version: ${{ matrix.neovim }}

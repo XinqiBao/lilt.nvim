@@ -36,9 +36,14 @@ function M.enter(s)
   s.restore(s.user_win)
   vim.cmd(wide and 'aboveleft vsplit' or 'aboveleft split')
   s.reference_win = api.nvim_get_current_win()
+  local presentation = { wrap = true, linebreak = true, statusline = ' Lilt · Reference ' }
   s.present(s.reference_win, s.quiet)
-  s.present(s.reference_win, { wrap = true, linebreak = true, statusline = ' Lilt · Reference ' })
+  s.present(s.reference_win, presentation)
   api.nvim_win_set_buf(s.reference_win, s.reference_buf)
+  -- Buffer assignment can reset window-local options. Reapply presentation,
+  -- keeping the inherited editor baseline captured before the buffer change.
+  s.present(s.reference_win, s.quiet)
+  s.present(s.reference_win, presentation)
   s.present(s.user_win, s.quiet)
   s.present(s.user_win, {
     wrap = true,

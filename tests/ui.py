@@ -291,6 +291,9 @@ def run():
           "wide Split starts side by side")
     nvim.current.buffer[:] = ["Aice"]
     rows = screen()
+    check(any("Lilt · Reference" in row for row in rows)
+          and any("Lilt · Manuscript" in row for row in rows),
+          "both Split panes retain their labels after assigning buffers")
     r, c = nvim.api.win_get_position(ref.handle)
     check(rows[r][c:c + len(reference[0])] == reference[0], "Split prints immutable reference beside omission")
     check(not group_at(r, c, "LiltPending"), "equal reference prefix uses normal foreground")

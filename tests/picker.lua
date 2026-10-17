@@ -73,7 +73,7 @@ local function run()
   work.discover, vim.env.XDG_DATA_HOME = discover, xdg
 
   fixture('first', 'A poem — ' .. string.rep('長', 80), 2)
-  fixture('second', 'B letters', 24)
+  fixture('second', 'B letters — 文学', 24)
   local works = work.discover(example_root)
   assert(#works == 2 and #works[2].units == 24, 'multiple example works and units discovered')
   picker.open(home, example_root)
@@ -189,12 +189,18 @@ local function run()
   -- A corrupt progress file is local to one unit and cannot hide its siblings.
   require('lilt.library').add(home, example_root .. '/second')
   vim.fn.mkdir(home .. '/manuscripts/second/1.txt', 'p')
+  vim.fn.writefile({ 'Reference 2' }, home .. '/manuscripts/second/2.txt')
   picker.open(home, example_root)
   keys('l')
   assert(
     lines()[1]:match('%?$') and #lines() == 24,
     'one progress error must not hide reading units'
   )
+  width = api.nvim_win_get_width(0)
+  assert(lines()[2]:match('100%%$'), 'saved rows must show their numeric progress')
+  for _, line in ipairs(lines()) do
+    assert(vim.fn.strdisplaywidth(line) == width, 'saved progress must share the right edge')
+  end
   keys('jl')
   assert(
     api.nvim_buf_get_name(0) == home .. '/manuscripts/second/2.txt',

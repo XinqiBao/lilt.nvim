@@ -88,8 +88,11 @@ browse = function(root, example_root, installed)
     local lines = {}
     for _, item in ipairs(page.items) do
       local label = '  ' .. item.label
-      if item.progress and width > #item.progress + 4 then
-        label = clip(label, width - #item.progress - 2) .. '  ' .. item.progress
+      local progress_width = item.progress and vim.fn.strdisplaywidth(item.progress)
+      if progress_width and width > progress_width + 4 then
+        label = clip(label, width - progress_width - 2)
+        label = label .. string.rep(' ', width - vim.fn.strdisplaywidth(label) - progress_width)
+        label = label .. item.progress
       end
       lines[#lines + 1] = clip(label, width)
     end

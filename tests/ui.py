@@ -252,6 +252,29 @@ def open_example():
     return input_keys("Glll")
 
 
+def picker_session_tests(buf):
+    user = nvim.current.window
+    undo = nvim.funcs.undotree()["seq_cur"]
+    text = nvim.current.buffer[:]
+    for view in ("Ghost", "Split"):
+        nvim.command("Lilt" + view)
+        windows = list(nvim.current.tabpage.windows)
+        for origin in windows:
+            nvim.current.window = origin
+            layout = nvim.funcs.winlayout()
+            for _ in range(2):
+                input_keys(":Lilt<CR><Esc>")
+                check(nvim.current.window == origin and nvim.funcs.winlayout() == layout,
+                      view + " picker cancellation restores focus and layout from either pane")
+                check(nvim.api.buf_get_lines(buf, 0, -1, False) == text,
+                      "picker cancellation preserves unsaved manuscript")
+        nvim.current.window = user
+        check(nvim.funcs.undotree()["seq_cur"] == undo, "picker leaves native undo history intact")
+    input_keys(":Lilt<CR>ll")
+    check(nvim.current.buffer.number == buf and nvim.current.buffer[:] == text,
+          "selecting the active unit reuses its unsaved buffer")
+
+
 def library_tests():
     global width, height
     with tempfile.TemporaryDirectory(prefix="lilt-library-") as directory:
@@ -279,17 +302,17 @@ def library_tests():
         check(nvim.current.window == picker and len(floats()) == 1, "reopening focuses the same picker")
         input_keys("l")
         rows = input_keys(str(source) + "<CR>")
-        check(any("Opening  —" in row for row in rows), "import proceeds to ordered unit selection")
+        check(any("Opening" in row and "—" in row for row in rows), "import proceeds to ordered unit selection")
         input_keys("l")
         manuscript = home / "manuscripts" / "letters" / "opening.txt"
         check(nvim.current.buffer.name == str(manuscript), "selection opens predictable named manuscript")
         buf = nvim.current.buffer.number
-        input_keys(":Lilt<CR><Esc>")
-        check(nvim.current.buffer.number == buf, "canceling selection preserves active reading")
-        input_keys("iFirst<Esc>:w<CR>")
+        input_keys("iFirst<Esc>")
+        picker_session_tests(buf)
+        input_keys(":w<CR>")
         check(manuscript.read_text(encoding="utf-8") == "First\n", "native write saves manuscript")
         rows = input_keys(":Lilt<CR>l")
-        check(any("Opening  33%" in row for row in rows), "unit picker shows saved progress")
+        check(any("Opening" in row and "33%" in row for row in rows), "unit picker shows saved progress")
         input_keys("jl")
         second = nvim.current.buffer.number
         input_keys("iReply<Esc>")

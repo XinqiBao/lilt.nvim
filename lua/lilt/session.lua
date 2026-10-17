@@ -4,7 +4,7 @@ local ghost = require('lilt.view.ghost')
 local split = require('lilt.view.split')
 local compare = require('lilt.compare')
 local M = {}
-local session, retained
+local session
 local attached = {}
 
 local function highlights()
@@ -157,21 +157,23 @@ local function start(view, reading)
   if vim.fn.has('nvim-0.11') == 0 then
     error('Lilt requires Neovim 0.11 or newer')
   end
-  if reading then
-    if session and session.manuscript ~= reading.manuscript then
+  if not reading then
+    if not session or not valid(session) then
       M.close()
+      return false
     end
-    retained = reading
+    set_view(view)
+    return true
   end
   if session then
-    set_view(view)
-    return
-  end
-  if not retained or not api.nvim_buf_is_valid(retained.manuscript) then
-    return false
+    if session.manuscript == reading.manuscript then
+      set_view(view)
+      return true
+    end
+    M.close()
   end
   highlights()
-  local manuscript, reference = retained.manuscript, retained.reference
+  local manuscript, reference = reading.manuscript, reading.reference
   vim.fn.bufload(manuscript)
   attach_manuscript(manuscript)
   local width = 1

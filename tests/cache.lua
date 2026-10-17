@@ -7,6 +7,17 @@ compare.line = function(...)
   return original(...)
 end
 local lilt = require('lilt')
+local manuscript
+local function open(view)
+  if not manuscript or not vim.api.nvim_buf_is_valid(manuscript) then
+    manuscript = require('lilt.manuscript').open()
+  end
+  require('lilt.session').open(view or 'ghost', {
+    manuscript = manuscript,
+    reference = vim.fn.readfile('samples/alice.txt'),
+  })
+end
+
 local ghost = require('lilt.view.ghost')
 local draw = ghost.draw
 -- Check every displayed result against a fresh computation, including rows
@@ -22,7 +33,7 @@ ghost.draw = function(s, lines, results)
 end
 
 local function run()
-  lilt.ghost()
+  open()
   local buf = api.nvim_get_current_buf()
   local reference = vim.fn.readfile('samples/alice.txt')
   api.nvim_buf_set_lines(buf, 0, -1, false, reference)
@@ -30,8 +41,8 @@ local function run()
   api.nvim_buf_set_lines(buf, 0, 1, false, { 'Blice' })
   assert(calls == 1, 'unchanged rows were recomputed')
   calls = 0
-  lilt.split()
-  lilt.ghost()
+  open('split')
+  open()
   assert(calls == 0, 'switching discarded reusable comparisons')
   api.nvim_buf_set_lines(buf, 0, 0, false, { 'inserted', '' })
   api.nvim_buf_set_lines(buf, 1, 4, false, {})
@@ -50,7 +61,7 @@ local function run()
   calls = 0
   api.nvim_buf_set_lines(buf, 0, -1, false, { 'changed while closed' })
   assert(calls == 0, 'closed session still computes comparisons')
-  lilt.ghost()
+  open()
   api.nvim_buf_set_lines(buf, 0, 1, false, { 'Alice' })
   lilt.close()
   vim.fn.delete(path)

@@ -207,7 +207,7 @@ def hint_tests(buf, reference):
     nvim.current.window = user
     input_keys("0")
     nvim.command("LiltClose")
-    nvim.command("LiltGhost")
+    nvim.exec_lua("require('lilt').example()")
     nvim.current.buffer[:] = ["Alice"]
     input_keys("0")
     pause(300)
@@ -221,7 +221,7 @@ def hint_tests(buf, reference):
     check(not floats(), "manual manuscript window closure removes visible hint")
     check(nvim.exec_lua("local ok = pcall(vim.api.nvim_get_autocmds, {group='LiltGhost'}); return ok") is False,
           "closing manuscript releases Ghost autocmd group")
-    nvim.command("LiltGhost")
+    nvim.exec_lua("require('lilt').example()")
     check(not nvim.eval("v:errmsg"), "hint lifecycle emits no Neovim errors")
 
 
@@ -339,7 +339,7 @@ def run():
     nvim.ui_attach(width, height, rgb=True, ext_linegrid=True, ext_hlstate=True)
     nvim.options["runtimepath"] = str(Path.cwd()) + "," + nvim.options["runtimepath"]
     nvim.command("runtime plugin/lilt.lua")
-    nvim.command("LiltGhost")
+    nvim.exec_lua("require('lilt').example()")
     buf = nvim.current.buffer.number
     reference = Path("samples/alice.txt").read_text(encoding="utf-8").splitlines()
     rows = screen()
@@ -479,7 +479,7 @@ def run():
     check(nvim.exec_lua("return #vim.api.nvim_buf_get_extmarks(...,require('lilt.render').namespace,0,-1,{})", buf) == 0,
           "manual reference closure cleans manuscript marks")
     check(nvim.api.buf_is_valid(buf), "manual closure retains authored buffer")
-    nvim.command("LiltGhost")
+    nvim.exec_lua("require('lilt').example()")
     check(nvim.current.buffer.number == buf, "can resume after manual reference closure")
     nvim.command("LiltClose")
     check(len(nvim.tabpages) == 1, "all reading windows removed on close")

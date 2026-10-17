@@ -14,8 +14,8 @@ the same work loader and session with a retained unnamed manuscript.
 There is one active session. Selecting another unit closes its presentation and
 retains the previous ordinary buffer; file-backed units reuse Neovim's buffer
 registry. Closing preserves unsaved edits with `bufhidden=hide`, so ordinary
-quit/delete protections continue to apply. The last reading can reopen in either
-view without a library lookup. There is no durable session or cursor registry;
+quit/delete protections continue to apply. Closing forgets the reading session; only `:Lilt` chooses content. Ghost/Split
+commands switch an active presentation and otherwise direct the user to `:Lilt`. There is no durable session or cursor registry;
 saved files are the only persistent reading state.
 
 ## Boundaries and lifecycle

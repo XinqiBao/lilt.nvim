@@ -64,8 +64,8 @@ For lazy.nvim, put the same setting in `opts = { library = "~/Books/Lilt" }`.
 | Command | Action |
 | --- | --- |
 | `:Lilt` | Browse works, add a local work, or try Alice |
-| `:LiltGhost` | Resume or switch to Ghost; try Alice if nothing is retained |
-| `:LiltSplit` | Resume or switch to Split; try Alice if nothing is retained |
+| `:LiltGhost` | Switch the active reading to Ghost |
+| `:LiltSplit` | Switch the active reading to Split |
 | `:LiltClose` | Close the session; retain your manuscript |
 
 **Ghost** blends the remaining reference into your writing and displays future
@@ -91,7 +91,8 @@ manuscript. Unsaved edits are not included in progress.
 
 Both views share that manuscript. Switching chapters or using `:LiltClose`
 retains loaded buffers and their native undo histories. Find them with `:ls` and
-`:buffer N`. Closing a session does not save; modified hidden manuscripts still
+`:buffer N`. Reopen reading content through `:Lilt`; Ghost/Split only switch an
+active presentation. Closing a session does not save; modified hidden manuscripts still
 block an ordinary `:qall`. Use `:w` to save or normal Neovim commands to explicitly
 discard changes. Lilt has no autosave or separate save command.
 

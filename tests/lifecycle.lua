@@ -1,5 +1,16 @@
 local api = vim.api
 local lilt = require('lilt')
+local manuscript
+local function open(view)
+  if not manuscript or not vim.api.nvim_buf_is_valid(manuscript) then
+    manuscript = require('lilt.manuscript').open()
+  end
+  require('lilt.session').open(view or 'ghost', {
+    manuscript = manuscript,
+    reference = vim.fn.readfile('samples/alice.txt'),
+  })
+end
+
 local namespace = require('lilt.render').namespace
 
 local function no_resources(buf)
@@ -45,11 +56,11 @@ local function run()
   end
   local function failure(from_ghost)
     if from_ghost then
-      lilt.ghost()
+      open()
     end
     vim.o.winheight = 20
     vim.o.winminheight = 20
-    local ok, err = pcall(lilt.split)
+    local ok, err = pcall(open, 'split')
     vim.o.winminheight = 1
     vim.o.winheight = 1
     assert(not ok and err:find('E36: Not enough room', 1, true), tostring(err))
@@ -69,7 +80,7 @@ local function run()
     no_resources(buf)
     assert(#api.nvim_list_tabpages() == 1, 'failed creation leaked tab')
     restored(origin)
-    lilt.ghost()
+    open()
     assert(api.nvim_get_current_buf() == buf, 'cannot resume failed session')
     api.nvim_buf_set_lines(buf, 0, -1, false, { 'retained writing' })
     lilt.close()
@@ -85,9 +96,9 @@ local function run()
   -- manuscript with the editor's original options, regardless of entry view.
   for _, ghost_first in ipairs({ false, true }) do
     if ghost_first then
-      lilt.ghost()
+      open()
     end
-    lilt.split()
+    open('split')
     local user = api.nvim_get_current_win()
     local buf = api.nvim_get_current_buf()
     local ref

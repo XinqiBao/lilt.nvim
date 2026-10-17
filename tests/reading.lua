@@ -10,6 +10,20 @@ local function open(target)
   return buf
 end
 local function run()
+  local tabs = #api.nvim_list_tabpages()
+  local messages = {}
+  local notify = vim.notify
+  vim.notify = function(message)
+    messages[#messages + 1] = message
+  end
+  require('lilt').ghost()
+  require('lilt').split()
+  vim.notify = notify
+  assert(
+    #messages == 2 and messages[1]:find(':Lilt', 1, true),
+    'inactive commands need helpful messages'
+  )
+  assert(#api.nvim_list_tabpages() == tabs, 'inactive commands must not open content')
   local buf = open(path)
   assert(api.nvim_buf_get_name(buf) == path, 'manuscript must be named')
   assert(not vim.bo[buf].modified and vim.fn.filereadable(path) == 0, 'opening must not save')
@@ -18,6 +32,8 @@ local function run()
   session.open('split')
   assert(api.nvim_get_current_buf() == buf, 'views must share named manuscript')
   session.close()
+  assert(not session.open('ghost'), 'close must forget the reading session')
+  assert(not session.open('split'), 'close must not reopen presentation')
   local second = open(root .. '/02.txt')
   api.nvim_buf_set_lines(second, 0, -1, false, { 'Other writing' })
   assert(open(path) == buf, 'switching must reuse an unsaved buffer')
@@ -48,6 +64,18 @@ local function run()
   assert(vim.deep_equal(api.nvim_buf_get_lines(buf, 0, -1, false), { '' }), 'empty saved file')
   session.open('split')
   session.open('ghost')
+  local renamed = root .. '/elsewhere/new-name.txt'
+  vim.cmd('saveas ' .. vim.fn.fnameescape(renamed))
+  assert(
+    api.nvim_buf_get_name(buf) == renamed and vim.fn.filereadable(renamed) == 1,
+    ':saveas must create parents for its new name'
+  )
+  session.close()
+  local original = open(path)
+  assert(
+    original ~= buf and api.nvim_buf_get_name(original) == path,
+    'unit must retain its original file association after :saveas'
+  )
   session.close()
   print('Lilt reading: named buffers, save/resume, switching and native protections passed')
 end

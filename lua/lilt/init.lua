@@ -116,16 +116,18 @@ function M.example(view)
   })
 end
 
-function M.ghost()
-  if not session.open('ghost') then
-    M.example('ghost')
+local function switch(view)
+  if not session.open(view) then
+    vim.notify('Lilt: no active reading. Use :Lilt to choose a work.', vim.log.levels.INFO)
   end
 end
 
+function M.ghost()
+  switch('ghost')
+end
+
 function M.split()
-  if not session.open('split') then
-    M.example('split')
-  end
+  switch('split')
 end
 
 M.close = session.close

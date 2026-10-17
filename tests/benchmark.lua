@@ -1,5 +1,16 @@
 -- Diagnostic only: no timing thresholds. See DEVELOPING.md.
 local api, lilt = vim.api, require('lilt')
+local manuscript
+local function open(view)
+  if not manuscript or not vim.api.nvim_buf_is_valid(manuscript) then
+    manuscript = require('lilt.manuscript').open()
+  end
+  require('lilt.session').open(view or 'ghost', {
+    manuscript = manuscript,
+    reference = vim.fn.readfile('samples/alice.txt'),
+  })
+end
+
 local reference = vim.fn.readfile('samples/alice.txt')
 local compare, calls = require('lilt.compare'), 0
 local line = compare.line
@@ -8,7 +19,7 @@ compare.line = function(...)
   return line(...)
 end
 for _, count in ipairs({ 5, #reference }) do
-  lilt.ghost()
+  open()
   local buf = api.nvim_get_current_buf()
   local text = vim.deepcopy(reference)
   local mismatches = 0

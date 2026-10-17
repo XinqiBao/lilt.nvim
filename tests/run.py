@@ -25,7 +25,7 @@ def main():
             ["stylua", "--check", "lua", "plugin", "tests"],
             ["selene", "lua", "plugin", "tests"],
         ]
-        for suite in ("compare", "work", "reading", "headless", "lifecycle", "cache"):
+        for suite in ("compare", "work", "library", "reading", "headless", "lifecycle", "cache"):
             commands.append([args.nvim, "--headless", "-u", "NONE", "-i", "NONE",
                              "--cmd", "set rtp^=.", "-l", f"tests/{suite}.lua"])
         commands.append([sys.executable, "tests/ui.py", args.nvim])

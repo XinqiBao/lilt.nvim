@@ -80,3 +80,42 @@ print(work.title, #work.units)
 
 Loading validates the entire manifest and all referenced files, reporting an
 error for malformed input. Adding through `:Lilt` performs the same validation.
+
+## Personal library and sharing
+
+The default library is `~/Lilt`. It contains ordinary user-owned files:
+
+```text
+~/Lilt/
+├── references/
+│   └── winter-letters/          # manifest, reference text, attribution
+└── manuscripts/
+    └── winter-letters/
+        ├── opening.txt         # your writing, created by :w
+        └── letters/
+            └── 02.txt
+```
+
+Each work directory name must be unique, nonhidden, and contain no backslash,
+colon, or control character. Add a prepared directory through `:Lilt` →
+**Add local work…**, then enter its path. Lilt validates and copies the whole
+work, including attribution files, into `references/`. It does not keep an
+external link. Symlinks and special files anywhere in the copied directory are
+rejected. Existing reference directories or manuscript trees with that work
+name are never merged or replaced. Failed copies are cleaned up before they
+become visible. One invalid work in the library does not hide valid works;
+the picker reports its validation error.
+
+You can also place a valid work directory directly beneath `references/`.
+Discovery reads the filesystem; there is no registry. Share or archive only that
+work directory, never its corresponding `manuscripts/` tree. External Git or sync
+tools can manage the library; Lilt performs no synchronization or Git operations.
+Rename work directories or unit paths only before starting transcription: those
+paths determine manuscript association.
+
+Unit progress uses **saved** manuscript rows divided by reference rows, rounded
+down to an integer percentage. A missing manuscript displays `—`; an empty saved
+file has zero rows. An empty reference uses a denominator of one. Blank rows
+count, a final newline does not add a row, and values above 100% are allowed.
+Progress is a navigation hint, not a correctness check. Unsaved edits appear in
+the retained buffer but do not affect the displayed saved percentage.

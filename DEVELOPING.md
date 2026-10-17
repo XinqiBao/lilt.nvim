@@ -53,8 +53,8 @@ The minimum is **Neovim 0.11.0**, because Ghost uses
 `virt_lines_overflow='scroll'`. CI independently installs `v0.11.0` and Neovim's
 moving `stable` release, then runs the same verification entry point on each.
 The setup action logs the download target; the runner prints the actual Neovim
-version. Neither target comes from mise. CI covers Linux x86-64; other platforms
-are not CI targets. To exercise either release locally, unpack its official
+version. Neither target comes from mise. CI covers Linux x86-64 and macOS arm64.
+To exercise either release locally, unpack its official
 [release archive](https://github.com/neovim/neovim/releases) outside the checkout
 and select its executable for that run:
 

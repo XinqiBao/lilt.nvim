@@ -4,9 +4,8 @@ local ghost = require('lilt.view.ghost')
 local split = require('lilt.view.split')
 local compare = require('lilt.compare')
 local M = {}
-local session, manuscript
+local session, retained
 local attached = {}
-local root = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h:h:h')
 
 local function highlights()
   api.nvim_set_hl(0, 'LiltPending', { default = true, link = 'Comment' })
@@ -91,26 +90,6 @@ local function attach_manuscript(buf)
   })
 end
 
-local function new_manuscript()
-  local buf = api.nvim_create_buf(true, false)
-  vim.bo[buf].bufhidden = 'hide'
-  vim.bo[buf].filetype = 'text'
-  -- Explicit physical line breaks, with no automatic formatting or indentation.
-  for name, value in pairs({
-    textwidth = 0,
-    wrapmargin = 0,
-    formatoptions = '',
-    autoindent = false,
-    smartindent = false,
-    cindent = false,
-    indentexpr = '',
-  }) do
-    api.nvim_set_option_value(name, value, { buf = buf })
-  end
-  vim.b[buf].lilt_manuscript = true
-  return buf
-end
-
 function M.close()
   local s = session
   if not s then
@@ -174,19 +153,25 @@ local function set_view(view)
   draw(s)
 end
 
-local function start(view)
+local function start(view, reading)
   if vim.fn.has('nvim-0.11') == 0 then
     error('Lilt requires Neovim 0.11 or newer')
+  end
+  if reading then
+    if session and session.manuscript ~= reading.manuscript then
+      M.close()
+    end
+    retained = reading
   end
   if session then
     set_view(view)
     return
   end
-  highlights()
-  local reference = vim.fn.readfile(root .. '/samples/alice.txt')
-  if not manuscript or not api.nvim_buf_is_valid(manuscript) then
-    manuscript = new_manuscript()
+  if not retained or not api.nvim_buf_is_valid(retained.manuscript) then
+    return false
   end
+  highlights()
+  local manuscript, reference = retained.manuscript, retained.reference
   vim.fn.bufload(manuscript)
   attach_manuscript(manuscript)
   local width = 1
@@ -251,26 +236,20 @@ local function start(view)
     end,
   })
   set_view(view)
+  return true
 end
 
-local function open(view)
-  local ok, err = xpcall(function()
-    start(view)
+function M.open(view, reading)
+  local ok, result = xpcall(function()
+    return start(view, reading)
   end, debug.traceback)
   if not ok then
     -- Creation can fail after allocating only some resources (e.g. E36).
     -- Terminate the session, retaining the manuscript and the original error.
     pcall(M.close)
-    error(err, 0)
+    error(result, 0)
   end
-end
-
-function M.ghost()
-  open('ghost')
-end
-
-function M.split()
-  open('split')
+  return result ~= false
 end
 
 return M

@@ -6,7 +6,9 @@ lines are disposable derived state. Lilt never intercepts typing or repairs text
 
 ## Boundaries and lifecycle
 
-`session.lua` coordinates the retained manuscript, reference snapshot, buffer
+`manuscript.lua` prepares ordinary named or temporary buffers, reusing Neovim's
+buffer registry for files and creating parents on native writes. `session.lua`
+accepts an explicit manuscript buffer and reference snapshot; it coordinates buffer
 attachment, view changes, and window-option restoration. Ghost owns its
 presentation, hint timer, float, and autocmds. Split owns its reference buffer and
 window. `compare.lua` is independent of Neovim UI; `render.lua` supplies the shared
@@ -65,7 +67,8 @@ only identical row/text pairs. Rebuilding that small cache drops removed rows;
 row insertion or deletion automatically invalidates changed pairs. Switching
 views reuses it, closing discards it, and reload follows the same text checks.
 There is no global cache, edit replay, or parallel manuscript model. Full
-presentation redraw remains simple and adequate for the short bundled passage.
+presentation redraw remains simple; work preparers should keep individual units
+to a manageable size.
 
 ## Presentation rationale
 

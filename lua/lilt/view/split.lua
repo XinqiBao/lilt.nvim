@@ -23,7 +23,7 @@ end
 
 function M.enter(s)
   s.reference_buf = api.nvim_create_buf(false, true)
-  api.nvim_buf_set_name(s.reference_buf, 'lilt://reference/alice')
+  api.nvim_buf_set_name(s.reference_buf, 'lilt://reference/' .. s.manuscript)
   api.nvim_buf_set_lines(s.reference_buf, 0, -1, false, s.reference)
   vim.bo[s.reference_buf].filetype = 'text'
   vim.bo[s.reference_buf].modifiable = false

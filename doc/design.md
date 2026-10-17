@@ -18,13 +18,15 @@ changes, options are saved against the window being changed. A native split
 inherits its source window's options, so Split restores the manuscript window
 before creating the reference window, then applies presentation to both. This
 keeps Lilt's own quiet options and statusline out of the new window's baseline.
+Assigning a buffer can reset window-local options; reapply presentation while
+retaining the editor baseline captured before that assignment.
 Repurposed or final surviving windows restore their pre-presentation editor
 options. Global options and unrelated windows are not managed by Lilt.
 
 Opening and switching have one recovery boundary: if initialization fails, the
 session terminates, partial resources are released, and the original error is
-re-raised. Even `:tab split` can allocate a window before reporting E36; that
-window is recorded before propagating the failure. Cleanup retains the ordinary
+re-raised. Window creation can allocate resources before reporting failure;
+cleanup must cover that partial initialization. It retains the ordinary
 manuscript and its native undo tree. Reconstructing the previous view is
 unnecessary. Repeated requests for a valid active view focus the manuscript and
 keep its resources and layout.
@@ -44,19 +46,15 @@ before showing a hint. Float destruction is scheduled outside `on_lines` textloc
 ## Comparison
 
 The authoritative range contract is beside `compare.line` in the implementation.
-Ordered, coalesced spans partition both valid UTF-8 inputs in zero-based,
-half-open byte ranges. Equal means identical text. Replace pairs codepoints
-one-to-one, which Ghost relies on when projecting hint context across different
-byte widths. Extra has zero reference width; Missing has zero authored width and
-precedes real authored text. Only the untyped reference suffix is Pending.
-`coverage` is its starting byte offset; `pending` is the corresponding substring.
+Its paired UTF-8 byte ranges let both views decorate the same alignment. Ghost
+relies on one-to-one replacement codepoints when projecting hint context across
+different byte widths, and on omissions preceding real authored text. Only the
+untyped reference suffix is Pending.
 
 The alignment fixes an exact prefix, then uses semi-global Levenshtein distance:
-consume all authored characters while allowing a free reference suffix. Minimum
-cost comes first, then more equal characters, an endpoint closest to authored
-character length, an earlier endpoint, and Equal / Replace / Extra / Missing in
-that order. Identical inputs always yield identical results, regardless of edit
-history. Ambiguous repeated words can align as replacements plus pending text
+consume all authored characters while allowing a free reference suffix.
+Identical inputs always yield identical results, regardless of edit history.
+Ambiguous repeated words can align as replacements plus pending text
 rather than a whole-word omission. That policy is deterministic, not an inference
 of intent or a promise to preserve every tie-breaking choice forever.
 

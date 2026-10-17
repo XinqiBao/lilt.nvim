@@ -87,10 +87,9 @@ mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/benchma
 This diagnostic warms the comparison with five early mismatches, then with every
 nonblank sample row mismatched. It reports the median of 15 first-row edits and
 the comparison call count. It has no timing assertions and is excluded from the
-required suites. On one Linux x86-64 run with Neovim 0.12.5, the medians changed
-from approximately 22 / 166 ms before row reuse to 5.3 / 5.2 ms afterwards. The
-15 edits required 15 comparisons instead of 600 in both cases. These numbers
-characterize that workload and machine, not a latency guarantee.
+required suites. Timings characterize the selected workload and machine, not a
+latency guarantee. Identical cached rows should require no new comparison;
+these 15 first-row edits should each require only one.
 
 ## Reading check
 
@@ -122,23 +121,35 @@ The plugin and tests do not read these images. To clone without downloading
 them, use `GIT_LFS_SKIP_SMUDGE=1 git clone ...`; CI leaves checkout's LFS option
 disabled. Fetch assets only when working on presentation.
 
-[demo.tape](doc/demo.tape) records a real Neovim terminal: progressive input,
-a typo, the delayed hint, correction with `r`, and continued typing across a
-physical line break. It generates both [demo.gif](doc/demo.gif) and the
-[Ghost screenshot](doc/ghost.png). The capture uses the default dark colorscheme
-and DejaVu Sans Mono, with only display options adjusted. The checked-in assets
-were recorded with Neovim 0.12.5 and VHS 0.12.1.
+Presentation media and their recording source live in [assets/](assets/).
+[demo.tape](assets/demo.tape) records a real Neovim terminal: progressive Ghost
+typing, a typo, the delayed hint, correction with `r`, physical line breaks,
+switching to Split, searching ahead in the reference, and returning to writing.
+It generates [demo.gif](assets/demo.gif); extract [split.png](assets/split.png)
+from its settled Split frame at 19 seconds using the command below. Extraction
+keeps the still consistent with verified playback. Recheck that timestamp after
+changing the tape's pacing. The screenshot shows the stacked layout with the
+manuscript focused, before searching the reference. Wider windows open Split
+side by side.
+
+The capture starts Neovim with `--clean -i NONE`, uses the default dark
+colorscheme and DejaVu Sans Mono, and adjusts only display options. The
+checked-in assets were recorded with Neovim 0.12.5 and VHS 0.12.1.
 
 Recording is optional, outside the test environment and CI. Install
 [VHS](https://github.com/charmbracelet/vhs), its ttyd and FFmpeg dependencies, and
 the font. VHS also downloads Chromium on its first run. From the repository root:
 
 ```sh
-vhs doc/demo.tape
+vhs assets/demo.tape
+ffmpeg -y -ss 19 -i assets/demo.gif -frames:v 1 -update 1 assets/split.png
 ```
 
 If the host blocks Chromium's sandbox, VHS supports `VHS_NO_SANDBOX=true`; this
 was needed on the Linux capture host.
 
-Review the GIF's typing, hint, correction, loop, and text readability before
-committing; a successful recording does not establish visual quality.
+Review the GIF's typing, hint, correction, pane transitions, independent browsing,
+loop, and text readability, and inspect the Split screenshot before committing;
+a successful recording does not establish visual quality. Keep temporary frames
+and playback files outside the checkout. Engineering contracts stay in
+[doc/design.md](doc/design.md); `doc/` follows Neovim's documentation convention.

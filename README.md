@@ -7,11 +7,13 @@ writing and offers quiet feedback as you go. Your manuscript is an ordinary
 buffer: use your own editing habits, undo, redo, and saving. There are no scores,
 timed exercises, typing mappings, or automatic corrections.
 
-![Ghost demo: typing, pausing on a typo for a hint, then correcting it](doc/demo.gif)
+![Real Neovim: Ghost typing, a typo hint and correction, then independent browsing in Split](assets/demo.gif)
 
-Real Neovim: the subdued reference recedes as you type. Pause on a mistake in
+In Ghost, the subdued reference recedes as you type. Pause on a mistake in
 Normal mode for a local hint, then correct it with ordinary editing commands.
-[Still screenshot](doc/ghost.png).
+Switch to Split to browse ahead without moving your manuscript.
+
+![Split View: protected reference above the same manuscript, with separate pane labels](assets/split.png)
 
 ## Install
 

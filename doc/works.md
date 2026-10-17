@@ -42,6 +42,11 @@ The manifest accepts exactly these fields:
 
 - `title`: required nonempty single-line string.
 - `author`: optional nonempty single-line string.
+- `source`: optional object with `provider`, `id`, and `url` strings. All three
+  must be nonempty single-line strings; `url` must be an HTTP(S) URL. This is
+  portable attribution, not a download or synchronization instruction. Online
+  acquisitions use, for example, `{"provider":"Project Gutenberg","id":"11",
+  "url":"https://www.gutenberg.org/ebooks/11"}`.
 - `units`: required nonempty array, in reading order. Each object has a required
   `title` and `path`. Titles follow the same rule as the work title.
 - `path`: unique, relative reference-file path using `/`. No empty components,
@@ -52,8 +57,9 @@ The manifest accepts exactly these fields:
 JSON comments, trailing commas, and unknown fields are rejected. Text files must
 be UTF-8 without NUL bytes. A UTF-8 BOM and CRLF line endings are accepted. Empty
 reference files are allowed, though usually not useful. Include source and
-attribution information in a separate README when appropriate; Lilt does not
-infer provenance, licensing, or public-domain status.
+attribution and license information in a separate README when appropriate;
+`source` alone does not establish licensing or public-domain status. Online
+acquisition records provenance and keeps the original distribution in `SOURCE.txt`.
 
 ## Text preparation
 

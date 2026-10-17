@@ -77,7 +77,10 @@ local function run()
   local works = work.discover(example_root)
   assert(#works == 2 and #works[2].units == 24, 'multiple example works and units discovered')
   picker.open(home, example_root)
-  assert(vim.deep_equal(lines(), { '  Add local work…', '  Examples' }), 'empty library actions')
+  assert(
+    vim.deep_equal(lines(), { '  Add local work…', '  Discover online…', '  Examples' }),
+    'empty library actions'
+  )
   local win, buf = api.nvim_get_current_win(), api.nvim_get_current_buf()
   picker.open(home, example_root)
   assert(

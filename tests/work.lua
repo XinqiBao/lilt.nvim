@@ -32,6 +32,21 @@ local function run()
   rejects({ title = 'Work', units = {} }, 'nonempty array')
   rejects({ title = 'Work', units = vim.NIL }, 'nonempty array')
   rejects({ title = 'Work', typo = true, units = data.units }, 'unknown field')
+  data.source =
+    { provider = 'Project Gutenberg', id = '11', url = 'https://www.gutenberg.org/ebooks/11' }
+  manifest(data)
+  assert(work.load(root).source.id == '11', 'portable optional provenance')
+  for _, source in ipairs({
+    {},
+    { provider = 'PG', id = '11' },
+    { provider = 'PG', id = 11, url = 'https://example.org/' },
+    { provider = 'PG', id = '11\n12', url = 'https://example.org/' },
+    { provider = 'PG', id = '11', url = 'file:///etc/passwd' },
+    { provider = 'PG', id = '11', url = 'https://example.org/', extra = true },
+  }) do
+    rejects({ title = 'Work', source = source, units = data.units }, 'source')
+  end
+  data.source = nil
   rejects({ title = 'Work', units = { data.units[1], data.units[1] } }, 'duplicate')
   for _, path in ipairs({
     '../text.txt',

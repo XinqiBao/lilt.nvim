@@ -110,10 +110,19 @@ function M.load(directory)
   if not ok then
     fail(manifest .. ': invalid JSON: ' .. tostring(data))
   end
-  fields(data, { title = true, author = true, units = true }, manifest)
+  fields(data, { title = true, author = true, source = true, units = true }, manifest)
   title(data.title, manifest .. ': title')
   if data.author ~= nil then
     title(data.author, manifest .. ': author')
+  end
+  if data.source ~= nil then
+    fields(data.source, { provider = true, id = true, url = true }, manifest .. ': source')
+    for _, key in ipairs({ 'provider', 'id', 'url' }) do
+      title(data.source[key], manifest .. ': source ' .. key)
+    end
+    if not data.source.url:match('^https?://%S+$') then
+      fail(manifest .. ': source url must be an HTTP(S) URL')
+    end
   end
   if type(data.units) ~= 'table' or not vim.islist(data.units) or #data.units == 0 then
     fail(manifest .. ': units must be a nonempty array')
@@ -129,7 +138,13 @@ function M.load(directory)
     seen[unit.path] = true
     units[#units + 1] = { title = unit.title, path = unit.path, reference = path }
   end
-  return { root = root, title = data.title, author = data.author, units = units }
+  return {
+    root = root,
+    title = data.title,
+    author = data.author,
+    source = data.source,
+    units = units,
+  }
 end
 
 -- Full validation belongs at installation (and selected-unit consumption), not

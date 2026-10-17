@@ -401,6 +401,76 @@ def library_tests():
         input_keys("")
 
 
+def online_tests():
+    with tempfile.TemporaryDirectory(prefix="lilt-online-ui-") as directory:
+        home = Path(directory) / "library"
+        fixture = Path("tests/fixtures/gutenberg.txt").read_text(encoding="utf-8")
+        catalog = json.dumps({"count": 1, "next": None, "results": [{
+            "id": 11, "title": "Test Letters", "authors": [{"name": "A. Writer"}],
+            "subjects": ["Letters -- Fiction"], "languages": ["en"], "copyright": False,
+            "media_type": "Text", "formats": {"text/plain; charset=utf-8": "https://www.gutenberg.org/ebooks/11.txt.utf-8"},
+        }]})
+        # Control only the process boundary; exercise the real native prompt,
+        # async redraw, catalog parser, converter, installation, and reading UI.
+        nvim.exec_lua("""
+            local home, catalog, text = ...
+            _G.lilt_test_system = vim.system
+            _G.lilt_test_requests = {}
+            vim.system = function(args, _, callback)
+                local path, url
+                for i, arg in ipairs(args) do
+                    if arg == '--output' then path = args[i + 1] end
+                    if arg == '--url' then url = args[i + 1] end
+                end
+                table.insert(_G.lilt_test_requests, url)
+                local killed = false
+                vim.defer_fn(function()
+                    if killed then return end
+                    local file = assert(io.open(path, 'wb'))
+                    file:write(url:find('/books/', 1, true) and catalog or text)
+                    file:close()
+                    callback({code=0, stderr=''})
+                end, 100)
+                return {kill=function() killed=true end}
+            end
+            require('lilt').setup({library=home})
+        """, str(home), catalog, fixture)
+        try:
+            input_keys(":Lilt<CR>jl")
+            rows = pause(130)
+            check(any("Test Letters" in row for row in rows), "online entry browses works without a query")
+            rows = input_keys("ggl")
+            check(any("Title or author:" in row for row in rows), "search uses the native input prompt")
+            input_keys("writer<CR>")
+            rows = pause(130)
+            check(any("Test Letters" in row for row in rows), "search returns to the online picker")
+            check(nvim.exec_lua("return _G.lilt_test_requests[2]:find('search=writer',1,true) ~= nil"),
+                  "native query reaches the catalog")
+            input_keys("7Gl")
+            rows = screen()
+            check(any("gutenberg.org/ebooks/11" in row for row in rows), "selection exposes canonical provenance")
+            input_keys("ggl")
+            rows = pause(130)
+            check(any("CHAPTER I." in row for row in rows), "download goes straight to unit selection")
+            rows = input_keys("jl")
+            check(nvim.current.buffer.name == str(home / "manuscripts/gutenberg-11/002.txt"),
+                  "acquired units use ordinary named manuscripts")
+            check(any("Café" in row for row in rows), "prepared Unicode content appears in Ghost")
+            input_keys("iA letter.<Esc>:w<CR>:LiltSplit<CR>")
+            check(len(nvim.current.tabpage.windows) == 2, "acquired work supports Split")
+            input_keys(":LiltClose<CR>:Lilt<CR>l")
+            check(any("%" in line for line in nvim.current.buffer[:]), "local library reports saved online-work progress")
+            input_keys("jl")
+            check(nvim.current.buffer[:] == ["A letter."], "local library resumes the acquired manuscript")
+            nvim.command("LiltClose")
+            input_keys(":Lilt<CR>2jl")  # discover, then close while request is pending
+            input_keys("hq")
+            pause(130)
+            check(not floats(), "leaving online discovery cancels delayed UI work")
+        finally:
+            nvim.exec_lua("vim.system=_G.lilt_test_system; _G.lilt_test_system=nil; _G.lilt_test_requests=nil")
+
+
 def run():
     global width, height
     nvim.ui_attach(width, height, rgb=True, ext_linegrid=True, ext_hlstate=True)
@@ -555,6 +625,7 @@ def run():
     check(not floats() and len(nvim.buffers) == 2, "close leaves no hint or reference buffers")
     native_edit_tests()
     library_tests()
+    online_tests()
     print(f"Lilt UI: {checks} assertions passed on {nvim.exec_lua('return tostring(vim.version())')}")
 
 

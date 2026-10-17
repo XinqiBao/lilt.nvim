@@ -49,6 +49,15 @@ The UI notification loop also has a deadline and reports the screen on assertion
 failures. Positive hint checks poll for the visible float; absence checks wait
 through the relevant delay.
 
+Online checks replace only the process boundary with controlled catalog/text
+fixtures. They cover pagination, native search, failures/retry, cancellation and
+late callbacks, text fidelity, provenance, installation, duplicate acquisition,
+and the full picker → acquire → Ghost/Split → save → local resume journey.
+CI requires no network services. For a live check, choose **Discover online…**,
+browse popular/newest and poetry, search an author/title, and acquire prose and
+verse. Inspect the units against `SOURCE.txt`, then save and resume through the
+library. Use a temporary library to keep live checks separate from personal work.
+
 The minimum is **Neovim 0.11.0**, because Ghost uses
 `virt_lines_overflow='scroll'`. CI independently installs `v0.11.0` and Neovim's
 moving `stable` release, then runs the same verification entry point on each.
@@ -70,6 +79,7 @@ mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/work.lu
 mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/library.lua
 mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/reading.lua
 mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/picker.lua
+mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/online.lua
 mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/headless.lua
 mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/lifecycle.lua
 mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/cache.lua

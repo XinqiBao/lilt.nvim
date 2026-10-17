@@ -15,7 +15,8 @@ Switch to Split to browse ahead without moving your manuscript.
 
 ## Install
 
-Requires **Neovim 0.11.0 or newer**. No runtime dependencies or `setup()` call.
+Requires **Neovim 0.11.0 or newer**. Online discovery also needs `curl` on `PATH`.
+Local reading needs no external tools or `setup()` call.
 
 With [lazy.nvim](https://github.com/folke/lazy.nvim), add this plugin spec:
 
@@ -45,12 +46,39 @@ including blank paragraph rows.
 Your usual motions, operators, search, and undo work on what you have typed;
 comparison never changes it.
 
-To build your collection, choose **Add local work…** and enter a prepared work
+To build your collection online, choose **Discover online…**. Browse popular
+works immediately, switch to newest works, poetry, or short stories, or choose
+**Search title or author…**. **More results…** opens the next page; back returns
+to the previous results. Select a work to inspect its title, authors, languages,
+subjects, and source, then choose **Acquire and read** and a reading unit.
+Downloads run asynchronously; back or close cancels, and failures offer retry.
+
+Lilt uses [Gutendex](https://gutendex.com/) for the Project Gutenberg catalog and
+Gutenberg's [PGLAF mirror](https://www.gutenberg.org/MIRRORS.ALL) for text files.
+No account, API key, Python, EPUB converter, or UI dependency is needed. Acquired
+works become ordinary library works named `gutenberg-<id>`, available offline.
+Acquiring one again opens the existing copy; references and manuscripts are never
+updated or overwritten. Each copy records its source in `lilt.json` and
+`README.txt`, and retains the original download, credits, and license in
+`SOURCE.txt`.
+
+Only works cataloged as public domain in the USA with plain text are supported.
+Check copyright in your country before downloading or sharing. Source editions
+vary: Lilt preserves text, indentation, and existing line breaks, wraps long
+unindented prose, and uses recognizable headings and paragraph breaks for units.
+Poetry/drama identified by catalog subjects keeps its lines intact. Plain-text
+illustration labels and emphasis marks remain; images and EPUB/HTML conversion
+are unsupported. Missing text boundaries or invalid encoding fail safely.
+Requests have a 45-second timeout and a 12 MiB size limit. Gutendex is a separate,
+best-effort service; unavailable catalog entries or mirror files can be retried
+later. Its maintainers recommend hosting your own server for long-term use;
+optionally set `catalog = "https://your-gutendex-server"` in `setup()` to use one.
+
+For a prepared local collection, choose **Add local work…** and enter its work
 directory. Lilt validates and copies it into the library’s `references/`, then
 offers its chapters. The source directory can be moved or deleted afterwards. Existing work
 names are never overwritten. See [Preparing a Lilt work](doc/works.md) for the
 small JSON manifest, text preparation, validation, attribution, and sharing.
-There is no online search or document conversion.
 
 The picker is a centered float: `j/k` move, `Enter` or `l` selects, and `h`,
 `Esc`, or `q` goes back (or closes at the library page). Native `gg/G` works too.
@@ -71,7 +99,7 @@ For lazy.nvim, put the same setting in `opts = { library = "~/Books/Lilt" }`.
 
 | Command | Action |
 | --- | --- |
-| `:Lilt` | Browse works, add a local work, or try Examples |
+| `:Lilt` | Browse the library, discover online works, add a local work, or try Examples |
 | `:LiltGhost` | Switch the active reading to Ghost |
 | `:LiltSplit` | Switch the active reading to Split |
 | `:LiltClose` | Close the session; retain your manuscript |
@@ -151,6 +179,6 @@ next real character; Split marks the missing reference text.
 
 [Development and verification](DEVELOPING.md) · [Design contracts](doc/design.md)
 
-Plugin code is [MIT licensed](LICENSE). Literary texts are public domain in the
-United States and in life-plus-70 jurisdictions; each example's README records
+Plugin code is [MIT licensed](LICENSE). Bundled literary texts are public domain
+in the United States and in life-plus-70 jurisdictions; each example's README records
 its attribution, source, and preparation.

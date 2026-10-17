@@ -5,12 +5,13 @@ if not data_home or data_home:sub(1, 1) ~= '/' then
   data_home = vim.env.HOME .. '/.local/share'
 end
 local library_root = vim.fs.normalize(data_home .. '/lilt')
+local catalog = require('lilt.online').default_catalog
 local root = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h:h:h')
 
 function M.setup(options)
   options = options or {}
   for key in pairs(options) do
-    assert(key == 'library', 'Lilt: unknown option ' .. tostring(key))
+    assert(key == 'library' or key == 'catalog', 'Lilt: unknown option ' .. tostring(key))
   end
   if options.library ~= nil then
     assert(
@@ -19,10 +20,19 @@ function M.setup(options)
     )
     library_root = vim.fs.normalize(vim.fn.fnamemodify(vim.fn.expand(options.library), ':p'))
   end
+  if options.catalog ~= nil then
+    assert(
+      type(options.catalog) == 'string'
+        and options.catalog:match('^https://[^/%s?#@]+[^%s?#]*$')
+        and not options.catalog:find('[@%c]'),
+      'Lilt: catalog must be an HTTPS Gutendex server URL'
+    )
+    catalog = options.catalog:gsub('/+$', '')
+  end
 end
 
 function M.open()
-  require('lilt.picker').open(library_root, root .. '/examples')
+  require('lilt.picker').open(library_root, root .. '/examples', catalog)
 end
 
 local function switch(view)

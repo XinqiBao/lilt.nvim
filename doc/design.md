@@ -17,6 +17,40 @@ shared work/unit navigation for library works and examples. It owns no reading
 resources. Native `vim.ui.input` supplies the local directory prompt; there is no
 custom path editor or global UI override.
 
+`online.lua` requests catalog pages from Gutendex and UTF-8 plain text from
+Gutenberg's listed PGLAF mirror. It prepares an ordinary work, then delegates
+validation and publication to `library.add`. The optional manifest `source`
+records portable attribution; a matching provider/id permits reopening an
+existing copy without fetching or changing its reference edition. Colliding
+local works and orphan manuscripts block acquisition.
+
+The picker owns each asynchronous request's cancellation function. Back, leaving
+the picker, and editor exit cancel it; callbacks also check page/picker lifetime.
+Requests use argument-vector curl, HTTPS-only redirects, time/size limits and
+owned temporary files. Results remain on the page stack for back navigation;
+there is no background polling, persistent catalog cache, or remote reading state.
+
+`gutenberg.lua` requires unambiguous distribution markers and preserves all body
+text, including front matter, contents, notes, and illustration labels. Credits
+and the license survive in the verbatim original. Preparation preserves layout
+and wraps only long unindented lines without tabular spacing, except in works
+cataloged as poetry/drama. Recognizable section headings and isolated capitals
+provide unit titles; after chapter/act structure begins, embedded capitals stay
+inside that structure. Sections are divided near 300 physical rows at paragraph
+breaks, avoiding tiny tails. Unit-edge blank padding is omitted. These are plain
+text heuristics, not semantic reconstruction of an EPUB.
+
+Gutendex offers popular/newest ordering, title/author search, subjects and
+pagination without credentials. The public host has no documented rate quota or
+availability guarantee. Lilt requests only user-selected pages and files. The
+configurable HTTPS base also supports self-hosting as its documentation
+recommends. [Standard Ebooks' full OPDS catalog](https://standardebooks.org/feeds)
+requires Patrons Circle access. Gutenberg's official bulk CSV lacks format and
+copyright metadata and adds a large initial download. Neither justified another
+integration. Gutenberg's human-facing search is not scraped, following its
+[access policy](https://www.gutenberg.org/policy/robot_access.html);
+file downloads use its designated mirror.
+
 There is one active reading session. Selecting another unit closes its
 presentation and retains the previous ordinary buffer; file-backed units reuse
 Neovim's buffer registry. Examples reuse an ordinary temporary buffer per

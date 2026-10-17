@@ -4,12 +4,26 @@ The ordinary listed manuscript buffer is the only authored-text authority.
 Reference text is a session snapshot. Comparisons, highlights, hints, and virtual
 lines are disposable derived state. Lilt never intercepts typing or repairs text.
 
+`work.lua` validates self-contained JSON works and reads reference text.
+`library.lua` discovers directories, installs local copies through hidden
+staging, and derives manuscript paths and saved progress. `init.lua` provides
+configuration and native selection/input callbacks. Neither view knows about
+manifests, library paths, installation, or persistence. The bundled sample uses
+the same work loader and session with a retained unnamed manuscript.
+
+There is one active session. Selecting another unit closes its presentation and
+retains the previous ordinary buffer; file-backed units reuse Neovim's buffer
+registry. Closing preserves unsaved edits with `bufhidden=hide`, so ordinary
+quit/delete protections continue to apply. The last reading can reopen in either
+view without a library lookup. There is no durable session or cursor registry;
+saved files are the only persistent reading state.
+
 ## Boundaries and lifecycle
 
 `manuscript.lua` prepares ordinary named or temporary buffers, reusing Neovim's
 buffer registry for files and creating parents on native writes. `session.lua`
-accepts an explicit manuscript buffer and reference snapshot; it coordinates buffer
-attachment, view changes, and window-option restoration. Ghost owns its
+accepts an explicit manuscript buffer and reference snapshot; it coordinates
+buffer attachment, view changes, and window-option restoration. Ghost owns its
 presentation, hint timer, float, and autocmds. Split owns its reference buffer and
 window. `compare.lua` is independent of Neovim UI; `render.lua` supplies the shared
 namespace and clearing operation. Commands in `plugin/lilt.lua` call the small

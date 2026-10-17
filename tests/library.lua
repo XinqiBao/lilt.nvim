@@ -7,18 +7,15 @@ local function run()
   vim.fn.writefile({ 'One', '', 'Three' }, source .. '/chapters/01.txt')
   vim.fn.writefile({}, source .. '/empty.txt')
   vim.fn.writefile({ 'Source attribution' }, source .. '/README.md')
-  vim.fn.writefile(
-    {
-      vim.json.encode({
-        title = 'A Work',
-        units = {
-          { title = 'Opening', path = 'chapters/01.txt' },
-          { title = 'Empty', path = 'empty.txt' },
-        },
-      }),
-    },
-    source .. '/lilt.json'
-  )
+  vim.fn.writefile({
+    vim.json.encode({
+      title = 'A Work',
+      units = {
+        { title = 'Opening', path = 'chapters/01.txt' },
+        { title = 'Empty', path = 'empty.txt' },
+      },
+    }),
+  }, source .. '/lilt.json')
   assert(#library.list(home) == 0, 'missing library must be empty')
   local added = library.add(home, source)
   assert(added.name == 'a-work' and #added.units == 2, 'installed work metadata')

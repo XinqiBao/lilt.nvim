@@ -2,7 +2,10 @@
 
 Run from the repository root: python3 tests/ui.py [path/to/nvim]
 """
+import json
+import shutil
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -244,6 +247,86 @@ def theme_tests(start):
     nvim.command("colorscheme default")
 
 
+def library_tests():
+    with tempfile.TemporaryDirectory(prefix="lilt-library-") as directory:
+        root = Path(directory)
+        source = root / "source" / "letters"
+        source.mkdir(parents=True)
+        (source / "opening.txt").write_text("First line.\n\nLast line.\n", encoding="utf-8")
+        (source / "reply.txt").write_text("Reply.\n", encoding="utf-8")
+        (source / "lilt.json").write_text(json.dumps({
+            "title": "Letters", "units": [
+                {"title": "Opening", "path": "opening.txt"},
+                {"title": "Reply", "path": "reply.txt"},
+            ]}), encoding="utf-8")
+        home = root / "personal library"
+        nvim.exec_lua("require('lilt').setup({library=...})", str(home))
+        rows = input_keys(":Lilt<CR>")
+        check(any("Add local work" in row for row in rows), "empty library offers local import")
+        check(any("Example: Alice" in row for row in rows), "example follows import action")
+        input_keys("1<CR>")
+        input_keys(str(source) + "<CR>")
+        rows = screen()
+        check(any("Opening  —" in row for row in rows), "import proceeds to ordered unit selection")
+        input_keys("1<CR>")
+        manuscript = home / "manuscripts" / "letters" / "opening.txt"
+        check(nvim.current.buffer.name == str(manuscript), "selection opens predictable named manuscript")
+        buf = nvim.current.buffer.number
+        input_keys("iFirst<Esc>:w<CR>")
+        check(manuscript.read_text(encoding="utf-8") == "First\n", "native write saves manuscript")
+        rows = input_keys(":Lilt<CR>1<CR>")
+        check(any("Opening  33%" in row for row in rows), "unit picker shows saved progress")
+        input_keys("2<CR>")
+        second = nvim.current.buffer.number
+        input_keys("iReply<Esc>")
+        input_keys(":Lilt<CR>1<CR>1<CR>")
+        check(nvim.current.buffer.number == buf, "chapter selection reuses named buffer")
+        check(nvim.api.buf_get_lines(second, 0, -1, False) == ["Reply"], "chapter switch retains unsaved edits")
+        nvim.command("LiltClose")
+        nvim.api.buf_delete(buf, {})
+        input_keys(":Lilt<CR>1<CR>1<CR>")
+        check(nvim.current.buffer[:] == ["First"], "saved chapter reloads after buffer deletion")
+        input_keys("A line.<Esc>:w<CR>")
+        saved_buf = nvim.current.buffer.number
+        nvim.command("LiltClose")
+        nvim.api.buf_delete(saved_buf, {})  # release the native swap file before another process opens it
+        # A separate process has no retained state and can load a readonly plugin.
+        runtime = root / "readonly-plugin"
+        for tree in ("lua", "plugin", "samples"):
+            shutil.copytree(tree, runtime / tree)
+        for path in runtime.rglob("*"):
+            path.chmod(0o555 if path.is_dir() else 0o444)
+        runtime.chmod(0o555)
+        resumed = pynvim.attach("child", argv=[sys.argv[1] if len(sys.argv) > 1 else "nvim",
+                                              "--embed", "--headless", "-u", "NONE", "-i", "NONE"])
+        try:
+            resumed.options["runtimepath"] = str(runtime) + "," + resumed.options["runtimepath"]
+            data = resumed.exec_lua("""
+                require('lilt').setup({library=...})
+                vim.ui.select = function(items, _, callback) callback(items[1]) end
+                require('lilt').open()
+                return vim.api.nvim_buf_get_lines(0, 0, -1, false)
+            """, str(home))
+            check(data == ["First line."], "new Neovim process resumes saved manuscript through entry point")
+            temporary = resumed.exec_lua("require('lilt').example(); return vim.api.nvim_buf_get_name(0)")
+            check(temporary == "", "bundled example opens from a readonly plugin installation")
+        finally:
+            try:
+                resumed.command("qa!")
+            except (EOFError, OSError):
+                pass
+            resumed.close()
+            runtime.chmod(0o755)
+            for path in runtime.rglob("*"):
+                path.chmod(0o755 if path.is_dir() else 0o644)
+        # Example works even when the configured library is unusable for writes.
+        nvim.exec_lua("require('lilt').setup({library=...})", str(source / "opening.txt"))
+        nvim.exec_lua("require('lilt').example()")
+        check(nvim.current.buffer.name == "", "example manuscript is temporary and unnamed")
+        check(not (source / "opening.txt" / "manuscripts").exists(), "example never writes into library or plugin")
+        nvim.command("LiltClose")
+
+
 def run():
     global width, height
     nvim.ui_attach(width, height, rgb=True, ext_linegrid=True, ext_hlstate=True)
@@ -395,6 +478,7 @@ def run():
     check(len(nvim.tabpages) == 1, "all reading windows removed on close")
     check(nvim.api.buf_get_lines(buf, 0, -1, False) == authored, "close retains actual writing")
     check(not floats() and len(nvim.buffers) == 2, "close leaves no hint or reference buffers")
+    library_tests()
     print(f"Lilt UI: {checks} assertions passed on {nvim.exec_lua('return tostring(vim.version())')}")
 
 

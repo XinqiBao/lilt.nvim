@@ -1,5 +1,9 @@
 # Literary sample
 
+This directory is a Lilt work: `lilt.json` declares one reading unit. The `:Lilt`
+example opens a temporary manuscript and never writes into this directory. Add
+this directory as a local work to keep a personal manuscript in your library.
+
 `alice.txt` contains an excerpt from Lewis Carroll (Charles Lutwidge Dodgson,
 1832–1898), *Alice's Adventures in Wonderland* (1865), Chapter I,
 “Down the Rabbit-Hole.” The original work is in the public domain in the United

@@ -24,7 +24,7 @@ With [lazy.nvim](https://github.com/folke/lazy.nvim), add this plugin spec:
 ```lua
 {
   "XinqiBao/lilt.nvim",
-  cmd = { "LiltGhost", "LiltSplit", "LiltClose" },
+  cmd = { "Lilt", "LiltGhost", "LiltSplit", "LiltClose" },
 }
 ```
 
@@ -40,14 +40,32 @@ is required.
 
 ## Start reading
 
-Run `:LiltGhost`, press `i`, and copy the reference. Press Enter at its line
-breaks, including blank paragraph rows. Your usual motions, operators, search,
-and undo work on what you have typed; comparison never changes it.
+Run `:Lilt`. Choose a library work, then a chapter. For a first try, choose
+**Example: Alice (temporary manuscript)**. Press `i` and copy the reference,
+pressing Enter at its physical line breaks, including blank paragraph rows.
+Your usual motions, operators, search, and undo work on what you have typed;
+comparison never changes it.
+
+To build your collection, choose **Add local work…** and enter a prepared work
+directory. Lilt validates and copies it into `~/Lilt/references/`, then offers its
+chapters. The source directory can be moved or deleted afterwards. Existing work
+names are never overwritten. See [Preparing a Lilt work](doc/works.md) for the
+small JSON manifest, text preparation, validation, attribution, and sharing.
+There is no online search or document conversion.
+
+No configuration is required. To choose another library directory:
+
+```lua
+require("lilt").setup({ library = "~/Books/Lilt" })
+```
+
+For lazy.nvim, put the same setting in `opts = { library = "~/Books/Lilt" }`.
 
 | Command | Action |
 | --- | --- |
-| `:LiltGhost` | Open or switch to Ghost |
-| `:LiltSplit` | Open or switch to Split |
+| `:Lilt` | Browse works, add a local work, or try Alice |
+| `:LiltGhost` | Resume or switch to Ghost; try Alice if nothing is retained |
+| `:LiltSplit` | Resume or switch to Split; try Alice if nothing is retained |
 | `:LiltClose` | Close the session; retain your manuscript |
 
 **Ghost** blends the remaining reference into your writing and displays future
@@ -64,24 +82,34 @@ keeps your layout and reference position.
 
 ## Keep your writing
 
-**Save with `:write /path/to/manuscript.txt` before quitting.** The file contains
-only what you typed. Lilt does not save automatically or restore a session across
-Neovim processes.
+For library works, **save with `:w`**. Each chapter opens a normal named buffer
+under `~/Lilt/manuscripts/<work>/<unit-path>`. Parent directories are created on
+write; opening a chapter does not create a manuscript file. Quit normally, then
+run `:Lilt` and select the same chapter in a later Neovim process to continue.
+Chapter percentages count saved lines, including blank rows; `—` means no saved
+manuscript. Unsaved edits are not included in progress.
 
-The reading session opens in a separate tab. Both views share one manuscript;
-closing and reopening retains it and its undo history for this Neovim process.
-Find retained writing with `:ls` and `:buffer N`. To start fresh, wipe that buffer
-with `:bwipeout` (`:bwipeout!` discards unsaved changes).
+Both views share that manuscript. Switching chapters or using `:LiltClose`
+retains loaded buffers and their native undo histories. Find them with `:ls` and
+`:buffer N`. Closing a session does not save; modified hidden manuscripts still
+block an ordinary `:qall`. Use `:w` to save or normal Neovim commands to explicitly
+discard changes. Lilt has no autosave or separate save command.
 
-Closing an owned window or replacing its buffer ends the session. Unrelated
-windows and buffers survive.
+The Alice example uses an unnamed editable buffer and needs no writable library
+or plugin directory. Its writing is retained only for this Neovim process. Save
+it manually with `:write /path/to/alice-manuscript.txt` if desired; the example
+picker does not automatically resume that file. To make Alice durable in the
+library, add the plugin's `samples/` directory as a local work.
+
+Reading opens in a separate tab. Closing an owned window or replacing its buffer
+ends the session. Unrelated windows and buffers survive.
 
 ## Current limits
 
-- The bundled passage is the opening of Lewis Carroll's *Alice's Adventures in
-  Wonderland*. There is currently no content selector.
 - Copy its physical line breaks. Extra or missing rows shift subsequent
-  comparisons; there is no reflow or cross-line alignment. Punctuation matters.
+  comparisons; there is no reflow or cross-line alignment. Keep references and
+  their paths stable after starting; unrelated notes and reformatting are
+  unsupported. Punctuation matters.
 - Ghost works best with **75 usable columns** for this sample. Narrower windows
   can clip reference text, and a short manuscript limits native scrolling. Split
   provides the full, browsable reference.

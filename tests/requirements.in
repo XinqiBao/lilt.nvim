@@ -1,0 +1,2 @@
+# Test harness only; regenerate requirements.txt with the command in DEVELOPING.md.
+pynvim==0.6.0

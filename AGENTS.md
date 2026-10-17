@@ -9,6 +9,8 @@
   is documented beside `compare.line`; Ghost relies on paired replacement
   codepoints. Caches are session-local disposable derived data.
 - Preserve `samples/alice.txt` line layout; changing it shifts manuscripts.
-- Use the tools in `mise.toml`. Run `mise exec -- .venv/bin/python tests/run.py`
-  after installing `tests/requirements.txt`; see DEVELOPING.md for minimum-version
-  checks and individual suites. Add regressions for behavior, not assertion counts.
+- Use mise for auxiliary tools and uv for the test Python environment; keep the
+  developer's Neovim on PATH. Follow DEVELOPING.md for setup and version checks,
+  then run `mise exec -- .venv/bin/python tests/run.py`. Add regressions for
+  behavior, not assertion counts.
+- Track presentation images with Git LFS; keep tests independent of those assets.

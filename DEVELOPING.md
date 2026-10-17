@@ -1,26 +1,39 @@
 # Developing Lilt
 
-Ordinary plugin users need only Neovim. Development uses
-[mise](https://mise.jdx.dev/) for the executables pinned in [mise.toml](mise.toml):
-Neovim, StyLua, Selene, and Python. The explicit Aqua backends use upstream
-release binaries, including Neovim's historical 0.11.0 assets. Linux x86-64
-installation and verification are exercised in CI. Upstream assets also cover
-macOS; other platforms are not CI targets.
+Ordinary plugin users need only **Neovim 0.11.0 or newer**. For development,
+[mise](https://mise.jdx.dev/) pins StyLua, Selene, and uv in
+[mise.toml](mise.toml). It deliberately leaves Neovim on your own `PATH`.
+[uv](https://docs.astral.sh/uv/) manages the test-only Python interpreter in
+[.python-version](.python-version) and the isolated `.venv`; mise does not manage
+Python. No Python package or build backend is needed.
 
-From the repository root:
+From the repository root, with your own Neovim installed:
 
 ```sh
 mise trust
 mise install
-mise exec -- python -m venv .venv
-.venv/bin/python -m pip install -r tests/requirements.txt
+mise exec -- uv venv --managed-python
+mise exec -- uv pip sync --require-hashes tests/requirements.txt
 mise exec -- .venv/bin/python tests/run.py
 ```
 
-A standard virtual environment is enough for this small UI harness; no Python
-project packaging or additional dependency manager is needed. The test-only
-requirements pin pynvim and its transitive dependencies. Python is never a plugin
-runtime dependency. Equivalent executables on `PATH` work without mise too.
+The first setup downloads Python if needed. The same setup commands run in CI.
+For daily checks, use the last command; repeat `uv pip sync` after pulling a
+changed lock file. To rebuild from scratch, remove `.venv` and repeat setup.
+Python is never a plugin runtime dependency. Equivalent auxiliary executables on
+`PATH` also work without mise.
+
+`tests/requirements.in` declares the direct test dependency. The generated
+`tests/requirements.txt` locks it and its transitive dependencies with artifact
+hashes. Change the input and regenerate the lock with:
+
+```sh
+mise exec -- uv pip compile --python-version 3.14 --generate-hashes tests/requirements.in -o tests/requirements.txt
+```
+
+Add `--upgrade` when deliberately updating already locked dependencies. Commit
+both files together. Do not edit the generated lock or install dependencies with
+a second package manager.
 
 `tests/run.py` runs formatting, static analysis, and all five suites, prints tool
 versions, isolates Neovim's XDG directories, disables personal init/Shada files,
@@ -30,14 +43,17 @@ The UI notification loop also has a deadline and reports the screen on assertion
 failures. Positive hint checks poll for the visible float; absence checks wait
 through the relevant delay.
 
-The minimum technical requirement is **Neovim 0.11.0**, because Ghost uses
-`virt_lines_overflow='scroll'`. CI runs the same verification entry point on that
-exact minimum and the stable version pinned in mise.toml. Update that one pin
-when advancing the stable CI target. To exercise the minimum locally:
+The minimum is **Neovim 0.11.0**, because Ghost uses
+`virt_lines_overflow='scroll'`. CI independently installs `v0.11.0` and Neovim's
+moving `stable` release, then runs the same verification entry point on each.
+The setup action logs the download target; the runner prints the actual Neovim
+version. Neither target comes from mise. CI covers Linux x86-64; other platforms
+are not CI targets. To exercise either release locally, unpack its official
+[release archive](https://github.com/neovim/neovim/releases) outside the checkout
+and select its executable for that run:
 
 ```sh
-mise install aqua:neovim/neovim@0.11.0
-mise exec aqua:neovim/neovim@0.11.0 -- .venv/bin/python tests/run.py
+mise exec -- .venv/bin/python tests/run.py --nvim /path/to/nvim-linux-x86_64/bin/nvim
 ```
 
 Individual suites remain directly runnable from the root:

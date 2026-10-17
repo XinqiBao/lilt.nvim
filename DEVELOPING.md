@@ -107,10 +107,38 @@ Split to read clipped text. Save, reload, close, and reopen; inspect the file an
 unrelated editor windows. Test reading comfort in your preferred colorscheme;
 automation cannot establish that preference.
 
-The README image is a capture of a real attached Neovim 0.12.6 UI grid with the
-default dark theme, rendered in DejaVu Sans Mono. It includes actual authored text,
-reference decorations, and highlight colors; no simulated plugin UI is used.
-There is no media-generation dependency or CI job.
-
 For bug reports, include Neovim version, dimensions, exact text/keys, expected and
 actual behavior, and whether writing, undo history, or unrelated state changed.
+
+## Presentation assets
+
+PNG, GIF, JPEG, and WebP images use Git LFS via [.gitattributes](.gitattributes).
+Install [Git LFS](https://git-lfs.com/), then run `git lfs install` and
+`git lfs pull` to work on them. Add images normally with `git add`; check
+`git lfs ls-files` and `git lfs fsck` before committing. Do not migrate old history.
+Normal pushes upload LFS objects through the pre-push hook.
+
+The plugin and tests do not read these images. To clone without downloading
+them, use `GIT_LFS_SKIP_SMUDGE=1 git clone ...`; CI leaves checkout's LFS option
+disabled. Fetch assets only when working on presentation.
+
+[demo.tape](doc/demo.tape) records a real Neovim terminal: progressive input,
+a typo, the delayed hint, correction with `r`, and continued typing across a
+physical line break. It generates both [demo.gif](doc/demo.gif) and the
+[Ghost screenshot](doc/ghost.png). The capture uses the default dark colorscheme
+and DejaVu Sans Mono, with only display options adjusted. The checked-in assets
+were recorded with Neovim 0.12.5 and VHS 0.12.1.
+
+Recording is optional, outside the test environment and CI. Install
+[VHS](https://github.com/charmbracelet/vhs), its ttyd and FFmpeg dependencies, and
+the font. VHS also downloads Chromium on its first run. From the repository root:
+
+```sh
+vhs doc/demo.tape
+```
+
+If the host blocks Chromium's sandbox, VHS supports `VHS_NO_SANDBOX=true`; this
+was needed on the Linux capture host.
+
+Review the GIF's typing, hint, correction, loop, and text readability before
+committing; a successful recording does not establish visual quality.

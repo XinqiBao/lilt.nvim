@@ -2,18 +2,22 @@
 
 **Read at your own rhythm.**
 
-A quiet Neovim plugin for reading literature by retyping it. Your writing lives
-in an ordinary buffer, with native editing, undo, redo, and saving. Reference
-text and gentle comparison feedback help you keep your place. There are no
-scores, timed exercises, typing mappings, or automatic corrections.
+Read literature by retyping it in Neovim. Lilt places the passage beside your
+writing and offers quiet feedback as you go. Your manuscript is an ordinary
+buffer: use your own editing habits, undo, redo, and saving. There are no scores,
+timed exercises, typing mappings, or automatic corrections.
 
-![Ghost view: authored text followed by subdued reference text](doc/ghost.png)
+![Ghost demo: typing, pausing on a typo for a hint, then correcting it](doc/demo.gif)
+
+Real Neovim: the subdued reference recedes as you type. Pause on a mistake in
+Normal mode for a local hint, then correct it with ordinary editing commands.
+[Still screenshot](doc/ghost.png).
 
 ## Install
 
-Requires **Neovim 0.11+**. No runtime dependencies or setup call.
+Requires **Neovim 0.11.0 or newer**. No runtime dependencies or `setup()` call.
 
-For [lazy.nvim](https://github.com/folke/lazy.nvim), add this plugin spec:
+With [lazy.nvim](https://github.com/folke/lazy.nvim), add this plugin spec:
 
 ```lua
 {
@@ -22,9 +26,21 @@ For [lazy.nvim](https://github.com/folke/lazy.nvim), add this plugin spec:
 }
 ```
 
-Other plugin managers work too: install `XinqiBao/lilt.nvim` normally.
+With [vim-plug](https://github.com/junegunn/vim-plug), add this inside your
+`plug#begin()` / `plug#end()` block, run `:PlugInstall`, and restart Neovim:
 
-## Read
+```vim
+Plug 'XinqiBao/lilt.nvim'
+```
+
+Other plugin managers work too. No particular Neovim configuration or distribution
+is required.
+
+## Start reading
+
+Run `:LiltGhost`, press `i`, and copy the reference. Press Enter at its line
+breaks, including blank paragraph rows. Your usual motions, operators, search,
+and undo work on what you have typed; comparison never changes it.
 
 | Command | Action |
 | --- | --- |
@@ -32,59 +48,58 @@ Other plugin managers work too: install `XinqiBao/lilt.nvim` normally.
 | `:LiltSplit` | Open or switch to Split |
 | `:LiltClose` | Close the session; retain your manuscript |
 
-Start with `:LiltGhost`, press `i`, and type. Copy the reference's physical line
-breaks, including blank paragraph rows. Use your usual motions, operators,
-search, and undo. Comparison never changes your text.
+**Ghost** blends the remaining reference into your writing and displays future
+lines below it. Earlier unfinished lines stay visible. Mistakes receive subtle
+highlights; pause on one in Normal mode for about 250 ms to see an Expected /
+Typed hint. Moving, editing, or leaving the window dismisses it. Future reference
+lines are virtual: use Split to navigate or search ahead.
 
-**Ghost** places the remaining reference beside your writing and below its last
-line. Earlier unfinished lines stay visible. Mistakes receive subtle highlights;
-pause on one in Normal mode for about 250 ms to see an Expected / Typed hint.
-Moving, editing, or leaving the window dismisses it. Future virtual lines cannot
-be navigated or searched; use Split to browse ahead.
+**Split** opens a protected reference pane beside your manuscript when both fit,
+or above it at narrower widths. The panes wrap and scroll independently. Use
+native `<C-w>` commands to move or resize them. Resizing preserves your chosen
+view and layout. Requesting the active view again focuses the manuscript and
+keeps your layout and reference position.
 
-**Split** puts a protected reference pane beside your manuscript when both fit
-comfortably, or above it at narrower widths. The panes scroll independently and
-wrap. Native `<C-w>` commands can move, resize, or rearrange them. Resizing never
-switches views or rearranges the layout. Requesting the active view again keeps
-your layout and reference position, and focuses the manuscript.
-
-Sessions open in a separate tab and share **one manuscript buffer**. Closing and
-reopening retains it and its undo history for this Neovim process. Closing an
-owned window or replacing its buffer ends the session. Unrelated windows and
-buffers survive.
+## Keep your writing
 
 **Save with `:write /path/to/manuscript.txt` before quitting.** The file contains
-only what you typed. Find retained writing in `:ls` and `:buffer N`. Wipe the
-manuscript with `:bwipeout` to start fresh (`:bwipeout!` discards unsaved changes).
-There is no automatic saving or restoration across Neovim processes.
+only what you typed. Lilt does not save automatically or restore a session across
+Neovim processes.
 
-## Reading notes
+The reading session opens in a separate tab. Both views share one manuscript;
+closing and reopening retains it and its undo history for this Neovim process.
+Find retained writing with `:ls` and `:buffer N`. To start fresh, wipe that buffer
+with `:bwipeout` (`:bwipeout!` discards unsaved changes).
 
-The available passage is the opening of Lewis Carroll's *Alice's Adventures in
-Wonderland*. There is currently no content selector. Its prepared physical lines
-are fixed: extra or missing line breaks shift subsequent comparisons. There is
-no reflow, punctuation normalization, or cross-line alignment.
+Closing an owned window or replacing its buffer ends the session. Unrelated
+windows and buffers survive.
 
-Comparison aligns UTF-8 codepoints within each row. Internal omissions differ
-from an untyped suffix: `beat` against `beautiful` omits `u`, matches `t`, and
-leaves `iful` pending. Ambiguous repeated text gets a deterministic interpretation;
-it cannot reveal typing intent. Complex graphemes and arbitrary tab/wide-character
-layout are outside the bundled English passage's scope.
+## Current limits
 
-Ghost is most comfortable with **75 usable columns** for this sample. Narrower
-windows can clip pending text, and a short authored prefix limits native
-horizontal scrolling. Choose Split when helpful; its reference is fully browsable.
+- The bundled passage is the opening of Lewis Carroll's *Alice's Adventures in
+  Wonderland*. There is currently no content selector.
+- Copy its physical line breaks. Extra or missing rows shift subsequent
+  comparisons; there is no reflow or cross-line alignment. Punctuation matters.
+- Ghost works best with **75 usable columns** for this sample. Narrower windows
+  can clip reference text, and a short manuscript limits native scrolling. Split
+  provides the full, browsable reference.
+- Comparison works with UTF-8 codepoints. Repeated text can have ambiguous
+  alignments; feedback cannot infer your intent. Complex graphemes and arbitrary
+  tab or wide-character layout are outside the bundled English passage's scope.
+
+## Appearance
+
+Highlights follow your colorscheme and respect explicit overrides:
 
 | Feedback | Highlight group / default link |
 | --- | --- |
-| Untyped suffix | `LiltPending` → `Comment` |
+| Untyped reference | `LiltPending` → `Comment` |
 | Replacement | `LiltError` → `DiagnosticError` |
 | Extra authored text | `LiltExtra` → `DiagnosticWarn` |
 | Missing text | `LiltMissing` → `DiagnosticUnderlineWarn` |
 
-Equal text uses the normal foreground. Ghost underlines the next real character
-at an omission; Split marks the missing reference text. Highlight groups respect
-colorschemes and explicit user overrides.
+Equal text uses the normal foreground. For an omission, Ghost underlines the
+next real character; Split marks the missing reference text.
 
 [Development and verification](DEVELOPING.md) · [Design contracts](doc/design.md)
 

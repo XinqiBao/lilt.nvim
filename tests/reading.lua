@@ -24,6 +24,11 @@ local function run()
     'inactive commands need helpful messages'
   )
   assert(#api.nvim_list_tabpages() == tabs, 'inactive commands must not open content')
+  vim.fn.mkdir(root .. '/directory.txt', 'p')
+  assert(
+    not pcall(manuscript.open, root .. '/directory.txt'),
+    'manuscript directory must be rejected'
+  )
   local buf = open(path)
   assert(api.nvim_buf_get_name(buf) == path, 'manuscript must be named')
   assert(not vim.bo[buf].modified and vim.fn.filereadable(path) == 0, 'opening must not save')
@@ -75,6 +80,15 @@ local function run()
   assert(
     original ~= buf and api.nvim_buf_get_name(original) == path,
     'unit must retain its original file association after :saveas'
+  )
+  api.nvim_win_close(api.nvim_get_current_win(), true)
+  assert(open(path) == original, 'immediate selection after window closure must reuse manuscript')
+  vim.wait(10, function()
+    return false
+  end)
+  assert(
+    api.nvim_get_current_buf() == original,
+    'deferred cleanup must not close the newly selected session'
   )
   session.close()
   print('Lilt reading: named buffers, save/resume, switching and native protections passed')

@@ -4,6 +4,15 @@ local M = {}
 -- Named files use Neovim's buffer registry and read machinery. Never reload an
 -- already loaded buffer: it may contain unsaved work or a native undo tree.
 function M.open(path)
+  if path then
+    local stat, err, code = vim.uv.fs_stat(path)
+    if (stat and stat.type ~= 'file') or (not stat and code ~= 'ENOENT') then
+      error(
+        'Lilt: cannot open manuscript ' .. path .. ': ' .. (err or 'expected a regular file'),
+        0
+      )
+    end
+  end
   local buf = path and vim.fn.bufadd(path) or api.nvim_create_buf(true, false)
   vim.fn.bufload(buf)
   vim.bo[buf].buflisted = true

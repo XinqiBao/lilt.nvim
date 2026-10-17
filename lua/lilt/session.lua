@@ -165,6 +165,9 @@ local function start(view, reading)
     set_view(view)
     return true
   end
+  if session and not valid(session) then
+    M.close()
+  end
   if session then
     if session.manuscript == reading.manuscript then
       set_view(view)

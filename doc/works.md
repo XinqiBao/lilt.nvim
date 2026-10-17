@@ -110,6 +110,13 @@ become visible. One invalid work in the library does not hide valid works;
 the picker reports manifest/path errors. Invalid reference text is reported
 when opening that unit; discovery does not scan its body.
 
+Installation copies into a hidden staging directory, validates that copy,
+rechecks name collisions, then publishes it with a same-directory rename. This
+keeps partial copies out of discovery; it is not a crash-durable transaction or
+a lock against concurrent external changes. An interrupted process can leave a
+hidden `.lilt-*` directory under `references/`; after stopping that import, it
+can be removed. Ordinary failures attempt cleanup and report any cleanup error.
+
 You can also place a valid work directory directly beneath `references/`.
 Discovery reads the filesystem; there is no registry. Share or archive only that
 work directory, never its corresponding `manuscripts/` tree. External Git or sync

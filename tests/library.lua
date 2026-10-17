@@ -80,6 +80,21 @@ local function run()
   )
   assert(#vim.fn.glob(home .. '/references/.lilt-*', false, true) == 0, 'staging must be cleaned')
   vim.fn.delete(bad .. '/z-link')
+  local copyfile = vim.uv.fs_copyfile
+  vim.uv.fs_copyfile = function()
+    error('unexpected copy failure')
+  end
+  local copied, copy_error = pcall(library.add, home, bad)
+  vim.uv.fs_copyfile = copyfile
+  assert(
+    not copied and tostring(copy_error):find('unexpected copy failure', 1, true),
+    'installation must report an unexpected copy exception'
+  )
+  assert(
+    vim.fn.isdirectory(home .. '/references/bad-work') == 0
+      and #vim.fn.glob(home .. '/references/.lilt-*', false, true) == 0,
+    'unexpected exceptions must clean staging without publishing'
+  )
   vim.fn.mkdir(home .. '/manuscripts/bad-work', 'p')
   assert(
     not pcall(library.add, home, bad),

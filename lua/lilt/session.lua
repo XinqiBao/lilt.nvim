@@ -113,7 +113,9 @@ function M.close()
       s.restore(s.user_win)
     end
   end
-  if was_owned and api.nvim_win_is_valid(s.origin_win) then
+  -- A native :edit can repurpose the focused window. Keep focus there when
+  -- it survives cleanup; return to the origin only after closing that window.
+  if was_owned and not api.nvim_win_is_valid(current) and api.nvim_win_is_valid(s.origin_win) then
     api.nvim_set_current_win(s.origin_win)
   end
   -- The ordinary, listed manuscript buffer survives, including its undo tree.

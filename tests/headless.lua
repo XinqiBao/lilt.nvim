@@ -263,6 +263,7 @@ local function run()
     return false
   end)
   eq(api.nvim_win_is_valid(reuse_win), true, 'repurposed window survives cleanup')
+  eq(api.nvim_get_current_win(), reuse_win, 'repurposed manuscript window retains focus')
   eq(api.nvim_win_get_buf(reuse_win), original, 'repurposed content survives cleanup')
   eq(vim.wo[reuse_win].number, true, 'repurposed window options restored')
   eq(autocmd_count(), 0, 'replacing manuscript cleans session')
@@ -297,11 +298,13 @@ local function run()
       reference_win = candidate
     end
   end
+  api.nvim_set_current_win(reference_win)
   api.nvim_win_set_buf(reference_win, original)
   vim.wait(20, function()
     return false
   end)
   eq(api.nvim_win_is_valid(reference_win), true, 'repurposed reference window survives')
+  eq(api.nvim_get_current_win(), reference_win, 'repurposed reference window retains focus')
   eq(
     { vim.wo[reference_win].number, vim.wo[reference_win].statusline },
     reference_baseline,

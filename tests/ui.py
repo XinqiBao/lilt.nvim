@@ -275,6 +275,29 @@ def picker_session_tests(buf):
           "selecting the active unit reuses its unsaved buffer")
 
 
+def native_edit_tests():
+    with tempfile.TemporaryDirectory(prefix="lilt-native-edit-") as directory:
+        path = Path(directory) / "other.txt"
+        path.write_text("Other writing\n", encoding="utf-8")
+        for view, reference in (("Ghost", False), ("Split", False), ("Split", True)):
+            open_example()
+            buf = nvim.current.buffer.number
+            text = nvim.current.buffer[:]
+            nvim.command("Lilt" + view)
+            if reference:
+                nvim.command("wincmd k")
+            win = nvim.current.window
+            input_keys(":edit " + str(path) + "<CR>")
+            check(nvim.current.window == win and nvim.current.buffer.name == str(path),
+                  "native edit keeps focus in the repurposed " + view + " pane")
+            check(nvim.current.buffer[:] == ["Other writing"] and not floats(),
+                  "repurposed window displays the new file without presentation resources")
+            check(nvim.api.buf_get_lines(buf, 0, -1, False) == text,
+                  "native edit retains the manuscript")
+            input_keys(":q<CR>")
+            check(len(nvim.tabpages) == 1, "native quit closes the repurposed tab")
+
+
 def library_tests():
     global width, height
     with tempfile.TemporaryDirectory(prefix="lilt-library-") as directory:
@@ -529,6 +552,7 @@ def run():
     check(len(nvim.tabpages) == 1, "all reading windows removed on close")
     check(nvim.api.buf_get_lines(buf, 0, -1, False) == authored, "close retains actual writing")
     check(not floats() and len(nvim.buffers) == 2, "close leaves no hint or reference buffers")
+    native_edit_tests()
     library_tests()
     print(f"Lilt UI: {checks} assertions passed on {nvim.exec_lua('return tostring(vim.version())')}")
 

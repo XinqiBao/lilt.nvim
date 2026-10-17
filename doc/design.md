@@ -49,7 +49,9 @@ keeps Lilt's own quiet options and statusline out of the new window's baseline.
 Assigning a buffer can reset window-local options; reapply presentation while
 retaining the editor baseline captured before that assignment.
 Repurposed or final surviving windows restore their pre-presentation editor
-options. Global options and unrelated windows are not managed by Lilt.
+options. A repurposed focused window keeps focus; closing an owned window
+returns to the origin when it survives. Global options and unrelated windows
+are not managed by Lilt.
 
 Opening and switching have one recovery boundary: if initialization fails, the
 session terminates, partial resources are released, and the original error is

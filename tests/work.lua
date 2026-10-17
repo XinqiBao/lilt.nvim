@@ -49,9 +49,22 @@ local function run()
   rejects({ title = 'Work', units = { { title = 'Unit', path = 'link.txt' } } }, 'symlink')
   vim.fn.writefile({ '{ broken' }, root .. '/lilt.json')
   assert(not pcall(work.load, root), 'malformed JSON accepted')
-  vim.fn.writefile({ '\255' }, root .. '/text.txt', 'b')
   manifest({ title = 'Work', units = { { title = 'Unit', path = 'text.txt' } } })
-  assert(not pcall(work.load, root), 'invalid UTF-8 accepted')
+  for _, invalid in ipairs({
+    '\255',
+    '\0',
+    '\194',
+    '\224\128\128',
+    '\237\160\128',
+    '\244\144\128\128',
+  }) do
+    local invalid_file = assert(io.open(root .. '/text.txt', 'wb'))
+    invalid_file:write(invalid)
+    invalid_file:close()
+    assert(not pcall(work.load, root), 'invalid UTF-8 or NUL accepted')
+  end
+  vim.fn.writefile({ 'A poem 🐇' }, root .. '/text.txt', 'b')
+  assert(work.read(work.load(root).units[1].reference)[1] == 'A poem 🐇', 'four-byte UTF-8')
   vim.fn.writefile({}, root .. '/text.txt')
   assert(#work.read(work.load(root).units[1].reference) == 0, 'empty reference')
   local file = assert(io.open(root .. '/text.txt', 'wb'))

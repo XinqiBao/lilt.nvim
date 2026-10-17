@@ -9,6 +9,12 @@ local function checked(value, err)
   return value
 end
 
+local function validate_name(name)
+  if name == '' or name:sub(1, 1) == '.' or name:find('[\\:%c]') then
+    error('Lilt: choose a nonhidden work directory with a portable name: ' .. name, 0)
+  end
+end
+
 local function scan(path)
   return checked(uv.fs_scandir(path))
 end
@@ -31,7 +37,10 @@ function M.list(root)
       local path = references .. '/' .. name
       local entry = checked(uv.fs_lstat(path))
       if entry.type == 'directory' then
-        local ok, value = pcall(work.load, path)
+        local ok, value = pcall(function()
+          validate_name(name)
+          return work.load(path)
+        end)
         if ok then
           value.name = name
           works[#works + 1] = value
@@ -76,9 +85,7 @@ end
 function M.add(root, directory)
   local source = work.load(directory)
   local name = vim.fn.fnamemodify(source.root, ':t')
-  if name == '' or name:sub(1, 1) == '.' or name:find('[\\:%c]') then
-    error('Lilt: choose a nonhidden work directory with a portable name', 0)
-  end
+  validate_name(name)
   vim.fn.mkdir(root .. '/references', 'p')
   local references = checked(uv.fs_realpath(root .. '/references'))
   if references == source.root or references:sub(1, #source.root + 1) == source.root .. '/' then

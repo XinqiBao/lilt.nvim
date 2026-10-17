@@ -77,21 +77,21 @@ end
 -- Portable relative paths only; no normalization that could alias two units.
 local function reference_path(root, path)
   if type(path) ~= 'string' or path == '' or path:find('[\\:%c]') then
-    fail('unit path must be a relative path using / separators')
+    fail(root .. ': unit path must be a relative path using / separators')
   end
   local current = root
   for _, part in ipairs(vim.split(path, '/', { plain = true })) do
     if part == '' or part == '.' or part == '..' then
-      fail('unit path must stay inside the work: ' .. path)
+      fail(root .. ': unit path must stay inside the work: ' .. path)
     end
     current = current .. '/' .. part
     local stat = uv.fs_lstat(current)
     if not stat or (stat.type ~= 'file' and stat.type ~= 'directory') then
-      fail('missing file or unsupported symlink in unit path: ' .. path)
+      fail(root .. ': missing file or unsupported symlink in unit path: ' .. path)
     end
   end
   if uv.fs_stat(current).type ~= 'file' then
-    fail('unit path is not a file: ' .. path)
+    fail(root .. ': unit path is not a file: ' .. path)
   end
   return current
 end
@@ -111,20 +111,20 @@ function M.load(directory)
     fail(manifest .. ': invalid JSON: ' .. tostring(data))
   end
   fields(data, { title = true, author = true, units = true }, manifest)
-  title(data.title, 'title')
+  title(data.title, manifest .. ': title')
   if data.author ~= nil then
-    title(data.author, 'author')
+    title(data.author, manifest .. ': author')
   end
   if type(data.units) ~= 'table' or not vim.islist(data.units) or #data.units == 0 then
     fail(manifest .. ': units must be a nonempty array')
   end
   local seen, units = {}, {}
   for index, unit in ipairs(data.units) do
-    fields(unit, { title = true, path = true }, 'unit ' .. index)
-    title(unit.title, 'unit ' .. index .. ' title')
+    fields(unit, { title = true, path = true }, manifest .. ': unit ' .. index)
+    title(unit.title, manifest .. ': unit ' .. index .. ' title')
     local path = reference_path(root, unit.path)
     if seen[unit.path] or unit.path == 'lilt.json' then
-      fail('duplicate or reserved unit path: ' .. unit.path)
+      fail(manifest .. ': duplicate or reserved unit path: ' .. unit.path)
     end
     seen[unit.path] = true
     M.read(path)

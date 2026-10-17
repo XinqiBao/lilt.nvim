@@ -1,0 +1,136 @@
+local uv = vim.uv
+local M = {}
+
+local function fail(message)
+  error('Lilt: ' .. message, 0)
+end
+
+local function read(path)
+  local file, err = io.open(path, 'rb')
+  if not file then
+    fail(path .. ': ' .. err)
+  end
+  local text, read_err = file:read('*a')
+  file:close()
+  if not text then
+    fail(path .. ': ' .. read_err)
+  end
+  -- Reject invalid UTF-8 and NULs before they reach comparison or buffer APIs.
+  local i = 1
+  while i <= #text do
+    local a, b = text:byte(i, i + 1)
+    local size = a < 128 and 1
+      or (a >= 194 and a <= 223) and 2
+      or (a >= 224 and a <= 239) and 3
+      or (a >= 240 and a <= 244) and 4
+    if
+      a == 0
+      or not size
+      or i + size - 1 > #text
+      or (a == 224 and b < 160)
+      or (a == 237 and b > 159)
+      or (a == 240 and b < 144)
+      or (a == 244 and b > 143)
+    then
+      fail(path .. ': expected UTF-8 text without NUL bytes')
+    end
+    for j = i + 1, i + size - 1 do
+      local byte = text:byte(j)
+      if byte < 128 or byte > 191 then
+        fail(path .. ': invalid UTF-8')
+      end
+    end
+    i = i + size
+  end
+  return (text:gsub('^\239\187\191', ''))
+end
+
+function M.read(path)
+  local text = read(path):gsub('\r\n', '\n')
+  if text == '' then
+    return {}
+  end
+  local lines = vim.split(text, '\n', { plain = true })
+  if lines[#lines] == '' then
+    table.remove(lines)
+  end
+  return lines
+end
+
+local function title(value, field)
+  if type(value) ~= 'string' or not value:find('%S') or value:find('%c') then
+    fail(field .. ' must be a nonempty single-line string')
+  end
+end
+
+local function fields(value, allowed, label)
+  if type(value) ~= 'table' or vim.islist(value) then
+    fail(label .. ' must be an object')
+  end
+  for key in pairs(value) do
+    if not allowed[key] then
+      fail(label .. ': unknown field ' .. tostring(key))
+    end
+  end
+end
+
+-- Portable relative paths only; no normalization that could alias two units.
+local function reference_path(root, path)
+  if type(path) ~= 'string' or path == '' or path:find('[\\:%c]') then
+    fail('unit path must be a relative path using / separators')
+  end
+  local current = root
+  for _, part in ipairs(vim.split(path, '/', { plain = true })) do
+    if part == '' or part == '.' or part == '..' then
+      fail('unit path must stay inside the work: ' .. path)
+    end
+    current = current .. '/' .. part
+    local stat = uv.fs_lstat(current)
+    if not stat or (stat.type ~= 'file' and stat.type ~= 'directory') then
+      fail('missing file or unsupported symlink in unit path: ' .. path)
+    end
+  end
+  if uv.fs_stat(current).type ~= 'file' then
+    fail('unit path is not a file: ' .. path)
+  end
+  return current
+end
+
+function M.load(directory)
+  local root, err = uv.fs_realpath(vim.fn.fnamemodify(directory, ':p'))
+  if not root then
+    fail(directory .. ': ' .. err)
+  end
+  local manifest = root .. '/lilt.json'
+  local stat = uv.fs_lstat(manifest)
+  if not stat or stat.type ~= 'file' then
+    fail(manifest .. ': expected a regular manifest file')
+  end
+  local ok, data = pcall(vim.json.decode, read(manifest))
+  if not ok then
+    fail(manifest .. ': invalid JSON: ' .. tostring(data))
+  end
+  fields(data, { title = true, author = true, units = true }, manifest)
+  title(data.title, 'title')
+  if data.author ~= nil then
+    title(data.author, 'author')
+  end
+  if type(data.units) ~= 'table' or not vim.islist(data.units) or #data.units == 0 then
+    fail(manifest .. ': units must be a nonempty array')
+  end
+  local seen, units = {}, {}
+  for index, unit in ipairs(data.units) do
+    fields(unit, { title = true, path = true }, 'unit ' .. index)
+    title(unit.title, 'unit ' .. index .. ' title')
+    local path = reference_path(root, unit.path)
+    if seen[unit.path] or unit.path == 'lilt.json' then
+      fail('duplicate or reserved unit path: ' .. unit.path)
+    end
+    seen[unit.path] = true
+    M.read(path)
+    units[#units + 1] = { title = unit.title, path = unit.path, reference = path }
+  end
+  return { root = root, title = data.title, author = data.author, units = units }
+end
+
+return M

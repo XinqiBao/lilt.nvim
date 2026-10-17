@@ -1,0 +1,75 @@
+local work = require('lilt.work')
+local root = vim.fn.tempname()
+vim.fn.mkdir(root .. '/chapters', 'p')
+local function manifest(value)
+  vim.fn.writefile({ vim.json.encode(value) }, root .. '/lilt.json')
+end
+local function rejects(value, pattern)
+  manifest(value)
+  local ok, err = pcall(work.load, root)
+  assert(not ok and tostring(err):find(pattern), tostring(err))
+end
+local function run()
+  vim.fn.writefile({ 'Second', '', 'row' }, root .. '/chapters/02.txt')
+  vim.fn.writefile({ 'First — café' }, root .. '/text.txt')
+  local data = {
+    title = 'A work',
+    units = {
+      { path = 'chapters/02.txt', title = 'Second first' },
+      { path = 'text.txt', title = 'First second' },
+    },
+  }
+  manifest(data)
+  local loaded = work.load(root)
+  assert(loaded.title == 'A work' and loaded.units[1].path == 'chapters/02.txt', 'manifest order')
+  assert(
+    vim.deep_equal(work.read(loaded.units[1].reference), { 'Second', '', 'row' }),
+    'physical rows'
+  )
+  assert(work.read(loaded.units[2].reference)[1] == 'First — café', 'UTF-8 text')
+  rejects({}, 'object')
+  rejects({ title = ' ', units = data.units }, 'title')
+  rejects({ title = 'Work', units = {} }, 'nonempty array')
+  rejects({ title = 'Work', units = vim.NIL }, 'nonempty array')
+  rejects({ title = 'Work', typo = true, units = data.units }, 'unknown field')
+  rejects({ title = 'Work', units = { data.units[1], data.units[1] } }, 'duplicate')
+  for _, path in ipairs({
+    '../text.txt',
+    '/text.txt',
+    'chapters/../text.txt',
+    'C:/text.txt',
+    'a\\b',
+    'text.txt/',
+    'missing.txt',
+    'chapters',
+  }) do
+    rejects({ title = 'Work', units = { { title = 'Unit', path = path } } }, 'Lilt:')
+  end
+  assert(vim.uv.fs_symlink(root .. '/text.txt', root .. '/link.txt'))
+  rejects({ title = 'Work', units = { { title = 'Unit', path = 'link.txt' } } }, 'symlink')
+  vim.fn.writefile({ '{ broken' }, root .. '/lilt.json')
+  assert(not pcall(work.load, root), 'malformed JSON accepted')
+  vim.fn.writefile({ '\255' }, root .. '/text.txt', 'b')
+  manifest({ title = 'Work', units = { { title = 'Unit', path = 'text.txt' } } })
+  assert(not pcall(work.load, root), 'invalid UTF-8 accepted')
+  vim.fn.writefile({}, root .. '/text.txt')
+  assert(#work.read(work.load(root).units[1].reference) == 0, 'empty reference')
+  local file = assert(io.open(root .. '/text.txt', 'wb'))
+  file:write('\239\187\191one\r\n\r\ntwo\r\n')
+  file:close()
+  assert(vim.deep_equal(work.read(root .. '/text.txt'), { 'one', '', 'two' }), 'BOM and CRLF')
+  local sample = work.load('samples')
+  assert(
+    sample.author == 'Lewis Carroll' and sample.units[1].path == 'alice.txt',
+    'sample manifest'
+  )
+  print('Lilt work: manifests, ordering, paths and UTF-8 passed')
+end
+local ok, err = xpcall(run, debug.traceback)
+vim.fn.delete(root, 'rf')
+if not ok then
+  io.write(err .. '\n')
+  vim.cmd('cquit 1')
+else
+  vim.cmd('qa!')
+end

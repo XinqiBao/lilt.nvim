@@ -1,0 +1,7 @@
+{
+  "title": "Alice's Adventures in Wonderland (sample)",
+  "author": "Lewis Carroll",
+  "units": [
+    { "path": "alice.txt", "title": "Down the Rabbit-Hole (excerpt)" }
+  ]
+}

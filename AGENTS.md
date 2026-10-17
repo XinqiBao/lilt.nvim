@@ -8,7 +8,7 @@
 - Keep comparison independent of Neovim UI. Its paired UTF-8 byte-range contract
   is documented beside `compare.line`; Ghost relies on paired replacement
   codepoints. Caches are session-local disposable derived data.
-- Preserve `samples/alice.txt` line layout; changing it shifts manuscripts.
+- Preserve `examples/alice/alice.txt` line layout; changing it shifts manuscripts.
 - Use mise for auxiliary tools and uv for the test Python environment; keep the
   developer's Neovim on PATH. Follow DEVELOPING.md for setup and version checks,
   then run `mise exec -- .venv/bin/python tests/run.py`. Add regressions for

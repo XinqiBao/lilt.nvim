@@ -19,47 +19,6 @@ local function scan(path)
   return checked(uv.fs_scandir(path))
 end
 
-function M.list(root)
-  local references = root .. '/references'
-  local stat, err, code = uv.fs_stat(references)
-  if not stat and code == 'ENOENT' then
-    return {}, {}
-  end
-  checked(stat, err)
-  local works, errors = {}, {}
-  local entries = scan(references)
-  while true do
-    local name = uv.fs_scandir_next(entries)
-    if not name then
-      break
-    end
-    if name:sub(1, 1) ~= '.' then
-      local path = references .. '/' .. name
-      local entry = checked(uv.fs_lstat(path))
-      if entry.type == 'directory' then
-        local ok, value = pcall(function()
-          validate_name(name)
-          return work.load(path)
-        end)
-        if ok then
-          value.name = name
-          works[#works + 1] = value
-        else
-          errors[#errors + 1] = tostring(value)
-        end
-      end
-    end
-  end
-  table.sort(works, function(a, b)
-    if a.title == b.title then
-      return a.name < b.name
-    end
-    return a.title < b.title
-  end)
-  table.sort(errors)
-  return works, errors
-end
-
 local function copy(source, target)
   local entries = scan(source)
   while true do

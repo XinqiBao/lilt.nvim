@@ -40,7 +40,10 @@ versions, isolates Neovim's XDG directories, disables personal init/Shada files,
 and bounds each subprocess to 60 seconds. It accepts `--nvim /path/to/nvim`.
 Work/library suites validate real temporary directories, failed-copy cleanup,
 and saved progress. Reading checks cover named buffers and unsaved protections;
-the UI suite drives native import/selection and resumes in a second process.
+Picker checks cover XDG configuration, multiple example works/units, back
+navigation, temporary manuscripts, and cleanup. The UI suite drives the float
+and native input prompt, exercises terminal resizing, and resumes in a second
+process.
 Tests use temporary files and an embedded Neovim; no display server is needed.
 The UI notification loop also has a deadline and reports the screen on assertion
 failures. Positive hint checks poll for the visible float; absence checks wait
@@ -66,6 +69,7 @@ mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/compare
 mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/work.lua
 mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/library.lua
 mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/reading.lua
+mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/picker.lua
 mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/headless.lua
 mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/lifecycle.lua
 mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/cache.lua
@@ -105,14 +109,13 @@ Load the plugin normally, or try the checkout without personal configuration:
 nvim --clean --cmd "set runtimepath^=$PWD" -c 'runtime plugin/lilt.lua' -c Lilt
 ```
 
-Choose the bundled Alice example, copy a few lines, make an omission and a
-replacement, and pause on an error.
+Choose Examples → Alice → its reading unit. Copy a few lines, make an omission
+and a replacement, and pause on an error.
 Correct it using native operators, undo, and redo. Switch views, browse the Split
 reference independently, and rearrange it. Narrow Ghost while typing and choose
 Split to read clipped text. Add a prepared local work through `:Lilt`, save with
 `:w`, quit, and resume the same chapter in a new process. Reload, close, and
-reopen; inspect the file and
-unrelated editor windows. Test reading comfort in your preferred colorscheme;
+reopen; inspect the file and unrelated editor windows. Test reading comfort in your preferred colorscheme;
 automation cannot establish that preference.
 
 For bug reports, include Neovim version, dimensions, exact text/keys, expected and
@@ -138,7 +141,8 @@ It generates [demo.gif](assets/demo.gif); extract [split.png](assets/split.png)
 from its settled Split frame at 19 seconds using the command below. Extraction
 keeps the still consistent with verified playback. Recheck that timestamp after
 changing the tape's pacing. The media demonstrates the Alice reading interaction,
-not library navigation. The screenshot shows the stacked layout with the
+not library navigation. Its initial launch now chooses the example through
+`:Lilt`; the visible typing/presentation portion is unchanged. The screenshot shows the stacked layout with the
 manuscript focused, before searching the reference. Wider windows open Split
 side by side.
 

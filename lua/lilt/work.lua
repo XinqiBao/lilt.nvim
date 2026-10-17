@@ -150,6 +150,10 @@ end
 -- A BOM is not a row; CRLF and LF each contain one newline. This is a numerical
 -- aid only: text encoding is validated when a reference is opened or installed.
 function M.count_lines(path)
+  local stat = uv.fs_stat(path)
+  if not stat or stat.type ~= 'file' then
+    fail(path .. ': expected a regular file for line counting')
+  end
   local file, err = io.open(path, 'rb')
   if not file then
     fail(path .. ': ' .. err)
@@ -175,6 +179,53 @@ function M.count_lines(path)
     end
   end
   return count + ((last ~= '' and last ~= '\n') and 1 or 0)
+end
+
+function M.discover(directory)
+  local stat, err, code = uv.fs_stat(directory)
+  if not stat and code == 'ENOENT' then
+    return {}, {}
+  end
+  if not stat then
+    fail(directory .. ': ' .. err)
+  end
+  local works, errors = {}, {}
+  local entries, scan_err = uv.fs_scandir(directory)
+  if not entries then
+    fail(directory .. ': ' .. scan_err)
+  end
+  while true do
+    local name = uv.fs_scandir_next(entries)
+    if not name then
+      break
+    end
+    if name:sub(1, 1) ~= '.' then
+      local path = directory .. '/' .. name
+      local entry = uv.fs_lstat(path)
+      if entry and entry.type == 'directory' then
+        local ok, value = pcall(function()
+          if name:find('[\\:%c]') then
+            error('Lilt: invalid work directory name: ' .. path, 0)
+          end
+          return M.load(path)
+        end)
+        if ok then
+          value.name = name
+          works[#works + 1] = value
+        else
+          errors[#errors + 1] = tostring(value)
+        end
+      end
+    end
+  end
+  table.sort(works, function(a, b)
+    if a.title == b.title then
+      return a.name < b.name
+    end
+    return a.title < b.title
+  end)
+  table.sort(errors)
+  return works, errors
 end
 
 return M

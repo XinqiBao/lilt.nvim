@@ -14,7 +14,7 @@ local function open(view)
   end
   require('lilt.session').open(view or 'ghost', {
     manuscript = manuscript,
-    reference = vim.fn.readfile('samples/alice.txt'),
+    reference = vim.fn.readfile('examples/alice/alice.txt'),
   })
 end
 
@@ -35,7 +35,7 @@ end
 local function run()
   open()
   local buf = api.nvim_get_current_buf()
-  local reference = vim.fn.readfile('samples/alice.txt')
+  local reference = vim.fn.readfile('examples/alice/alice.txt')
   api.nvim_buf_set_lines(buf, 0, -1, false, reference)
   calls = 0
   api.nvim_buf_set_lines(buf, 0, 1, false, { 'Blice' })

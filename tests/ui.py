@@ -25,12 +25,9 @@ def check(condition, description):
         raise AssertionError(description + "\n" + "\n".join(screen()))
 
 
-def screen(redraw=True):
+def screen():
     # Requests flush preceding input and queued redraw notifications.
-    # Neovim 0.11 clears inputlist choices on a forced redraw; capture their
-    # queued grid events directly while a native picker is waiting.
-    if redraw:
-        nvim.command("redraw!")
+    nvim.command("redraw!")
     nvim.exec_lua("vim.rpcnotify(..., 'lilt_test_flush')", nvim.channel_id, async_=True)
     def notification(method, args):
         if method == "lilt_test_flush":
@@ -84,11 +81,11 @@ def screen(redraw=True):
             for row in range(height)]
 
 
-def input_keys(text, redraw=True):
+def input_keys(text):
     nvim.input(text)
     # This lets Neovim process native input and scheduled resize/lifecycle work.
     nvim.exec_lua("vim.wait(20, function() return false end)")
-    return screen(redraw)
+    return screen()
 
 
 def group_at(row, col, group):
@@ -207,7 +204,7 @@ def hint_tests(buf, reference):
     nvim.current.window = user
     input_keys("0")
     nvim.command("LiltClose")
-    nvim.exec_lua("require('lilt').example()")
+    open_example()
     nvim.current.buffer[:] = ["Alice"]
     input_keys("0")
     pause(300)
@@ -221,7 +218,7 @@ def hint_tests(buf, reference):
     check(not floats(), "manual manuscript window closure removes visible hint")
     check(nvim.exec_lua("local ok = pcall(vim.api.nvim_get_autocmds, {group='LiltGhost'}); return ok") is False,
           "closing manuscript releases Ghost autocmd group")
-    nvim.exec_lua("require('lilt').example()")
+    open_example()
     check(not nvim.eval("v:errmsg"), "hint lifecycle emits no Neovim errors")
 
 
@@ -250,7 +247,13 @@ def theme_tests(start):
     nvim.command("colorscheme default")
 
 
+def open_example():
+    nvim.command("Lilt")
+    return input_keys("Glll")
+
+
 def library_tests():
+    global width, height
     with tempfile.TemporaryDirectory(prefix="lilt-library-") as directory:
         root = Path(directory)
         source = root / "source" / "letters"
@@ -264,13 +267,20 @@ def library_tests():
             ]}), encoding="utf-8")
         home = root / "personal library"
         nvim.exec_lua("require('lilt').setup({library=...})", str(home))
-        rows = input_keys(":Lilt<CR>", redraw=False)
+        rows = input_keys(":Lilt<CR>")
+        check(any("Library (empty)" in row for row in rows), "empty library is explicit")
         check(any("Add local work" in row for row in rows), "empty library offers local import")
-        check(any("Example: Alice" in row for row in rows), "example follows import action")
-        input_keys("1<CR>")
-        rows = input_keys(str(source) + "<CR>", redraw=False)
+        check(any("Examples" in row for row in rows), "examples follow import action")
+        picker = nvim.current.window
+        config = nvim.api.win_get_config(picker.handle)
+        check(config["relative"] == "editor" and config["col"] > 0 and config["row"] > 0,
+              "picker floats in the center of the editor")
+        nvim.command("Lilt")
+        check(nvim.current.window == picker and len(floats()) == 1, "reopening focuses the same picker")
+        input_keys("l")
+        rows = input_keys(str(source) + "<CR>")
         check(any("Opening  —" in row for row in rows), "import proceeds to ordered unit selection")
-        input_keys("1<CR>")
+        input_keys("l")
         manuscript = home / "manuscripts" / "letters" / "opening.txt"
         check(nvim.current.buffer.name == str(manuscript), "selection opens predictable named manuscript")
         buf = nvim.current.buffer.number
@@ -278,25 +288,31 @@ def library_tests():
         check(nvim.current.buffer.number == buf, "canceling selection preserves active reading")
         input_keys("iFirst<Esc>:w<CR>")
         check(manuscript.read_text(encoding="utf-8") == "First\n", "native write saves manuscript")
-        rows = input_keys(":Lilt<CR>1<CR>", redraw=False)
+        rows = input_keys(":Lilt<CR>l")
         check(any("Opening  33%" in row for row in rows), "unit picker shows saved progress")
-        input_keys("2<CR>")
+        input_keys("jl")
         second = nvim.current.buffer.number
         input_keys("iReply<Esc>")
-        input_keys(":Lilt<CR>1<CR>1<CR>")
+        input_keys(":Lilt<CR>ll")
         check(nvim.current.buffer.number == buf, "chapter selection reuses named buffer")
         check(nvim.api.buf_get_lines(second, 0, -1, False) == ["Reply"], "chapter switch retains unsaved edits")
+        input_keys(":Lilt<CR>Gllh")
+        check(any("Alice" in line for line in nvim.current.buffer[:]), "h returns from units to example works")
+        input_keys("qh")
+        check(nvim.current.buffer.number == buf, "back from nested pages restores reading focus")
         nvim.command("LiltClose")
+        nvim.command("LiltGhost")
+        check(len(nvim.tabpages) == 1 and not floats(), "Ghost cannot reopen a closed session")
         nvim.api.buf_delete(buf, {})
-        input_keys(":Lilt<CR>1<CR>1<CR>")
+        input_keys(":Lilt<CR>ll")
         check(nvim.current.buffer[:] == ["First"], "saved chapter reloads after buffer deletion")
         input_keys("A line.<Esc>:w<CR>")
         saved_buf = nvim.current.buffer.number
         nvim.command("LiltClose")
-        nvim.api.buf_delete(saved_buf, {})  # release the native swap file before another process opens it
-        # A separate process has no retained state and can load a readonly plugin.
+        nvim.api.buf_delete(saved_buf, {})  # release native swap before another process opens it
+        # A separate process has no retained state and loads a readonly plugin.
         runtime = root / "readonly-plugin"
-        for tree in ("lua", "plugin", "samples"):
+        for tree in ("lua", "plugin", "examples"):
             shutil.copytree(tree, runtime / tree)
         for path in runtime.rglob("*"):
             path.chmod(0o555 if path.is_dir() else 0o444)
@@ -305,15 +321,11 @@ def library_tests():
                                               "--embed", "--headless", "-u", "NONE", "-i", "NONE"])
         try:
             resumed.options["runtimepath"] = str(runtime) + "," + resumed.options["runtimepath"]
-            data = resumed.exec_lua("""
-                require('lilt').setup({library=...})
-                vim.ui.select = function(items, _, callback) callback(items[1]) end
-                require('lilt').open()
-                return vim.api.nvim_buf_get_lines(0, 0, -1, false)
-            """, str(home))
-            check(data == ["First line."], "new Neovim process resumes saved manuscript through entry point")
-            temporary = resumed.exec_lua("require('lilt').example(); return vim.api.nvim_buf_get_name(0)")
-            check(temporary == "", "bundled example opens from a readonly plugin installation")
+            resumed.exec_lua("require('lilt').setup({library=...}); require('lilt').open()", str(home))
+            resumed.exec_lua("vim.api.nvim_feedkeys('ll', 'xt', false)")
+            check(resumed.current.buffer[:] == ["First line."], "new Neovim process resumes saved manuscript through picker")
+            resumed.exec_lua("require('lilt').open(); vim.api.nvim_feedkeys('Glll', 'xt', false)")
+            check(resumed.current.buffer.name == "", "example opens from a readonly plugin installation")
         finally:
             try:
                 resumed.command("qa!")
@@ -323,15 +335,23 @@ def library_tests():
             runtime.chmod(0o755)
             for path in runtime.rglob("*"):
                 path.chmod(0o755 if path.is_dir() else 0o644)
-        input_keys(":Lilt<CR>3<CR>")
+        open_example()
         check(nvim.current.buffer.name == "", "example is reachable through the unified picker")
         nvim.command("LiltClose")
-        # Example works even when the configured library is unusable for writes.
-        nvim.exec_lua("require('lilt').setup({library=...})", str(source / "opening.txt"))
-        nvim.exec_lua("require('lilt').example()")
-        check(nvim.current.buffer.name == "", "example manuscript is temporary and unnamed")
-        check(not (source / "opening.txt" / "manuscripts").exists(), "example never writes into library or plugin")
-        nvim.command("LiltClose")
+        nvim.command("Lilt")
+        width, height = 24, 8
+        nvim.ui_try_resize(width, height)
+        rows = input_keys("G")
+        config = nvim.api.win_get_config(nvim.current.window.handle)
+        check(nvim.current.window.options["cursorline"], "resize preserves the selection highlight")
+        check(config["width"] + 2 <= width and config["height"] + 2 <= height,
+              "picker fits after narrowing and shortening the terminal")
+        check(any("Examples" in row for row in rows), "native G scrolls to the final item in a short picker")
+        input_keys("<Esc>")
+        check(not floats(), "small picker closes without resources")
+        width, height = 90, 22
+        nvim.ui_try_resize(width, height)
+        input_keys("")
 
 
 def run():
@@ -339,9 +359,10 @@ def run():
     nvim.ui_attach(width, height, rgb=True, ext_linegrid=True, ext_hlstate=True)
     nvim.options["runtimepath"] = str(Path.cwd()) + "," + nvim.options["runtimepath"]
     nvim.command("runtime plugin/lilt.lua")
-    nvim.exec_lua("require('lilt').example()")
+    nvim.exec_lua("require('lilt').setup({library=vim.fn.tempname()})")
+    open_example()
     buf = nvim.current.buffer.number
-    reference = Path("samples/alice.txt").read_text(encoding="utf-8").splitlines()
+    reference = Path("examples/alice/alice.txt").read_text(encoding="utf-8").splitlines()
     rows = screen()
     start = rows.index(reference[0])
     visible = 15
@@ -479,7 +500,7 @@ def run():
     check(nvim.exec_lua("return #vim.api.nvim_buf_get_extmarks(...,require('lilt.render').namespace,0,-1,{})", buf) == 0,
           "manual reference closure cleans manuscript marks")
     check(nvim.api.buf_is_valid(buf), "manual closure retains authored buffer")
-    nvim.exec_lua("require('lilt').example()")
+    open_example()
     check(nvim.current.buffer.number == buf, "can resume after manual reference closure")
     nvim.command("LiltClose")
     check(len(nvim.tabpages) == 1, "all reading windows removed on close")

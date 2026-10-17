@@ -1,4 +1,7 @@
 local library = require('lilt.library')
+local function list(root)
+  return require('lilt.work').discover(root .. '/references')
+end
 local root = vim.fn.tempname()
 local source = root .. '/source/a-work'
 local home = root .. '/library'
@@ -16,7 +19,7 @@ local function run()
       },
     }),
   }, source .. '/lilt.json')
-  assert(#library.list(home) == 0, 'missing library must be empty')
+  assert(#list(home) == 0, 'missing library must be empty')
   local added = library.add(home, source)
   assert(added.name == 'a-work' and #added.units == 2, 'installed work metadata')
   assert(vim.fn.readfile(added.root .. '/README.md')[1] == 'Source attribution', 'copy attribution')
@@ -28,7 +31,7 @@ local function run()
     assert(not path:match('%.txt$'), 'discovery opened a reference body: ' .. path)
     return original_open(path, ...)
   end
-  local discovered, discovery_errors = library.list(home)
+  local discovered, discovery_errors = list(home)
   -- selene: allow(incorrect_standard_library_use)
   io.open = original_open
   assert(#discovered == 1 and #discovery_errors == 0, 'metadata-only discovery')
@@ -42,7 +45,7 @@ local function run()
     'invalid text was published'
   )
   vim.fn.delete(root .. '/source', 'rf')
-  local works, errors = library.list(home)
+  local works, errors = list(home)
   assert(#works == 1 and #errors == 0, 'copy must be independent of source')
   local unit = works[1].units[1]
   assert(library.progress(home, added, unit) == nil, 'missing manuscript indicator')
@@ -85,7 +88,7 @@ local function run()
   assert(not pcall(library.add, bad .. '/nested', bad), 'recursive import must be rejected')
   vim.fn.mkdir(home .. '/references/broken', 'p')
   vim.fn.mkdir(home .. '/references/bad:name', 'p')
-  works, errors = library.list(home)
+  works, errors = list(home)
   assert(#works == 1 and #errors == 2, 'invalid works and names must not hide valid works')
   print('Lilt library: discovery, copy/cleanup, collisions and saved progress passed')
 end

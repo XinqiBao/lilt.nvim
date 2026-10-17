@@ -85,10 +85,11 @@ reference bodies; opening a reading unit validates that selected text.
 
 ## Personal library and sharing
 
-The default library is `~/Lilt`. It contains ordinary user-owned files:
+The library contains ordinary user-owned files; its configurable location and
+XDG default are described in the [README](../README.md#start-reading):
 
 ```text
-~/Lilt/
+<library>/
 ├── references/
 │   └── winter-letters/          # manifest, reference text, attribution
 └── manuscripts/
@@ -106,7 +107,8 @@ external link. Symlinks and special files anywhere in the copied directory are
 rejected. Existing reference directories or manuscript trees with that work
 name are never merged or replaced. Failed copies are cleaned up before they
 become visible. One invalid work in the library does not hide valid works;
-the picker reports its validation error.
+the picker reports manifest/path errors. Invalid reference text is reported
+when opening that unit; discovery does not scan its body.
 
 You can also place a valid work directory directly beneath `references/`.
 Discovery reads the filesystem; there is no registry. Share or archive only that
@@ -120,5 +122,13 @@ down to an integer percentage. Counts scan file bytes in bounded chunks without
 constructing arrays of text. A missing manuscript displays `—`; an empty saved
 file has zero rows. An empty reference uses a denominator of one. Blank rows
 count, a final newline does not add a row, and values above 100% are allowed.
-Progress is a navigation hint, not a correctness check. Unsaved edits appear in
-the retained buffer but do not affect the displayed saved percentage.
+Progress is a navigation hint, not a correctness check. A file-counting error
+displays `?` for that unit without hiding its siblings; selecting it reports the
+error. Unsaved edits appear in the loaded buffer but do not affect the displayed
+saved percentage.
+
+Native `:w` creates parent directories for the manuscript's current name, including
+a name chosen with `:saveas`. Using `:saveas` does not change the reading unit's
+library association: later selection still derives the original manuscript path.
+An explicit `:write other/path.txt` is an ordinary Neovim export; create that
+other path's parents yourself.

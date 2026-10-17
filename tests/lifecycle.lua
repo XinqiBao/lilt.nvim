@@ -7,7 +7,7 @@ local function open(view)
   end
   require('lilt.session').open(view or 'ghost', {
     manuscript = manuscript,
-    reference = vim.fn.readfile('samples/alice.txt'),
+    reference = vim.fn.readfile('examples/alice/alice.txt'),
   })
 end
 

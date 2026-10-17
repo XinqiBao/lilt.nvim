@@ -15,7 +15,7 @@ Set TypingSpeed 70ms
 Set CursorBlink false
 
 Hide
-Type@0ms `nvim --clean -i NONE --cmd "set rtp^=." -c 'runtime plugin/lilt.lua' -c 'set termguicolors showtabline=0 noruler noshowcmd laststatus=2' -c LiltGhost`
+Type@0ms `nvim --clean -i NONE --cmd "set rtp^=." -c 'runtime plugin/lilt.lua' -c 'set termguicolors showtabline=0 noruler noshowcmd laststatus=2' -c Lilt -c 'lua vim.api.nvim_feedkeys("Glll", "xt", false)'`
 Enter
 Sleep 1s
 Show

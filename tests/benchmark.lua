@@ -7,11 +7,11 @@ local function open(view)
   end
   require('lilt.session').open(view or 'ghost', {
     manuscript = manuscript,
-    reference = vim.fn.readfile('samples/alice.txt'),
+    reference = vim.fn.readfile('examples/alice/alice.txt'),
   })
 end
 
-local reference = vim.fn.readfile('samples/alice.txt')
+local reference = vim.fn.readfile('examples/alice/alice.txt')
 local compare, calls = require('lilt.compare'), 0
 local line = compare.line
 compare.line = function(...)

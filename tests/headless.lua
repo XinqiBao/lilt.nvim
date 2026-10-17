@@ -7,7 +7,7 @@ local function open(view)
   end
   require('lilt.session').open(view or 'ghost', {
     manuscript = manuscript,
-    reference = vim.fn.readfile('samples/alice.txt'),
+    reference = vim.fn.readfile('examples/alice/alice.txt'),
   })
 end
 
@@ -67,9 +67,9 @@ local function run()
   local buf, win = api.nvim_get_current_buf(), api.nvim_get_current_win()
   eq(vim.bo[buf].buftype, '', 'manuscript is an ordinary buffer')
   eq(lines(buf), { '' }, 'no physical placeholders')
-  eq(pending(buf, 0), vim.fn.readfile('samples/alice.txt')[1], 'initial first row')
+  eq(pending(buf, 0), vim.fn.readfile('examples/alice/alice.txt')[1], 'initial first row')
   local initial_marks = marks(buf)
-  local reference = vim.fn.readfile('samples/alice.txt')
+  local reference = vim.fn.readfile('examples/alice/alice.txt')
   eq(#initial_marks[2][4].virt_lines, #reference - 1, 'every future row allocated once')
   local count = autocmd_count()
   api.nvim_buf_set_lines(buf, 0, -1, false, { 'Aice' })

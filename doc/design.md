@@ -4,18 +4,30 @@ The ordinary listed manuscript buffer is the only authored-text authority.
 Reference text is a session snapshot. Comparisons, highlights, hints, and virtual
 lines are disposable derived state. Lilt never intercepts typing or repairs text.
 
-`work.lua` validates self-contained JSON works and reads reference text.
-`library.lua` discovers directories, installs local copies through hidden
-staging, and derives manuscript paths and saved progress. `init.lua` provides
-configuration and native selection/input callbacks. Neither view knows about
-manifests, library paths, installation, or persistence. The bundled sample uses
-the same work loader and session with a retained unnamed manuscript.
+`work.lua` parses self-contained JSON works, discovers immediate work
+directories, validates selected reference text, and counts physical rows.
+Discovery reads manifests and checks file metadata only. Installation validates
+all reference bodies in the staged copy; opening a unit rechecks its path and
+validates that text. JSON uses Neovim's built-in parser without vendored code.
 
-There is one active session. Selecting another unit closes its presentation and
-retains the previous ordinary buffer; file-backed units reuse Neovim's buffer
-registry. Closing preserves unsaved edits with `bufhidden=hide`, so ordinary
-quit/delete protections continue to apply. Closing forgets the reading session; only `:Lilt` chooses content. Ghost/Split
-commands switch an active presentation and otherwise direct the user to `:Lilt`. There is no durable session or cursor registry;
+`library.lua` installs local copies through hidden staging and derives manuscript
+paths and saved progress. `init.lua` holds configuration and command entry
+points. `picker.lua` owns one scratch floating window and its page stack, with
+shared work/unit navigation for library works and examples. It owns no reading
+resources. Native `vim.ui.input` supplies the local directory prompt; there is no
+custom path editor or global UI override.
+
+There is one active reading session. Selecting another unit closes its
+presentation and retains the previous ordinary buffer; file-backed units reuse
+Neovim's buffer registry. Examples reuse an ordinary temporary buffer per
+reference path within the process. The picker keeps only their buffer handles;
+a wiped buffer is replaced on selection. Neither view knows about manifests,
+library paths, installation, or persistence.
+
+Closing preserves unsaved edits with `bufhidden=hide`, so ordinary quit/delete
+protections continue to apply. Closing forgets the reading session; only `:Lilt`
+chooses content. Ghost/Split commands switch an active presentation and otherwise
+direct the user to `:Lilt`. There is no durable session or cursor registry;
 saved files are the only persistent reading state.
 
 ## Boundaries and lifecycle

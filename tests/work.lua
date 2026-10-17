@@ -103,7 +103,7 @@ local function run()
     not pcall(work.read_unit, reading, reading.units[1]),
     'opening must recheck symlink boundary'
   )
-  local sample = work.load('samples')
+  local sample = work.load('examples/alice')
   assert(
     sample.author == 'Lewis Carroll' and sample.units[1].path == 'alice.txt',
     'sample manifest'

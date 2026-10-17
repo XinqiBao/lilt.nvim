@@ -288,7 +288,7 @@ def native_edit_tests():
                 nvim.command("wincmd k")
             win = nvim.current.window
             input_keys(":edit " + str(path) + "<CR>")
-            check(nvim.current.window == win and nvim.current.buffer.name == str(path),
+            check(nvim.current.window == win and Path(nvim.current.buffer.name).resolve() == path.resolve(),
                   "native edit keeps focus in the repurposed " + view + " pane")
             check(nvim.current.buffer[:] == ["Other writing"] and not floats(),
                   "repurposed window displays the new file without presentation resources")

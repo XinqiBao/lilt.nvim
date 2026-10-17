@@ -203,7 +203,8 @@ local function run()
   end
   keys('jl')
   assert(
-    api.nvim_buf_get_name(0) == home .. '/manuscripts/second/2.txt',
+    vim.uv.fs_realpath(api.nvim_buf_get_name(0))
+      == vim.uv.fs_realpath(home .. '/manuscripts/second/2.txt'),
     'other units must remain readable'
   )
   lilt.close()

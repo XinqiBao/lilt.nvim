@@ -78,7 +78,8 @@ local function run()
   session.close()
   local original = open(path)
   assert(
-    original ~= buf and api.nvim_buf_get_name(original) == path,
+    original ~= buf
+      and vim.uv.fs_realpath(api.nvim_buf_get_name(original)) == vim.uv.fs_realpath(path),
     'unit must retain its original file association after :saveas'
   )
   api.nvim_win_close(api.nvim_get_current_win(), true)

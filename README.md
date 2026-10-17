@@ -7,13 +7,11 @@ writing and offers quiet feedback as you go. Your manuscript is an ordinary
 buffer: use your own editing habits, undo, redo, and saving. There are no scores,
 timed exercises, typing mappings, or automatic corrections.
 
-![Real Neovim: Ghost typing, a typo hint and correction, then independent browsing in Split](assets/demo.gif)
+![Real Neovim: choose an Example, type in Ghost, correct a typo, and browse in Split](assets/demo.gif)
 
 In Ghost, the subdued reference recedes as you type. Pause on a mistake in
 Normal mode for a local hint, then correct it with ordinary editing commands.
 Switch to Split to browse ahead without moving your manuscript.
-
-![Split View: protected reference above the same manuscript, with separate pane labels](assets/split.png)
 
 ## Install
 
@@ -113,8 +111,9 @@ a work and reading unit, even when there is only one:
 - [The Tyger](examples/tyger/): Blake's short verse lines and six stanzas.
 - [Fables](examples/fables/): two brief Aesop selections for trying unit navigation.
 
-Each unit gets an unnamed editable manuscript, reused within this Neovim process. Wiping that buffer starts
-fresh; nothing is written into the plugin installation. Save manually with
+Each unit gets an unnamed editable manuscript, reused within this Neovim
+process. Wiping that buffer starts fresh; nothing is written into the plugin
+installation. Save manually with
 `:write /path/to/file.txt` if desired (create its parents first). The example
 still reuses that buffer in this process, but does not automatically reopen the
 saved file in a later process. To make Alice durable in the library, add the

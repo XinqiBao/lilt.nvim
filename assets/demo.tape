@@ -15,11 +15,21 @@ Set TypingSpeed 70ms
 Set CursorBlink false
 
 Hide
-Type@0ms `nvim --clean -i NONE --cmd "set rtp^=." -c 'runtime plugin/lilt.lua' -c 'set termguicolors showtabline=0 noruler noshowcmd laststatus=2' -c Lilt -c 'lua vim.api.nvim_feedkeys("Glll", "xt", false)'`
+Type@0ms `demo_root=$(mktemp -d) && XDG_DATA_HOME="$demo_root/data" XDG_STATE_HOME="$demo_root/state" XDG_CACHE_HOME="$demo_root/cache" nvim --clean -i NONE --cmd "set rtp^=." -c 'set termguicolors showtabline=0 noruler noshowcmd laststatus=2'; rm -rf "$demo_root"`
 Enter
 Sleep 1s
 Show
-Sleep 800ms
+Type@100ms ":Lilt"
+Enter
+Sleep 1s
+Type "G"
+Sleep 300ms
+Enter
+Sleep 1200ms
+Enter
+Sleep 1200ms
+Enter
+Sleep 1s
 Type "iAlice wax beginning to get very tired"
 Sleep 500ms
 Escape
@@ -36,7 +46,6 @@ Escape
 Sleep 800ms
 
 # Both views share the real manuscript. At this width Split stacks the panes.
-# The settled frame at 19s supplies split.png; see DEVELOPING.md.
 Type@60ms ":LiltSplit"
 Enter
 Ctrl+l
@@ -60,3 +69,8 @@ Type@60ms ":LiltGhost"
 Enter
 Ctrl+l
 Sleep 1800ms
+
+Hide
+Type@0ms ":qa!"
+Enter
+Sleep 300ms

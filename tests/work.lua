@@ -108,6 +108,11 @@ local function run()
     sample.author == 'Lewis Carroll' and sample.units[1].path == 'alice.txt',
     'sample manifest'
   )
+  local examples, errors = work.discover('examples')
+  assert(#examples > 0 and #errors == 0, 'bundled works must be discoverable')
+  for _, example in ipairs(examples) do
+    work.validate(example.root)
+  end
   print('Lilt work: manifests, ordering, paths and UTF-8 passed')
 end
 local ok, err = xpcall(run, debug.traceback)

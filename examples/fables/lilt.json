@@ -1,0 +1,8 @@
+{
+  "title": "Fables (two selections)",
+  "author": "Aesop · translated by George Fyler Townsend",
+  "units": [
+    { "path": "fables/01-grapes.txt", "title": "The Fox and the Grapes" },
+    { "path": "fables/02-wind.txt", "title": "The North Wind and the Sun" }
+  ]
+}

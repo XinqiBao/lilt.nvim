@@ -61,9 +61,7 @@ are clipped to fit; the picker resizes with the terminal.
 
 The library defaults to `${XDG_DATA_HOME:-$HOME/.local/share}/lilt/` on Linux and
 macOS; an unset or relative `XDG_DATA_HOME` uses the fallback. Loading or browsing
-creates no directories. This replaces the old `~/Lilt` default without moving or
-modifying its files. Keep using an existing collection with
-`require("lilt").setup({ library = "~/Lilt" })`.
+creates no directories.
 
 No configuration is required. To choose another library directory:
 
@@ -75,7 +73,7 @@ For lazy.nvim, put the same setting in `opts = { library = "~/Books/Lilt" }`.
 
 | Command | Action |
 | --- | --- |
-| `:Lilt` | Browse works, add a local work, or try Alice |
+| `:Lilt` | Browse works, add a local work, or try Examples |
 | `:LiltGhost` | Switch the active reading to Ghost |
 | `:LiltSplit` | Switch the active reading to Split |
 | `:LiltClose` | Close the session; retain your manuscript |
@@ -109,8 +107,13 @@ block an ordinary `:qall`. Use `:w` to save or normal Neovim commands to explici
 discard changes. Lilt has no autosave or separate save command.
 
 Bundled examples are ordinary works under `examples/`. Choose **Examples**, then
-a work and reading unit, even when there is only one. Each unit gets an unnamed
-editable manuscript, reused within this Neovim process. Wiping that buffer starts
+a work and reading unit, even when there is only one:
+
+- [Alice](examples/alice/): a novel excerpt with wrapped prose and paragraph breaks.
+- [The Tyger](examples/tyger/): Blake's short verse lines and six stanzas.
+- [Fables](examples/fables/): two brief Aesop selections for trying unit navigation.
+
+Each unit gets an unnamed editable manuscript, reused within this Neovim process. Wiping that buffer starts
 fresh; nothing is written into the plugin installation. Save manually with
 `:write /path/to/file.txt` if desired (create its parents first). The example
 still reuses that buffer in this process, but does not automatically reopen the
@@ -149,5 +152,6 @@ next real character; Split marks the missing reference text.
 
 [Development and verification](DEVELOPING.md) · [Design contracts](doc/design.md)
 
-Plugin code is [MIT licensed](LICENSE). The public-domain literary work is
-[attributed separately](examples/alice/README.md).
+Plugin code is [MIT licensed](LICENSE). Literary texts are public domain in the
+United States and in life-plus-70 jurisdictions; each example's README records
+its attribution, source, and preparation.

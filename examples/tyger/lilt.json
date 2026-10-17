@@ -1,0 +1,7 @@
+{
+  "title": "The Tyger",
+  "author": "William Blake",
+  "units": [
+    { "path": "tyger.txt", "title": "The Tyger" }
+  ]
+}

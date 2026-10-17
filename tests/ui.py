@@ -25,9 +25,12 @@ def check(condition, description):
         raise AssertionError(description + "\n" + "\n".join(screen()))
 
 
-def screen():
+def screen(redraw=True):
     # Requests flush preceding input and queued redraw notifications.
-    nvim.command("redraw!")
+    # Neovim 0.11 clears inputlist choices on a forced redraw; capture their
+    # queued grid events directly while a native picker is waiting.
+    if redraw:
+        nvim.command("redraw!")
     nvim.exec_lua("vim.rpcnotify(..., 'lilt_test_flush')", nvim.channel_id, async_=True)
     def notification(method, args):
         if method == "lilt_test_flush":
@@ -81,11 +84,11 @@ def screen():
             for row in range(height)]
 
 
-def input_keys(text):
+def input_keys(text, redraw=True):
     nvim.input(text)
     # This lets Neovim process native input and scheduled resize/lifecycle work.
     nvim.exec_lua("vim.wait(20, function() return false end)")
-    return screen()
+    return screen(redraw)
 
 
 def group_at(row, col, group):
@@ -261,20 +264,21 @@ def library_tests():
             ]}), encoding="utf-8")
         home = root / "personal library"
         nvim.exec_lua("require('lilt').setup({library=...})", str(home))
-        rows = input_keys(":Lilt<CR>")
+        rows = input_keys(":Lilt<CR>", redraw=False)
         check(any("Add local work" in row for row in rows), "empty library offers local import")
         check(any("Example: Alice" in row for row in rows), "example follows import action")
         input_keys("1<CR>")
-        input_keys(str(source) + "<CR>")
-        rows = screen()
+        rows = input_keys(str(source) + "<CR>", redraw=False)
         check(any("Opening  —" in row for row in rows), "import proceeds to ordered unit selection")
         input_keys("1<CR>")
         manuscript = home / "manuscripts" / "letters" / "opening.txt"
         check(nvim.current.buffer.name == str(manuscript), "selection opens predictable named manuscript")
         buf = nvim.current.buffer.number
+        input_keys(":Lilt<CR><Esc>")
+        check(nvim.current.buffer.number == buf, "canceling selection preserves active reading")
         input_keys("iFirst<Esc>:w<CR>")
         check(manuscript.read_text(encoding="utf-8") == "First\n", "native write saves manuscript")
-        rows = input_keys(":Lilt<CR>1<CR>")
+        rows = input_keys(":Lilt<CR>1<CR>", redraw=False)
         check(any("Opening  33%" in row for row in rows), "unit picker shows saved progress")
         input_keys("2<CR>")
         second = nvim.current.buffer.number
@@ -319,6 +323,9 @@ def library_tests():
             runtime.chmod(0o755)
             for path in runtime.rglob("*"):
                 path.chmod(0o755 if path.is_dir() else 0o644)
+        input_keys(":Lilt<CR>3<CR>")
+        check(nvim.current.buffer.name == "", "example is reachable through the unified picker")
+        nvim.command("LiltClose")
         # Example works even when the configured library is unusable for writes.
         nvim.exec_lua("require('lilt').setup({library=...})", str(source / "opening.txt"))
         nvim.exec_lua("require('lilt').example()")

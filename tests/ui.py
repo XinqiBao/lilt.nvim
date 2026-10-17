@@ -393,6 +393,7 @@ def library_tests():
         check(config["width"] + 2 <= width and config["height"] + 2 <= height,
               "picker fits after narrowing and shortening the terminal")
         check(any("Examples" in row for row in rows), "native G scrolls to the final item in a short picker")
+        check(any("q/Esc back" in row for row in rows), "compact picker keeps cancellation controls readable")
         input_keys("<Esc>")
         check(not floats(), "small picker closes without resources")
         width, height = 90, 22

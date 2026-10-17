@@ -74,7 +74,7 @@ browse = function(root, example_root, installed)
     local width = math.max(1, math.min(72, vim.o.columns - 4))
     local height = math.max(1, math.min(#page.items, vim.o.lines - vim.o.cmdheight - 4))
     local footer = width >= 58 and ' j/k move · Enter/l select · h/q/Esc back/close '
-      or ' Enter select · h/q back '
+      or ' Enter · q/Esc back '
     local config = {
       relative = 'editor',
       width = width,

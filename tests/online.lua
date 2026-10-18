@@ -437,6 +437,38 @@ local function run()
   held = false
   keys('hhhq')
 
+  for _, dismiss in ipairs({
+    function()
+      api.nvim_win_close(0, true)
+    end,
+    function()
+      api.nvim_buf_delete(0, { force = true })
+    end,
+  }) do
+    lilt.open()
+    choose('Discover online')
+    choose('More results')
+    choose('Another page')
+    held = true
+    choose('Acquire and read')
+    job = jobs[#jobs]
+    local notifications = #messages
+    job.finish() -- Success is queued before the user dismisses the picker.
+    dismiss()
+    vim.wait(20, function()
+      return false
+    end)
+    assert(
+      job.killed and not vim.uv.fs_stat(home .. '/references/gutenberg-13'),
+      'native dismissal must cancel even an already queued acquisition completion'
+    )
+    assert(
+      #messages == notifications and not pcall(api.nvim_get_autocmds, { group = 'LiltPicker' }),
+      'dismissal must release resources without rendering into a destroyed window'
+    )
+    held = false
+  end
+
   -- Retry and close are real picker transitions, including a late download.
   mode = 'network-error'
   lilt.open()

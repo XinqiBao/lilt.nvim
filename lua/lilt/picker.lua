@@ -453,15 +453,18 @@ browse = function(root, example_root, catalog, installed)
   api.nvim_create_autocmd({ 'WinLeave', 'BufWipeout' }, {
     group = s.group,
     buffer = s.buf,
-    callback = function()
+    callback = function(event)
+      if event.event == 'WinLeave' and s.prompt then
+        return
+      end
+      -- Cancel at the lifecycle boundary, before an already queued completion
+      -- can prepare/install a work. Window/buffer cleanup must remain deferred.
+      if s.cancel then
+        s.cancel()
+        s.cancel = nil
+      end
       vim.schedule(function()
-        if
-          active == s
-          and (
-            not api.nvim_buf_is_valid(s.buf)
-            or (not s.prompt and api.nvim_get_current_win() ~= s.win)
-          )
-        then
+        if active == s then
           close()
         end
       end)

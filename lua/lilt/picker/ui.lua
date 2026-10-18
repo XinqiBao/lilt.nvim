@@ -1,5 +1,6 @@
 -- Picker presentation and lifetime. Pages contain information and actions;
--- only actions participate in selection. Reading resources never live here.
+-- the cursor can browse both, but only actions activate.
+-- Reading resources never live here.
 local api = vim.api
 local preview = require('lilt.picker.preview')
 local M = {}
@@ -94,8 +95,19 @@ function M.new(on_close)
     end
   end
 
-  local function selectable(row)
+  local function actionable(row)
     return s.rows[row] and s.rows[row].select and not s:page().busy
+  end
+
+  -- Keep a position within an item when wrapped metadata reflows on resize.
+  local function remember()
+    local page = s:page()
+    local row = api.nvim_win_get_cursor(s.win)[1]
+    page.selected, page.offset = s.rows[row], 0
+    while row > 1 and s.rows[row - 1] == page.selected do
+      page.offset = page.offset + 1
+      row = row - 1
+    end
   end
 
   function s:render(restore)
@@ -125,13 +137,13 @@ function M.new(on_close)
       vim.keymap.del('n', key, { buffer = self.buf })
     end
     self.shortcuts = {}
-    local lines, marks, selected = {}, {}, nil
+    local lines, marks, selected, selected_end = {}, {}, nil, nil
     self.rows = {}
     local function row(text, item)
       lines[#lines + 1] = text
       self.rows[#lines] = item
-      if item == page.selected and item.select then
-        selected = #lines
+      if item == page.selected then
+        selected, selected_end = selected or #lines, #lines
       end
       if item.hl or not item.select then
         marks[#marks + 1] = { #lines - 1, item.hl or 'Comment' }
@@ -167,6 +179,9 @@ function M.new(on_close)
     end
     if #lines == 0 then
       lines = { '' }
+    end
+    if selected then
+      selected = math.min(selected + (page.offset or 0), selected_end)
     end
     page.height = page.height or #lines
     local height = math.min(page.height, room)
@@ -245,7 +260,6 @@ function M.new(on_close)
     end
     vim.wo[self.win].wrap = false
     vim.wo[self.win].linebreak = true
-    vim.wo[self.win].cursorline = not page.busy
     if restore and page.view then
       api.nvim_win_call(self.win, function()
         vim.fn.winrestview(page.view)
@@ -253,24 +267,26 @@ function M.new(on_close)
     end
     if not selected then
       for i in ipairs(lines) do
-        if selectable(i) then
+        if actionable(i) then
           selected = i
           break
         end
       end
     end
     api.nvim_win_set_cursor(self.win, { selected or 1, 0 })
-    self:update_preview()
+    self:update_cursor()
   end
 
-  function s:update_preview()
-    self.preview:show(self.rows[api.nvim_win_get_cursor(self.win)[1]], self.preview_config)
+  function s:update_cursor()
+    remember()
+    vim.wo[self.win].cursorline = actionable(api.nvim_win_get_cursor(self.win)[1]) and true or false
+    self.preview:show(self:page().selected, self.preview_config)
   end
 
   local function save()
     local page = s:page()
     if page and s.win and api.nvim_win_is_valid(s.win) then
-      page.selected = s.rows[api.nvim_win_get_cursor(s.win)[1]]
+      remember()
       page.view = api.nvim_win_call(s.win, vim.fn.winsaveview)
     end
   end
@@ -369,13 +385,6 @@ function M.new(on_close)
     vim.cmd.startinsert({ bang = true })
   end
 
-  local function move(row)
-    api.nvim_win_set_cursor(s.win, { row, 0 })
-    M.attempt(function()
-      s:update_preview()
-    end)
-  end
-
   local function activate()
     M.attempt(function()
       local page = s:page()
@@ -390,17 +399,6 @@ function M.new(on_close)
       activate()
     end, { buffer = s.buf, silent = true })
   end
-  for key, direction in pairs({ gg = 1, G = -1 }) do
-    vim.keymap.set('n', key, function()
-      local row = direction == 1 and 1 or #s.rows
-      while row > 0 and row <= #s.rows and not selectable(row) do
-        row = row + direction
-      end
-      if selectable(row) then
-        move(row)
-      end
-    end, { buffer = s.buf, silent = true })
-  end
   for _, key in ipairs({ 'h', '<BS>', '<Left>' }) do
     vim.keymap.set('n', key, function()
       s:back()
@@ -411,20 +409,21 @@ function M.new(on_close)
       s:close()
     end, { buffer = s.buf, silent = true })
   end
-  for key, direction in pairs({ j = 1, k = -1, ['<Down>'] = 1, ['<Up>'] = -1 }) do
+  for key, motion in pairs({
+    j = 'j',
+    k = 'k',
+    ['<Down>'] = 'j',
+    ['<Up>'] = 'k',
+    gg = 'gg',
+    G = 'G',
+  }) do
     vim.keymap.set('n', key, function()
-      local row = api.nvim_win_get_cursor(s.win)[1]
-      for _ = 1, vim.v.count1 do
-        local next_row = row + direction
-        while next_row > 0 and next_row <= #s.rows and not selectable(next_row) do
-          next_row = next_row + direction
-        end
-        if not selectable(next_row) then
-          break
-        end
-        row = next_row
-      end
-      move(row)
+      -- Preserve native counts and scrolling, then synchronize immediately;
+      -- CursorMoved may be deferred while Neovim processes a batch of input.
+      vim.cmd('normal! ' .. (vim.v.count > 0 and tostring(vim.v.count) or '') .. motion)
+      M.attempt(function()
+        s:update_cursor()
+      end)
     end, { buffer = s.buf, silent = true })
   end
   api.nvim_create_autocmd('CursorMoved', {
@@ -434,11 +433,8 @@ function M.new(on_close)
       if s.closed or not s.win or not api.nvim_win_is_valid(s.win) or s.input then
         return
       end
-      local row = api.nvim_win_get_cursor(s.win)[1]
-      vim.wo[s.win].cursorline = selectable(row) and true or false
-      s:page().selected = s.rows[row]
       M.attempt(function()
-        s:update_preview()
+        s:update_cursor()
       end)
     end,
   })

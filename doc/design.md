@@ -17,10 +17,14 @@ example buffer handles. `picker/discover.lua` owns online navigation; it uses
 the `online/` modules without involving reading views. `picker/ui.lua` owns the
 scratch float, selection, page stack, search editor, and request lifetime.
 
-Menu rows distinguish informational text from actions. Movement skips headings;
-native scrolling can still inspect metadata on short terminals. Detail text is
-bounded and wraps with the window. Duplicate local titles show directory names
-only when needed to distinguish them. Unit percentages report saved rows.
+Menu rows distinguish informational text from actions. Native line movement
+reaches every row, including headings, metadata, and blank separators; gg/G
+reach the first/last line. Only actions activate and receive cursor-line
+highlighting. Initial focus prefers an action, but returning, cancelling search,
+and resizing retain the cursor item and its wrapped-line offset (clamped when
+text reflows). Detail text is bounded and wraps with the window. Duplicate local
+titles show directory names only when needed to distinguish them. Unit
+percentages report saved rows.
 Action-local shortcut keys are displayed with their labels and active only on
 that page; busy pages disable actions. q/Escape exits from any menu, while
 h/Backspace goes back. Escape in the search editor cancels only the input.
@@ -37,6 +41,7 @@ last selection's text, and puts at most one viewport of physical rows in the
 protected scratch buffer. Source paths and UTF-8 still receive the normal
 validation. Read failures appear in the preview without notification spam and
 leave navigation usable. Leaving the unit list releases the preview resources.
+Moving onto information replaces the excerpt with a prompt to select a unit.
 It never opens a manuscript or comparison. Online details never download text
 for previews.
 

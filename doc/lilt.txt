@@ -25,8 +25,8 @@ independent of your manuscript. Use CTRL-W commands to move and resize panes.
 
 PICKER                                                       *lilt-picker*
 
-j/k, Up/Down     Move between actions, skipping headings and metadata.
-gg/G             Select the first/last action.
+j/k, Up/Down     Move through all text rows, including headings and metadata.
+gg/G             Go to the first/last line. Counts address a specific line.
 Enter, l, Right  Select an action.
 h, BS, Left      Go back; close at the library page.
 q, Escape        Quit the Picker from any menu.
@@ -36,7 +36,9 @@ s                Edit a catalog search while in Discover.
 a / o            Acquire / open the local copy, from work details.
 r                Retry a failed request.
 
-Action shortcuts appear beside their labels. Enter still selects every action.
+Only actions receive a cursor-line highlight and respond to Enter/l/Right.
+Headings and metadata are informational; activating them does nothing. Pages
+initially focus an action. Action shortcuts appear beside their labels.
 Escape inside the search editor cancels only that input.
 
 Selecting a unit automatically shows its opening reference text in a passive,

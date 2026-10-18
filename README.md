@@ -76,8 +76,9 @@ small JSON manifest, text preparation, validation, attribution, and sharing.
 The path prompt uses native directory completion with Tab.
 
 The picker is a centered float: `j/k` or arrows move, `Enter` / `l` selects,
-`h` / Backspace returns, and `q` / `Esc` quits from any menu. `gg/G` selects
-the first/last action. Shortcuts appear beside actions: `d` discover, `a` add,
+`h` / Backspace returns, and `q` / `Esc` quits from any menu. `gg/G` goes to
+the first/last line. Titles and metadata can be reached with the cursor;
+Enter acts only on actions. Shortcuts appear beside actions: `d` discover, `a` add,
 `e` examples; in Discover, `s` searches and `[` / `]` changes pages. Details
 offer `a` to acquire or `o` to open a library copy; `r` retries a failed request.
 
@@ -88,8 +89,8 @@ ones, and hides when space is limited. Focus stays on the list; Enter starts
 reading. Previewing never opens a manuscript or changes progress. Online details
 use metadata until you acquire the text.
 
-Titles are clipped to fit and the picker resizes with the terminal. `j/k` skip
-headings and metadata. See `:help lilt` for commands, controls, and saving.
+Titles are clipped to fit and the picker resizes with the terminal.
+See `:help lilt` for commands, controls, and saving.
 
 The library defaults to `${XDG_DATA_HOME:-$HOME/.local/share}/lilt/` on Linux and
 macOS; an unset or relative `XDG_DATA_HOME` uses the fallback. Loading or browsing

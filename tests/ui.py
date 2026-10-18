@@ -317,7 +317,7 @@ def library_tests():
         (source / "opening.txt").write_text("First line.\n\nLast line.\n", encoding="utf-8")
         (source / "reply.txt").write_text("Reply.\n", encoding="utf-8")
         (source / "lilt.json").write_text(json.dumps({
-            "title": "Letters", "units": [
+            "title": "Letters", "author": "A writer with a long biographical name " * 5, "units": [
                 {"title": "Opening", "path": "opening.txt"},
                 {"title": "Reply", "path": "reply.txt"},
             ]}), encoding="utf-8")
@@ -363,11 +363,25 @@ def library_tests():
         check(config["width"] + 2 <= width and config["height"] + 2 <= height and len(floats()) == 1,
               "small terminals prioritize the unit list")
         check("Opening" in nvim.current.buffer[nvim.current.window.cursor[0] - 1], "resize preserves unit selection")
+        rows = input_keys("G")
+        check(not any("A writer" in row for row in rows), "unit scrolling can hide the work metadata")
+        rows = input_keys("99k")
+        check(nvim.current.window.cursor[0] == 1 and any("Letters" in row for row in rows),
+              "upward movement brings the work title back into view")
+        menu_buf = nvim.current.buffer.number
+        input_keys("<CR>l<Right>")
+        check(nvim.current.buffer.number == menu_buf and not nvim.current.window.options["cursorline"],
+              "work metadata is navigable but does not activate or highlight as an action")
         check(not (home / "manuscripts").exists(), "preview leaves manuscripts and progress untouched")
+        author_row = next(row for row, line in enumerate(nvim.current.buffer[:], 1) if "A writer" in line)
+        nvim.current.window.cursor = (author_row, 0)
+        input_keys("j")
         width, height = 90, 22
         nvim.ui_try_resize(width, height)
         input_keys("")
-        input_keys("l")
+        check(nvim.current.window.cursor[0] == author_row + 1 and not nvim.current.window.options["cursorline"],
+              "resize restores the cursor within wrapped metadata without selecting an action")
+        choose("Opening")
         manuscript = home / "manuscripts" / "letters" / "opening.txt"
         check(nvim.current.buffer.name == str(manuscript), "selection opens predictable named manuscript")
         buf = nvim.current.buffer.number
@@ -511,6 +525,13 @@ def online_tests():
             check(nvim.exec_lua("return #_G.lilt_test_requests") == requests, "cancelled search sends no request")
             check(nvim.current.window.cursor == previous[0] and nvim.funcs.winsaveview()["topline"] == previous[1],
                   "cancelled search restores selection and scroll")
+            input_keys("2gg")  # the informational Order heading
+            metadata_view = (nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"])
+            input_keys("s<Esc>")
+            check(nvim.current.window.cursor == metadata_view[0]
+                  and nvim.funcs.winsaveview()["topline"] == metadata_view[1]
+                  and not nvim.current.window.options["cursorline"],
+                  "cancelled search also restores an informational row")
             choose("Test Letters")
             input_keys("h")
             check(nvim.exec_lua("return #_G.lilt_test_requests") == requests, "details back retains loaded results")
@@ -518,8 +539,28 @@ def online_tests():
             choose("Test Letters")
             rows = screen()
             check(any("gutenberg.org/ebooks/11" in row for row in rows), "selection exposes canonical provenance")
+            width, height = 40, 10
+            nvim.ui_try_resize(width, height)
+            rows = input_keys("G")
+            check(not any("Test Letters" in row for row in rows), "short details window scrolls the title out of view")
+            rows = input_keys("99k")
+            check(nvim.current.window.cursor[0] == 1 and any("Test Letters" in row for row in rows),
+                  "upward movement restores the online work title")
+            menu_buf = nvim.current.buffer.number
+            input_keys("<CR>l<Right>")
+            check(nvim.exec_lua("return #_G.lilt_test_requests") == requests
+                  and nvim.current.buffer.number == menu_buf,
+                  "activating online metadata neither acquires nor leaves the details")
+            rows = input_keys("<Down>")
+            check(any("Author: A. Writer" in row for row in rows) and not nvim.current.window.options["cursorline"],
+                  "arrow movement can inspect online metadata")
+            input_keys("<Up>")
+            check(nvim.current.window.cursor[0] == 1, "up arrow reaches the online title")
+            width, height = 90, 22
+            nvim.ui_try_resize(width, height)
+            input_keys("")
             detail_size = nvim.api.win_get_config(nvim.current.window.handle)
-            rows = input_keys("ggl")
+            rows = input_keys("a")
             pending_size = nvim.api.win_get_config(nvim.current.window.handle)
             check(any("Downloading" in row for row in rows), "acquisition progress stays visible")
             check((detail_size["width"], detail_size["height"]) == (pending_size["width"], pending_size["height"]),

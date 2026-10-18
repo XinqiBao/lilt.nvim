@@ -102,6 +102,11 @@ local function run()
     api.nvim_get_current_win() == win and api.nvim_get_current_buf() == buf,
     'repeated open must reuse picker'
   )
+  keys('ggeh')
+  assert(
+    api.nvim_win_get_cursor(0)[1] == 1 and not vim.wo.cursorline,
+    'return from a shortcut restores an informational cursor position'
+  )
   keys('Gll')
   assert(find('Unit 2'), 'first example has ordered units')
   local width = api.nvim_win_get_width(0)
@@ -144,6 +149,22 @@ local function run()
   picker.open(home, example_root)
   keys('GljlG')
   assert(selected('Unit 24'), 'G navigates a long chapter list')
+  local unit_buf = api.nvim_get_current_buf()
+  assert(vim.fn.winsaveview().topline > 1, 'long unit list scrolls past work metadata')
+  keys('99k')
+  assert(
+    api.nvim_win_get_cursor(0)[1] == 1 and selected('B letters'),
+    'upward movement can return to the work title'
+  )
+  keys('<CR>l<Right>')
+  assert(api.nvim_get_current_buf() == unit_buf, 'information rows do not activate reading')
+  assert(not vim.wo.cursorline, 'information rows do not look actionable')
+  keys('2j')
+  assert(api.nvim_win_get_cursor(0)[1] == 3, 'movement counts include information rows')
+  keys('2gg')
+  assert(api.nvim_win_get_cursor(0)[1] == 2, 'counted gg addresses a text row')
+  keys('3G')
+  assert(api.nvim_win_get_cursor(0)[1] == 3, 'counted G addresses a text row')
   keys('ggh')
   assert(selected('B letters'), 'back restores work selection')
   keys('<Esc>')

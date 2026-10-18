@@ -45,6 +45,8 @@ Picker checks cover XDG configuration, multiple example works/units, back
 navigation, temporary manuscripts, automatic reference excerpts, and cleanup.
 The UI suite drives the floating search editor and native path prompt, exercises
 preview placement and terminal resizing, and resumes in a second process.
+Navigation regressions bring scrolled work metadata back into view and check
+that informational cursor positions survive resizing and search cancellation.
 Tests use temporary files and an embedded Neovim; no display server is needed.
 The UI notification loop also has a deadline and reports the screen on assertion
 failures. Positive hint checks poll for the visible float; absence checks wait

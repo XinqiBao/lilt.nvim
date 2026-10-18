@@ -26,7 +26,7 @@ _G.Writer = function(doc)
     error('Lilt: EPUB conversion requires Pandoc 3.1.1 or newer')
   end
   doc = doc:walk({
-    -- Images stay in the archived EPUB. Never fetch linked assets or turn
+    -- Images remain in the input EPUB. Never fetch linked assets or turn
     -- alt text into mysterious reference text or chapter-name fragments.
     Image = function()
       return {}

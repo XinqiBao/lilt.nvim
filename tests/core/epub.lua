@@ -54,7 +54,7 @@ local function run()
   assert(not err, tostring(err))
   assert(
     #units == 3 and units[2].title == 'The letter — 第一封信' and units[3].title == 'A reply',
-    'units use structured multilingual headings, not prose or illustration captions'
+    'units follow EPUB spine order and structural headings, not archive order or captions'
   )
   local text = table.concat(units[2].lines, '\n')
   assert(
@@ -82,6 +82,18 @@ local function run()
       and not all:find('Full distribution license', 1, true)
       and not all:find('Not a chapter title', 1, true),
     'distribution boilerplate and image placeholders stay out of reading text'
+  )
+  err, units = converted(source, false)
+  assert(not err, tostring(err))
+  local unfiltered = {}
+  for _, unit in ipairs(units) do
+    vim.list_extend(unfiltered, unit.lines)
+  end
+  unfiltered = table.concat(unfiltered, '\n')
+  assert(
+    unfiltered:find('distribution header', 1, true)
+      and unfiltered:find('Full distribution license', 1, true),
+    'without an explicit filter even Gutenberg markers remain ordinary source content'
   )
   err, units = converted(source, true, filter)
   assert(not err, tostring(err))

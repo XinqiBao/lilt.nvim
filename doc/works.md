@@ -87,6 +87,11 @@ imperfect source headings can still limit the result. `plain_quotes` changes onl
 `“ ” ‘ ’` in reference text to keyboard quotes, after parsing. It does not rewrite
 unit labels or other punctuation. Local conversion makes no language assumption.
 
+Source cleanup is opt-in: `filter = "/path/source-filter.lua"` passes a Pandoc Lua
+filter supplied by the caller. No filter or source detection is enabled by
+default; Gutenberg's distribution markers are required only by its acquisition
+filter. The scripts in `pandoc/` run inside Pandoc, not Neovim.
+
 ## Validation
 
 From Neovim with Lilt on the runtime path:

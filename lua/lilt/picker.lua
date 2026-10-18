@@ -73,9 +73,26 @@ local function browse(root, example_root, catalog, installed)
             and (progress_error and '?' or progress and (progress .. '%') or '—')
           or nil,
         select = read,
+        preview = function()
+          -- No manuscript is opened and no comparison/session is involved.
+          s:push({
+            title = 'Preview · ' .. unit.title,
+            text = work.read_unit(reading, unit),
+            read = read,
+            height = 20,
+          })
+        end,
       }
     end
-    s:push({ title = reading.title, items = items })
+    s:push({
+      title = reading.title,
+      items = items,
+      preview = function(item)
+        if item and item.preview then
+          item.preview()
+        end
+      end,
+    })
   end
 
   local function work_items(works, temporary)

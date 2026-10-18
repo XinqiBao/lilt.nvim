@@ -10,7 +10,7 @@ timed exercises, typing mappings, or automatic corrections.
 Browse, search for, and acquire literary works from Project Gutenberg directly
 in Neovim, or bring your own collection.
 
-![Real Neovim: choose an Example, type in Ghost, correct a typo, and browse in Split](assets/demo.gif)
+![Real Neovim: choose a work, preview its text, type in Ghost, and browse in Split](assets/demo.gif)
 
 In Ghost, the subdued reference recedes as you type. Pause on a mistake in
 Normal mode for a local hint, then correct it with ordinary editing commands.
@@ -77,7 +77,11 @@ The path prompt uses native directory completion with Tab.
 
 The picker is a centered float: `j/k` move, `Enter` or `l` selects, and `h`,
 `Esc`, or `q` goes back (or closes at the library page). `gg/G` selects the
-first/last action. Selecting a work shows its ordered units and saved progress.
+first/last action. Selecting a work shows its ordered units and saved progress. Press `p` on a unit
+to preview its local reference in the same float. The preview is read-only: use
+native scrolling and search, Enter to read, or back to return to the unit list.
+Previewing never opens a manuscript or changes progress. Online details use
+metadata until you acquire the text.
 
 Titles are clipped to fit and the picker resizes with the terminal. `j/k` skip
 headings and metadata.

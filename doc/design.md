@@ -22,6 +22,14 @@ native scrolling can still inspect metadata on short terminals. Detail text is
 bounded and wraps with the window. Duplicate local titles show directory names
 only when needed to distinguish them. Unit percentages report saved rows.
 
+A unit preview replaces the list in the same float with protected reference
+text, starts at the beginning, and supports native scrolling/search. Back restores
+the list selection and viewport. A side pane would narrow both documents and
+need focus/resize rules; an always-visible lower pane would shorten the list.
+The on-demand document avoids those costs. Preview reads the selected local
+reference through `work.read_unit`; it never opens a manuscript or comparison.
+Online details never download text for previews.
+
 Catalog search edits one line in the existing float and preserves the results
 behind it until submission. Native `vim.ui.input` supplies the local directory
 prompt, preserving path completion; there is no global UI override. Queries,

@@ -278,7 +278,9 @@ def picker_session_tests(buf):
                       "picker cancellation preserves unsaved manuscript")
         nvim.current.window = user
         check(nvim.funcs.undotree()["seq_cur"] == undo, "picker leaves native undo history intact")
-    input_keys(":Lilt<CR>ll")
+    input_keys(":Lilt<CR>lp")
+    check(nvim.api.buf_get_lines(buf, 0, -1, False) == text, "preview during reading preserves unsaved writing")
+    input_keys("h<CR>")
     check(nvim.current.buffer.number == buf and nvim.current.buffer[:] == text,
           "selecting the active unit reuses its unsaved buffer")
 
@@ -334,6 +336,27 @@ def library_tests():
         choose("Add local work")
         rows = input_keys(str(source) + "<CR>")
         check(any("Opening" in row and "—" in row for row in rows), "import proceeds to ordered unit selection")
+        preview_win = nvim.current.window
+        rows = input_keys("p")
+        check(nvim.current.window == preview_win and len(floats()) == 1, "preview reuses the focused picker float")
+        check(nvim.current.buffer[:] == ["First line.", "", "Last line."], "preview preserves the local reference rows")
+        check(nvim.current.buffer.options["readonly"] and not nvim.current.buffer.options["modifiable"],
+              "unit preview is read-only")
+        input_keys("/Last<CR>")
+        check(nvim.current.window.cursor[0] == 3, "preview supports native text search")
+        width, height = 24, 8
+        nvim.ui_try_resize(width, height)
+        rows = input_keys("")
+        config = nvim.api.win_get_config(preview_win.handle)
+        check(config["width"] + 2 <= width and config["height"] + 2 <= height,
+              "preview fits a small terminal")
+        check(nvim.current.window.options["wrap"], "small preview wraps the reference")
+        input_keys("<Esc>")
+        check("Opening" in nvim.current.buffer[nvim.current.window.cursor[0] - 1], "preview returns to the selected unit")
+        check(not (home / "manuscripts").exists(), "preview leaves manuscripts and progress untouched")
+        width, height = 90, 22
+        nvim.ui_try_resize(width, height)
+        input_keys("")
         input_keys("l")
         manuscript = home / "manuscripts" / "letters" / "opening.txt"
         check(nvim.current.buffer.name == str(manuscript), "selection opens predictable named manuscript")

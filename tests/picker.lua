@@ -150,6 +150,64 @@ local function run()
   assert(api.nvim_get_current_win() == origin, 'back/close restores original focus')
   no_picker()
 
+  -- Preview is a local reference document, with no manuscript or reading state.
+  local reference = { 'Beginning — 文学 🐇', '', 'Third physical row.' }
+  for i = 4, 60 do
+    reference[i] = 'Reference row ' .. i
+  end
+  local preview_path = example_root .. '/second/24.txt'
+  vim.fn.writefile(reference, preview_path)
+  picker.open(home, example_root)
+  keys('GljlG')
+  local list_win = api.nvim_get_current_win()
+  local list_view = vim.fn.winsaveview()
+  local listed = vim.fn.getbufinfo({ buflisted = 1 })
+  keys('p')
+  assert(api.nvim_get_current_win() == list_win, 'preview reuses the picker window')
+  assert(
+    vim.deep_equal(lines(), reference),
+    'preview preserves Unicode, blank rows and full local text'
+  )
+  assert(api.nvim_win_get_cursor(0)[1] == 1, 'preview starts at the beginning')
+  assert(
+    vim.bo.readonly and not vim.bo.modifiable and vim.bo.buftype == 'nofile',
+    'preview is protected scratch text'
+  )
+  assert(
+    not pcall(api.nvim_buf_set_lines, 0, 0, 1, false, { 'changed' }),
+    'preview rejects editing'
+  )
+  assert(#vim.fn.getbufinfo({ buflisted = 1 }) == #listed, 'preview creates no ordinary buffers')
+  assert(vim.fn.isdirectory(home) == 0, 'preview never writes progress or manuscripts')
+  keys('G')
+  assert(api.nvim_win_get_cursor(0)[1] == #reference, 'preview supports native full-text browsing')
+  keys('h')
+  assert(
+    selected('Unit 24') and vim.fn.winsaveview().topline == list_view.topline,
+    'preview back restores selection and list scrolling'
+  )
+  keys('p<CR>')
+  assert(
+    vim.bo.buftype == '' and lines()[1] == '',
+    'Enter in preview opens a fresh ordinary manuscript'
+  )
+  require('lilt').close()
+  assert(
+    vim.deep_equal(vim.fn.readfile(preview_path), reference),
+    'preview and reading leave the source intact'
+  )
+  -- A failed preview leaves the unit list usable and cannot open a manuscript.
+  vim.fn.writefile({ '\255' }, preview_path, 'b')
+  picker.open(home, example_root)
+  keys('GljlGp')
+  assert(
+    selected('Unit 24') and vim.bo.buftype == 'nofile',
+    'invalid preview stays on the selected unit'
+  )
+  keys('hhh')
+  no_picker()
+  vim.fn.writefile(reference, preview_path)
+
   local open_win = api.nvim_open_win
   api.nvim_open_win = function()
     error('picker initialization failure')
@@ -247,7 +305,10 @@ local function run()
     not table.concat(lines(), '\n'):find('[second]', 1, true),
     'unique titles do not need identifiers'
   )
-  keys('hh')
+  choose('[third]')
+  keys('p')
+  assert(lines()[1] == 'Reference 1', 'duplicate titles select their own local work')
+  keys('hhhh')
   no_picker()
   print('Lilt picker: XDG, hierarchy, multiple examples, buffer reuse and cleanup passed')
 end

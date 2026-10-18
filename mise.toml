@@ -2,3 +2,4 @@
 "aqua:JohnnyMorganz/StyLua" = "2.6.0"
 "aqua:Kampfkarren/selene" = "0.32.0"
 uv = "0.12.22"
+"aqua:jgm/pandoc" = "3.8.3"

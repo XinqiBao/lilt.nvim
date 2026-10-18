@@ -7,9 +7,12 @@ import subprocess
 import sys
 import tempfile
 
+from fixtures.epub import write_epub
+
 SUITES = {
     "compare": "core/compare.lua",
     "work": "core/work.lua",
+    "epub": "core/epub.lua",
     "gutenberg": "core/gutenberg.lua",
     "library": "core/library.lua",
     "manuscript": "editor/manuscript.lua",
@@ -34,12 +37,16 @@ def main():
         for name in ("CONFIG", "DATA", "STATE", "CACHE"):
             env["XDG_" + name + "_HOME"] = str(Path(directory) / name.lower())
         env["NVIM_APPNAME"] = "lilt-tests"
+        fixture = Path(directory) / "source.epub"
+        write_epub(fixture)
+        env["LILT_TEST_EPUB"] = str(fixture)
         commands = [
             [args.nvim, "--version"],
             ["stylua", "--version"],
             ["selene", "--version"],
-            ["stylua", "--check", "lua", "plugin", "tests"],
-            ["selene", "lua", "plugin", "tests"],
+            ["pandoc", "--version"],
+            ["stylua", "--check", "lua", "plugin", "pandoc", "tests"],
+            ["selene", "lua", "plugin", "pandoc", "tests"],
         ]
         for suite in args.suite or SUITES:
             path = "tests/" + SUITES[suite]

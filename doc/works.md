@@ -57,6 +57,35 @@ replace references after transcription begins, insert unrelated notes in a
 manuscript, or expect Lilt to repair extra/missing rows. There is no migration or
 cross-line alignment. Comparison uses UTF-8 codepoints, not full grapheme layout.
 
+## Convert a local EPUB
+
+With [Pandoc 3.1.1+](https://pandoc.org/installing.html) on `PATH`, convert an EPUB
+without network access:
+
+```lua
+require("lilt.import.epub").prepare("/path/book.epub", "/path/new-work", {
+  title = "Book title",
+  author = "Author", -- optional
+  plain_quotes = true, -- optional; default preserves source punctuation
+}, function(err, work)
+  assert(not err, err)
+  print(work.root)
+end)
+```
+
+The destination must not exist and its parent must exist. Conversion creates
+`lilt.json` and numbered UTF-8 reference files, validates the complete work, and
+removes its output on failure. The input EPUB is unchanged. The returned function
+cancels conversion. Add the resulting directory through **Add local work…**;
+conversion does not install it or touch manuscripts. Retain your source EPUB and
+any required credits/license separately.
+
+Titles follow structural headings; prose wraps at 72 columns, while explicit
+verse and preformatted breaks remain. Images are omitted. CSS-only layout and
+imperfect source headings can still limit the result. `plain_quotes` changes only
+`“ ” ‘ ’` in reference text to keyboard quotes, after parsing. It does not rewrite
+unit labels or other punctuation. Local conversion makes no language assumption.
+
 ## Validation
 
 From Neovim with Lilt on the runtime path:

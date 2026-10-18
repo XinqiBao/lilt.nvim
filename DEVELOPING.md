@@ -1,8 +1,8 @@
 # Developing Lilt
 
 Reading needs only **Neovim 0.11.0 or newer**; online discovery also requires
-`curl` on `PATH`. For development,
-[mise](https://mise.jdx.dev/) pins StyLua, Selene, and uv in
+`curl` on `PATH`. Local EPUB conversion uses Pandoc 3.1.1+. For development,
+[mise](https://mise.jdx.dev/) pins StyLua, Selene, Pandoc, and uv in
 [mise.toml](mise.toml). It deliberately leaves Neovim on your own `PATH`.
 [uv](https://docs.astral.sh/uv/) manages the test-only Python interpreter in
 [.python-version](.python-version) and the isolated `.venv`; mise does not manage
@@ -40,11 +40,12 @@ a second package manager.
 
 `tests/run.py` runs formatting, static analysis, and all suites in isolated XDG
 directories. Each subprocess has a 60-second deadline. No display server or live
-catalog service is required.
+catalog service is required. It builds the tiny EPUB fixture from the inspectable
+XHTML/package sources in `tests/fixtures/`; conversion tests run the actual Pandoc.
 
 | Location | Responsibility |
 | --- | --- |
-| `tests/core/` | Comparison contracts, work validation, library files, Gutenberg preparation |
+| `tests/core/` | Comparison contracts, work validation, library files, local EPUB conversion |
 | `tests/editor/` | Manuscripts, session lifecycle/cache, Picker navigation, online acquisition |
 | `tests/ui.py` | Attached redraw grids, highlights, floats, native prompts, resize/focus, process restart |
 | `tests/fixtures/` | Shared literary source text |
@@ -53,7 +54,7 @@ catalog service is required.
 Run selected suites through the same isolated entry point:
 
 ```sh
-mise exec -- .venv/bin/python tests/run.py --suite picker --suite online
+mise exec -- .venv/bin/python tests/run.py --suite epub --suite online
 mise exec -- .venv/bin/python tests/run.py --suite ui --nvim /path/to/nvim
 ```
 
@@ -87,7 +88,7 @@ and select its executable for that run:
 mise exec -- .venv/bin/python tests/run.py --nvim /path/to/nvim-linux-x86_64/bin/nvim
 ```
 
-Format Lua with `mise exec -- stylua lua plugin tests`. Selene uses Lua 5.1 and a
+Format Lua with `mise exec -- stylua lua plugin pandoc tests`. Selene uses Lua 5.1 and a
 small declaration of Neovim's `vim` global; LuaLS is optional editor tooling.
 Hosted checks are in [Verify](https://github.com/XinqiBao/lilt.nvim/actions/workflows/verify.yml).
 

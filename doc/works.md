@@ -145,3 +145,27 @@ a name chosen with `:saveas`. Using `:saveas` does not change the reading unit's
 library association: later selection still derives the original manuscript path.
 An explicit `:write other/path.txt` is an ordinary Neovim export; create that
 other path's parents yourself.
+
+## Online acquisition
+
+Lilt uses [Gutendex](https://gutendex.com/) for the Project Gutenberg catalog and
+Gutenberg's [PGLAF mirror](https://www.gutenberg.org/MIRRORS.ALL) for text files.
+No account, API key, Python, EPUB converter, or UI dependency is needed. Acquired
+works become ordinary library works named `gutenberg-<id>`, available offline.
+Acquiring one again opens the existing copy; references and manuscripts are never
+updated or overwritten. Each copy records its source in `lilt.json` and
+`README.txt`, and retains the original download, credits, and license in
+`SOURCE.txt`.
+
+Only works cataloged as public domain in the USA with plain text are supported.
+Check copyright in your country before downloading or sharing. Source editions
+vary: Lilt preserves text and indentation, wraps long unindented lines, and uses
+recognizable headings and paragraph breaks for units. Poetry/drama identified by
+catalog subjects keeps even long lines intact. These layout heuristics can miss
+chapter boundaries or wrap long verse embedded in prose. Plain-text
+illustration labels and emphasis marks remain; images and EPUB/HTML conversion
+are unsupported. Missing text boundaries or invalid encoding fail safely.
+Requests have a 45-second timeout and a 12 MiB size limit. Gutendex is a separate,
+best-effort service; unavailable catalog entries or mirror files can be retried
+later. Its maintainers recommend hosting your own server for long-term use;
+optionally set `catalog = "https://your-gutendex-server"` in `setup()` to use one.

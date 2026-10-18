@@ -1,6 +1,7 @@
 # Developing Lilt
 
-Ordinary plugin users need only **Neovim 0.11.0 or newer**. For development,
+Reading needs only **Neovim 0.11.0 or newer**; online discovery also requires
+`curl` on `PATH`. For development,
 [mise](https://mise.jdx.dev/) pins StyLua, Selene, and uv in
 [mise.toml](mise.toml). It deliberately leaves Neovim on your own `PATH`.
 [uv](https://docs.astral.sh/uv/) manages the test-only Python interpreter in

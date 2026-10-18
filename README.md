@@ -7,6 +7,9 @@ writing and offers quiet feedback as you go. Your manuscript is an ordinary
 buffer: use your own editing habits, undo, redo, and saving. There are no scores,
 timed exercises, typing mappings, or automatic corrections.
 
+Browse, search for, and acquire literary works from Project Gutenberg directly
+in Neovim, or bring your own collection.
+
 ![Real Neovim: choose an Example, type in Ghost, correct a typo, and browse in Split](assets/demo.gif)
 
 In Ghost, the subdued reference recedes as you type. Pause on a mistake in
@@ -39,8 +42,9 @@ is required.
 
 ## Start reading
 
-Run `:Lilt`. Choose a library work, then a chapter. For a first try, choose
-**Examples** → **Alice’s Adventures in Wonderland (sample)** → its reading unit.
+Run `:Lilt` to discover online works, open your library, or try the bundled
+examples. For a first try without downloading anything, choose **Examples** →
+**Alice’s Adventures in Wonderland (sample)** → its reading unit.
 Press `i` and copy the reference, pressing Enter at its physical line breaks,
 including blank paragraph rows.
 Your usual motions, operators, search, and undo work on what you have typed;
@@ -53,27 +57,11 @@ to the previous results. Select a work to inspect its title, authors, languages,
 subjects, and source, then choose **Acquire and read** and a reading unit.
 Downloads run asynchronously; back or close cancels, and failures offer retry.
 
-Lilt uses [Gutendex](https://gutendex.com/) for the Project Gutenberg catalog and
-Gutenberg's [PGLAF mirror](https://www.gutenberg.org/MIRRORS.ALL) for text files.
-No account, API key, Python, EPUB converter, or UI dependency is needed. Acquired
-works become ordinary library works named `gutenberg-<id>`, available offline.
-Acquiring one again opens the existing copy; references and manuscripts are never
-updated or overwritten. Each copy records its source in `lilt.json` and
-`README.txt`, and retains the original download, credits, and license in
-`SOURCE.txt`.
-
-Only works cataloged as public domain in the USA with plain text are supported.
-Check copyright in your country before downloading or sharing. Source editions
-vary: Lilt preserves text and indentation, wraps long unindented lines, and uses
-recognizable headings and paragraph breaks for units. Poetry/drama identified by
-catalog subjects keeps even long lines intact. These layout heuristics can miss
-chapter boundaries or wrap long verse embedded in prose. Plain-text
-illustration labels and emphasis marks remain; images and EPUB/HTML conversion
-are unsupported. Missing text boundaries or invalid encoding fail safely.
-Requests have a 45-second timeout and a 12 MiB size limit. Gutendex is a separate,
-best-effort service; unavailable catalog entries or mirror files can be retried
-later. Its maintainers recommend hosting your own server for long-term use;
-optionally set `catalog = "https://your-gutendex-server"` in `setup()` to use one.
+Acquired works join your local library and remain available offline. No account
+or API key is needed, and acquiring a work again opens the existing copy without
+changing its reference or your writing. Check copyright in your country before
+downloading or sharing. See [Online acquisition](doc/works.md#online-acquisition)
+for sources, text preparation, and service limits.
 
 For a prepared local collection, choose **Add local work…** and enter its work
 directory. Lilt validates and copies it into the library’s `references/`, then

@@ -64,9 +64,10 @@ updated or overwritten. Each copy records its source in `lilt.json` and
 
 Only works cataloged as public domain in the USA with plain text are supported.
 Check copyright in your country before downloading or sharing. Source editions
-vary: Lilt preserves text, indentation, and existing line breaks, wraps long
-unindented prose, and uses recognizable headings and paragraph breaks for units.
-Poetry/drama identified by catalog subjects keeps its lines intact. Plain-text
+vary: Lilt preserves text and indentation, wraps long unindented lines, and uses
+recognizable headings and paragraph breaks for units. Poetry/drama identified by
+catalog subjects keeps even long lines intact. These layout heuristics can miss
+chapter boundaries or wrap long verse embedded in prose. Plain-text
 illustration labels and emphasis marks remain; images and EPUB/HTML conversion
 are unsupported. Missing text boundaries or invalid encoding fail safely.
 Requests have a 45-second timeout and a 12 MiB size limit. Gutendex is a separate,

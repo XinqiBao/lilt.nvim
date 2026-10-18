@@ -176,6 +176,60 @@ local function run()
   )
   local start_marker = '*** START OF THE PROJECT GUTENBERG EBOOK TEST ***'
   local end_marker = '*** END OF THE PROJECT GUTENBERG EBOOK TEST ***'
+  -- Moby Dick's unindented, blank-separated contents used to become dozens
+  -- of tiny fake chapters. Even wrapped entries must remain in the front matter.
+  local contents = {
+    start_marker,
+    '',
+    'MOBY-DICK;',
+    '',
+    'By Herman Melville',
+    '',
+    'CONTENTS',
+    '',
+    'CHAPTER 1. Loomings.',
+    '',
+    'CHAPTER 2. The Carpet-Bag.',
+    '',
+    'CHAPTER 56. Of the Less Erroneous Pictures of Whales, and the True',
+    'Pictures of Whaling Scenes.',
+    '',
+    '',
+    'CHAPTER 1. Loomings.',
+    '',
+    'Call me Ishmael.',
+    '',
+    '',
+    'CHAPTER 2. The Carpet-Bag.',
+    '',
+    'I stuffed a shirt or two into my old carpet-bag.',
+    '',
+    end_marker,
+  }
+  local chapters = prep.prepare(contents, 'Moby Dick')
+  assert(
+    #chapters == 3
+      and chapters[2].title == 'CHAPTER 1. Loomings.'
+      and chapters[3].title == 'CHAPTER 2. The Carpet-Bag.',
+    'blank-separated contents entries must not create chapter units'
+  )
+  local expected, actual = {}, {}
+  for i = 2, #contents - 1 do
+    if contents[i]:find('%S') then
+      expected[#expected + 1] = contents[i]
+    end
+  end
+  for _, chapter in ipairs(chapters) do
+    for _, row in ipairs(chapter.lines) do
+      if row:find('%S') then
+        actual[#actual + 1] = row
+      end
+    end
+  end
+  assert(
+    vim.deep_equal(expected, actual),
+    'contents and body lines must remain intact and in order'
+  )
   for _, bad in ipairs({
     {},
     { 'no markers' },

@@ -18,7 +18,8 @@ local function heading(lines, i)
   if blank(line) or #line > 160 or not blank(lines[i - 1]) then
     return false
   end
-  -- A following blank distinguishes body headings from most tables of contents.
+  -- A following blank allows a separate subtitle, but is not enough to rule
+  -- out tables of contents (Moby Dick puts a blank after every entry).
   if not blank(lines[i + 1]) and not blank(lines[i + 2]) then
     return false
   end
@@ -29,7 +30,9 @@ local function heading(lines, i)
     or upper:match('^BOOK%s+[IVX%d]')
     or upper:match('^PART%s+[IVX%d]')
   then
-    return 'section'
+    -- Prefer paragraph-based parts to false chapters in compact/ambiguous
+    -- layouts. Gutenberg's body chapters normally have extra blank padding.
+    return blank(lines[i - 2]) and 'section'
   end
   -- Isolated capitals also cover individual poems. Require generous spacing so
   -- speakers, verse lines, and lists of contents do not become spurious units.

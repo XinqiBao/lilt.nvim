@@ -35,10 +35,12 @@ text, including front matter, contents, notes, and illustration labels. Credits
 and the license survive in the verbatim original. Preparation preserves layout
 and wraps only long unindented lines without tabular spacing, except in works
 cataloged as poetry/drama. Recognizable section headings and isolated capitals
-provide unit titles; after chapter/act structure begins, embedded capitals stay
-inside that structure. Sections are divided near 300 physical rows at paragraph
-breaks, avoiding tiny tails. Unit-edge blank padding is omitted. These are plain
-text heuristics, not semantic reconstruction of an EPUB.
+provide unit titles; extra blank padding before headings avoids treating
+blank-separated contents entries as chapters. Compact or unrecognized layouts
+fall back to paragraph-based parts. After chapter/act structure begins, embedded
+capitals stay inside that structure. Sections divide near 300 physical rows at
+paragraph breaks, avoiding tiny tails. Unit-edge blank padding is omitted. These
+are plain text heuristics, not semantic reconstruction of an EPUB.
 
 Gutendex offers popular/newest ordering, title/author search, subjects and
 pagination without credentials. The public host has no documented rate quota or

@@ -2,26 +2,27 @@
 
 **Read at your own rhythm.**
 
-Read literature by retyping it in Neovim. Lilt places the passage beside your
-writing and offers quiet feedback as you go. Your manuscript is an ordinary
-buffer: use your own editing habits, undo, redo, and saving. There are no scores,
-timed exercises, typing mappings, or automatic corrections.
+Read literature by retyping it in Neovim. Lilt shows the passage alongside your
+writing, with quiet feedback as you go. Your manuscript stays an ordinary buffer:
+edit, undo, and save as usual.
 
-Find literature through [Gutendex](https://gutendex.com/), acquire texts from
-[Project Gutenberg](https://www.gutenberg.org/), or bring your own collection.
+![Choose a work, preview its text, type in Ghost, and browse in Split](assets/demo.gif)
 
-![Real Neovim: choose a work, preview its text, type in Ghost, and browse in Split](assets/demo.gif)
+## Features
 
-In Ghost, the subdued reference recedes as you type. Pause on a mistake in
-Normal mode for a local hint, then correct it with ordinary editing commands.
-Switch to Split to browse ahead without moving your manuscript.
+- **Ghost:** untyped text recedes as you type. Pause over a mistake in Normal mode
+  for a local hint; correct it with your usual editing commands.
+- **Split:** browse or search the complete reference beside your manuscript.
+- **Library:** find works online, add a local collection, or try bundled
+  examples. Preview a chapter before opening it.
+- **Manuscripts:** save and resume chapters as plain text. Switching views or
+  chapters preserves unsaved edits and native undo history.
 
 ## Install
 
-Requires **Neovim 0.11.0 or newer**. Online discovery also needs `curl` on `PATH`.
-Local reading needs no external tools or `setup()` call.
+Requires **Neovim 0.11.0+**. No setup call is required.
 
-With [lazy.nvim](https://github.com/folke/lazy.nvim), add this plugin spec:
+[lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
 {
@@ -30,167 +31,70 @@ With [lazy.nvim](https://github.com/folke/lazy.nvim), add this plugin spec:
 }
 ```
 
-With [vim-plug](https://github.com/junegunn/vim-plug), add this inside your
-`plug#begin()` / `plug#end()` block, run `:PlugInstall`, and restart Neovim:
+[vim-plug](https://github.com/junegunn/vim-plug):
 
 ```vim
 Plug 'XinqiBao/lilt.nvim'
 ```
 
-Other plugin managers work too. No particular Neovim configuration or distribution
-is required.
+## Usage
 
-## Start reading
+Run `:Lilt` and choose a work and unit. **Examples** offers an offline first try.
+Retype the passage following its physical line breaks, including blank rows.
 
-Run `:Lilt` to discover online works, open your library, or try the bundled
-examples. For a first try without downloading anything, choose **Examples** →
-**Alice’s Adventures in Wonderland (sample)** → its reading unit.
-Press `i` and copy the reference, pressing Enter at its physical line breaks,
-including blank paragraph rows.
-Your usual motions, operators, search, and undo work on what you have typed;
-comparison never changes it.
+To build a personal library, choose **Discover online…**, browse or search for a
+work, then choose **Acquire and read**. For your own texts, choose **Add local
+work…** and enter a [prepared work directory](doc/works.md). The path prompt
+supports native directory completion with Tab.
 
-To build your collection, choose **Discover online…**. **Popular** orders by
-Gutenberg downloads; **Newest** orders by the latest catalog IDs. **Poetry** and
-**Short stories** browse popular works in those topics. Choose **Search title or
-author…** (or press `s`) to edit a query inside the float; Enter searches and
-Escape cancels. An empty query returns to Popular.
-
-**Next page** and **Previous page** keep the current query. Changing a query,
-preset, or page replaces the results; back returns to the library. Selecting a
-work opens its details from the title, followed by source and availability.
-Back from details restores your result selection and scrolling.
-Choose **Acquire and read** (or press `a`), then a unit.
-Downloads run asynchronously; back or close cancels, and failures offer retry.
-
-Acquired works join your local library and remain available offline. No account
-or API key is needed, and acquiring a work again opens the existing copy without
-changing its reference or your writing. Check copyright in your country before
-downloading or sharing. See [Online acquisition](doc/works.md#online-acquisition)
-for sources, text preparation, and service limits.
-
-For a prepared local collection, choose **Add local work…** and enter its work
-directory. Lilt validates and copies it into the library’s `references/`, then
-offers its chapters. The source directory can be moved or deleted afterwards. Existing work
-names are never overwritten. See [Preparing a Lilt work](doc/works.md) for the
-small JSON manifest, text preparation, validation, attribution, and sharing.
-The path prompt uses native directory completion with Tab.
-
-The picker is a centered float: `j/k` or arrows move, `Enter` / `l` selects,
-`h` / Backspace returns, and `q` / `Esc` quits from any menu. `gg/G` goes to
-the first/last line. Titles and metadata can be reached with the cursor;
-Enter acts only on actions. Shortcuts appear beside actions: `d` discover, `a` add,
-`e` examples; in Discover, `s` searches and `[` / `]` changes pages. Details
-offer `a` to acquire or `o` to open a library copy; `r` retries a failed request.
-
-Selecting a work shows its ordered units and saved progress. Moving between
-units automatically previews the opening reference text beside the list.
-The read-only preview stays on the right in wide terminals, below in narrower
-ones, and hides when space is limited. Focus stays on the list; Enter starts
-reading. Previewing never opens a manuscript or changes progress. Online details
-use metadata until you acquire the text.
-
-Titles are clipped to fit and the picker resizes with the terminal.
-See `:help lilt` for commands, controls, and saving.
-
-The library defaults to `${XDG_DATA_HOME:-$HOME/.local/share}/lilt/` on Linux and
-macOS; an unset or relative `XDG_DATA_HOME` uses the fallback. Loading or browsing
-creates no directories.
-
-No configuration is required. To choose another library directory:
-
-```lua
-require("lilt").setup({ library = "~/Books/Lilt" })
-```
-
-For lazy.nvim, put the same setting in `opts = { library = "~/Books/Lilt" }`.
+The Picker uses native line motions. Enter / `l` selects an action, `h` /
+Backspace goes back, and `q` / Esc quits. Shortcuts appear beside their actions.
 
 | Command | Action |
 | --- | --- |
-| `:Lilt` | Browse the library, discover online works, add a local work, or try Examples |
+| `:Lilt` | Open the library Picker |
 | `:LiltGhost` | Switch the active reading to Ghost |
 | `:LiltSplit` | Switch the active reading to Split |
-| `:LiltClose` | Close the session; retain your manuscript |
+| `:LiltClose` | Close the presentation; retain your writing |
 
-**Ghost** blends the remaining reference into your writing and displays future
-lines below it. Earlier unfinished lines stay visible. Mistakes receive subtle
-highlights; pause on one in Normal mode for about 250 ms to see an Expected /
-Typed hint. Moving, editing, or leaving the window dismisses it. Future reference
-lines are virtual: use Split to navigate or search ahead.
+### Save and resume
 
-**Split** opens a protected reference pane beside your manuscript when both fit,
-or above it at narrower widths. The panes wrap and scroll independently. Use
-native `<C-w>` commands to move or resize them. Resizing preserves your chosen
-view and layout. Requesting the active view again focuses the manuscript and
-keeps your layout and reference position.
+- **Library works:** use `:w`. In a later Neovim process, select the same work and
+  chapter through `:Lilt` to resume. Percentages count saved lines, not correctness;
+  unsaved edits are excluded.
+- **Examples:** manuscripts are temporary. Add an example directory as a local
+  work for persistent progress.
 
-## Keep your writing
+Lilt does not autosave. Closing a session retains unsaved writing.
 
-For library works, **save with `:w`**. Each chapter opens a normal named buffer
-under `<library>/manuscripts/<work>/<unit-path>`. Parent directories are created on
-write; opening a chapter does not create a manuscript file. Quit normally, then
-run `:Lilt` and select the same chapter in a later Neovim process to continue.
-Chapter percentages count saved lines, including blank rows; `—` means no saved
-manuscript. Unsaved edits are not included in progress.
+## Configuration
 
-Both views share that manuscript. Switching chapters or using `:LiltClose`
-retains loaded buffers and their native undo histories. Find them with `:ls` and
-`:buffer N`. Reopen reading content through `:Lilt`; Ghost/Split only switch an
-active presentation. Closing a session does not save; modified hidden manuscripts still
-block an ordinary `:qall`. Use `:w` to save or normal Neovim commands to explicitly
-discard changes. Lilt has no autosave or separate save command.
+The library follows
+[XDG data directory conventions](https://specifications.freedesktop.org/basedir/latest/).
+To override its location:
 
-Bundled examples are ordinary works under `examples/`. Choose **Examples**, then
-a work and reading unit, even when there is only one:
+```lua
+require("lilt").setup({
+  library = "~/Books/Lilt",
+})
+```
 
-- [Alice](examples/alice/): a novel excerpt with wrapped prose and paragraph breaks.
-- [The Tyger](examples/tyger/): Blake's short verse lines and six stanzas.
-- [Fables](examples/fables/): two brief Aesop selections for trying unit navigation.
+## Online sources
 
-Each unit gets an unnamed editable manuscript, reused within this Neovim
-process. Wiping that buffer starts fresh; nothing is written into the plugin
-installation. Save manually with
-`:write /path/to/file.txt` if desired (create its parents first). The example
-still reuses that buffer in this process, but does not automatically reopen the
-saved file in a later process. To make Alice durable in the library, add the
-plugin's `examples/alice/` directory as a local work.
+- **curl** on `PATH` for online discovery and acquisition. No account or API key.
+- [Gutendex](https://gutendex.com/) supplies the searchable catalog. Literary texts
+  come from [Project Gutenberg](https://www.gutenberg.org/) through its designated
+  PGLAF mirror. Acquired works remain available offline.
 
-Reading opens in a separate tab. Closing an owned window or replacing its buffer
-ends the session. Unrelated windows and buffers survive.
+Check copyright in your country before downloading or sharing. Downloads retain
+the original credits and license in `SOURCE.txt`; see [sources and redistribution
+terms](doc/works.md#online-acquisition). Lilt is an independent client; Project
+Gutenberg is a registered trademark. The plugin’s [MIT license](LICENSE) applies
+to its code, separately from literary texts. Each bundled example records its
+source and preparation in its own README.
 
-## Current limits
+## Further reading
 
-- Follow the reference’s physical line breaks. Extra or missing rows shift
-  subsequent comparisons; there is no reflow or cross-line alignment. Keep references and
-  their paths stable after starting; unrelated notes and reformatting are
-  unsupported. Punctuation matters.
-- Ghost works best with **75 usable columns** for this sample. Narrower windows
-  can clip reference text, and a short manuscript limits native scrolling. Split
-  provides the full, browsable reference.
-- Comparison works with UTF-8 codepoints. Repeated text can have ambiguous
-  alignments; feedback cannot infer your intent. Complex graphemes and arbitrary
-  tab or wide-character layout are outside the bundled English passage's scope.
-
-## Appearance
-
-Highlights follow your colorscheme and respect explicit overrides:
-
-| Feedback | Highlight group / default link |
-| --- | --- |
-| Untyped reference | `LiltPending` → `Comment` |
-| Replacement | `LiltError` → `DiagnosticError` |
-| Extra authored text | `LiltExtra` → `DiagnosticWarn` |
-| Missing text | `LiltMissing` → `DiagnosticUnderlineWarn` |
-
-Equal text uses the normal foreground. For an omission, Ghost underlines the
-next real character; Split marks the missing reference text.
-
-[Development and verification](DEVELOPING.md) · [Design contracts](doc/design.md)
-
-Plugin code is [MIT licensed](LICENSE). Lilt is independent of Gutendex and
-Project Gutenberg; Project Gutenberg is a registered trademark. Text copyright
-and redistribution terms are separate from the plugin's license. See
-[Online acquisition](doc/works.md#online-acquisition) before sharing downloads.
-Bundled literary texts are public domain in the United States and in
-life-plus-70 jurisdictions; each example's README records its attribution, source,
-and preparation.
+- `:help lilt` — controls, library location, configuration, appearance, and limits.
+- [Preparing a work](doc/works.md) — manifests, text layout, importing, and sharing.
+- [Development](DEVELOPING.md) · [Design contracts](doc/design.md).

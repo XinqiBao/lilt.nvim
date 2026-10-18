@@ -2,7 +2,6 @@
 
 Fables traditionally attributed to Aesop (ancient Greece), in George Fyler
 Townsend's (1814–1900) English translation, *Three Hundred Æsop's Fables*.
-Two brief reading units demonstrate ordered navigation and nested unit paths.
 
 Text sources are these Wikisource transcriptions of George Routledge and Sons
 editions, checked when preparing the sample:
@@ -22,6 +21,3 @@ editions are in the public domain in the United States and in countries with
 a life-plus-70-year copyright term. No modern translation, illustrations, or
 editorial material is included. The plugin's MIT code license does not
 relicense the literary text.
-
-Open through `:Lilt` → **Examples**, or add this directory as a local work for
-persistent library manuscripts. Examples never write into this directory.

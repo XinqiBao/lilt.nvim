@@ -7,7 +7,7 @@ Requires Neovim 0.11 or newer; online discovery also requires curl on PATH.
 START                                                        *lilt-start*
 
 Run :Lilt. Choose Examples, a work, and a reading unit for an offline first try.
-Press i and copy the reference, including its physical line and paragraph breaks.
+Retype the reference, preserving its physical line and paragraph breaks.
 Examples retain temporary manuscripts for this Neovim process. To keep progress
 across processes, acquire a work online or add a prepared local work to the library.
 
@@ -79,13 +79,13 @@ that export does not make the example resume automatically in a later process.
 
 SETUP                                                        *lilt-setup*
 
-No setup call is required. Default library:
-    ${XDG_DATA_HOME:-$HOME/.local/share}/lilt/
-An unset or relative XDG_DATA_HOME uses the fallback. Browsing creates no files.
-Optional overrides: >lua
-    require('lilt').setup({ library = '~/Books/Lilt' })
-    -- Optional self-hosted Gutendex server:
-    require('lilt').setup({ catalog = 'https://your-gutendex-server' })
+No setup call is required. The library follows XDG data directory conventions
+(XDG_DATA_HOME/lilt). Optional overrides: >lua
+    require('lilt').setup({
+      library = '~/Books/Lilt',
+      -- Optional self-hosted Gutendex server:
+      -- catalog = 'https://your-gutendex-server',
+    })
 <
 Highlights respect explicit overrides and follow your colorscheme:
     LiltPending   Comment

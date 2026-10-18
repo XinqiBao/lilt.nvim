@@ -2,9 +2,9 @@
 
 A work is a self-contained directory with a `lilt.json` manifest and plain UTF-8
 reference files. It can hold a poem, essay, novel, or any ordered collection of
-reading units. JSON uses Neovim's built-in parser; Lilt needs no TOML dependency.
+reading units.
 
-For example, prepare this directory:
+Example layout:
 
 ```text
 winter-letters/
@@ -27,26 +27,13 @@ winter-letters/
 }
 ```
 
-`opening.txt` might contain:
-
-```text
-The snow arrived before your letter.
-I left the lamp beside the window.
-
-Tomorrow I will write again.
-```
-
-A single poem needs only `lilt.json` and one text file, with one entry in `units`.
-
 The manifest accepts exactly these fields:
 
 - `title`: required nonempty single-line string.
 - `author`: optional nonempty single-line string.
 - `source`: optional object with `provider`, `id`, and `url` strings. All three
   must be nonempty single-line strings; `url` must be an HTTP(S) URL. This is
-  portable attribution, not a download or synchronization instruction. Online
-  acquisitions use, for example, `{"provider":"Project Gutenberg","id":"11",
-  "url":"https://www.gutenberg.org/ebooks/11"}`.
+  portable attribution, not a download or synchronization instruction.
 - `units`: required nonempty array, in reading order. Each object has a required
   `title` and `path`. Titles follow the same rule as the work title.
 - `path`: unique, relative reference-file path using `/`. No empty components,
@@ -70,11 +57,6 @@ replace references after transcription begins, insert unrelated notes in a
 manuscript, or expect Lilt to repair extra/missing rows. There is no migration or
 cross-line alignment. Comparison uses UTF-8 codepoints, not full grapheme layout.
 
-For an AI assistant, a suitable request is: “Prepare this permitted source as a
-self-contained Lilt work following doc/works.md. Preserve the text and paragraph
-breaks, choose readable physical line lengths, record the actual source and
-license in README.md, and validate the directory. Do not invent source claims.”
-
 ## Validation
 
 From Neovim with Lilt on the runtime path:
@@ -92,7 +74,7 @@ reference bodies; opening a reading unit validates that selected text.
 ## Personal library and sharing
 
 The library contains ordinary user-owned files; its configurable location and
-XDG default are described in the [README](../README.md#start-reading):
+XDG default are described in the [README](../README.md#configuration):
 
 ```text
 <library>/
@@ -154,8 +136,7 @@ Gutendex serves Project Gutenberg metadata; it does not supply Lilt's downloaded
 texts. Those come from Gutenberg's designated
 [PGLAF mirror](https://www.gutenberg.org/MIRRORS.ALL). Project Gutenberg's
 volunteers provide the digitized literary works and source credits.
-No account, API key, Python, EPUB converter, or UI dependency is needed. Acquired
-works become ordinary library works named `gutenberg-<id>`, available offline.
+Acquired works become ordinary library works named `gutenberg-<id>`, available offline.
 Acquiring one again opens the existing copy; references and manuscripts are never
 updated or overwritten. Each copy records its source in `lilt.json` and
 `README.txt`, and retains the original download, credits, and license in
@@ -180,4 +161,4 @@ are unsupported. Missing text boundaries or invalid encoding fail safely.
 Requests have a 45-second timeout and a 12 MiB size limit. Gutendex is a separate,
 best-effort service; unavailable catalog entries or mirror files can be retried
 later. Its maintainers recommend hosting your own server for long-term use;
-optionally set `catalog = "https://your-gutendex-server"` in `setup()` to use one.
+set `catalog` to its HTTPS URL (see `:help lilt-setup`).

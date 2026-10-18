@@ -30,6 +30,14 @@ local function run()
     'manuscript directory must be rejected'
   )
   local native_completion = vim.fn.exists('+autocomplete') == 1
+  local filetypes = {}
+  api.nvim_create_autocmd('FileType', {
+    pattern = 'text',
+    callback = function(event)
+      filetypes[event.buf] = (filetypes[event.buf] or 0) + 1
+      vim.bo[event.buf].textwidth = 60
+    end,
+  })
   local original_buffer = api.nvim_get_current_buf()
   local default_completion, original_completion
   if native_completion then
@@ -38,6 +46,7 @@ local function run()
     api.nvim_set_option_value('autocomplete', true, { scope = 'global' })
   end
   local buf = open(path)
+  assert(vim.bo[buf].textwidth == 0, 'manuscripts must keep native typing free of autoformatting')
   if native_completion then
     assert(not vim.bo[buf].autocomplete, 'manuscripts must disable native automatic completion')
     assert(
@@ -58,6 +67,10 @@ local function run()
   local second = open(root .. '/02.txt')
   api.nvim_buf_set_lines(second, 0, -1, false, { 'Other writing' })
   assert(open(path) == buf, 'switching must reuse an unsaved buffer')
+  assert(
+    filetypes[buf] == 1 and vim.bo[buf].textwidth == 0,
+    'resuming must not repeat filetype initialization or reset manuscript options'
+  )
   assert(api.nvim_buf_get_lines(buf, 0, -1, false)[1] == 'A first', 'switch lost unsaved edits')
   assert(vim.fn.undotree().seq_cur == undo, 'switch changed undo history')
   local ok, err = pcall(vim.cmd, 'bdelete')

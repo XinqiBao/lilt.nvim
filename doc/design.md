@@ -106,7 +106,10 @@ saved files are the only persistent reading state.
 ## Boundaries and lifecycle
 
 `manuscript.lua` prepares ordinary named or temporary buffers, reusing Neovim's
-buffer registry for files and creating parents on native writes. `session.lua`
+buffer registry for files and creating parents on native writes. Filetype and
+typing options are initialized once; resuming preserves the buffer's settings.
+Lilt uses native buffer options for its writing environment and does not manage
+third-party completion plugins. `session.lua`
 accepts an explicit manuscript buffer and reference snapshot; it coordinates
 buffer attachment, view changes, and window-option restoration. Ghost owns its
 presentation, hint timer, float, and autocmds. Split owns its reference buffer and

@@ -52,6 +52,8 @@ The UI notification loop also has a deadline and reports the screen on assertion
 failures. Positive hint checks poll for the visible float; absence checks wait
 through the relevant delay.
 
+Gutenberg preparation checks run independently of network and Picker setup,
+protecting body text, word boundaries, layout, and meaningful unit boundaries.
 Online checks replace only the process boundary with controlled catalog/text
 fixtures. They cover pagination, floating search, failures/retry, cancellation and
 late callbacks, text fidelity, provenance, installation, duplicate acquisition,
@@ -79,6 +81,7 @@ Individual suites remain directly runnable from the root:
 ```sh
 mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/compare.lua
 mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/work.lua
+mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/gutenberg.lua
 mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/library.lua
 mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/reading.lua
 mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/picker.lua

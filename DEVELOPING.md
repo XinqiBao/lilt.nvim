@@ -42,6 +42,9 @@ a second package manager.
 directories. Each subprocess has a 60-second deadline. No display server or live
 catalog service is required. It builds the tiny EPUB fixture from the inspectable
 XHTML/package sources in `tests/fixtures/`; conversion tests run the actual Pandoc.
+The navigation fixture covers distinct source labels, nested/alias targets and
+colliding filenames. The bundled XML parser and license are in `pandoc/vendor/`;
+Selene excludes upstream code, while conversion tests exercise it end to end.
 
 | Location | Responsibility |
 | --- | --- |

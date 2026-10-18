@@ -34,7 +34,7 @@ local function converted(path, plain_quotes, source_filter)
   if result.err then
     assert(not vim.uv.fs_stat(destination), 'failed conversion left a partial work')
   end
-  return result.err, units
+  return result.err, units, result.reading
 end
 local function run()
   vim.fn.mkdir(root, 'p')
@@ -105,6 +105,101 @@ local function run()
     'English quote conversion leaves other punctuation and letters intact'
   )
   assert(bytes(source) == original, 'conversion mutated EPUB')
+
+  local samples = vim.fn.fnamemodify(source, ':h')
+  local reading
+  err, units, reading = converted(samples .. '/nav.epub', false)
+  assert(not err, tostring(err))
+  local group = assert(reading.toc and reading.toc[1], 'authored navigation retained')
+  assert(group.title == 'Collected letters' and not group.unit, 'non-actionable grouping')
+  local second, first, alias = unpack(group.children)
+  assert(
+    second.title == 'Second letter' and first.title == 'First letter',
+    'source TOC order and labels'
+  )
+  assert(
+    first.unit ~= second.unit and alias.unit == first.unit,
+    'full paths distinguish equal basenames; aliases share units'
+  )
+  assert(first.unit == reading.units[1], 'navigation order never reorders spine content')
+  assert(first.children[1].title == 'Internal section', 'nested section target')
+  assert(
+    first.children[3].unit
+      and table
+        .concat(work.read_unit(reading, first.children[3].unit), '\n')
+        :find('A retained table', 1, true),
+    'table anchors enter at intact table blocks'
+  )
+  assert(
+    first.children[1].unit == first.children[2].unit,
+    'inline target enters at intact enclosing paragraph'
+  )
+  assert(
+    #group.children == 3,
+    'unlinked leaves, image-only, missing and external targets are omitted'
+  )
+  assert(
+    table.concat(work.read_unit(reading, first.unit), '\n'):find('FIRST PRINTED HEADING', 1, true),
+    'TOC label does not rewrite the printed heading'
+  )
+  all = table.concat(
+    vim.tbl_map(function(unit)
+      return table.concat(unit.lines, '\n')
+    end, units),
+    '\n'
+  )
+  assert(select(2, all:gsub('Opening paragraph', '')) == 1, 'aliases never duplicate body text')
+  assert(
+    all:find('Before the inline target', 1, true) and all:find('Readable material absent', 1, true),
+    'inline prefixes and unlisted text remain intact'
+  )
+  assert(not all:find('{#', 1, true), 'navigation identifiers stay out of reference text')
+  assert(
+    not all:find('Nonlinear supplement', 1, true),
+    'nonlinear supplements remain outside the reading order'
+  )
+  for _, mode in ipairs({ 'broken-nav', 'unusable-nav' }) do
+    err, units, reading = converted(samples .. '/' .. mode .. '.epub', false)
+    assert(not err and reading.toc[1].title == 'NCX collection', 'unusable nav falls back to NCX')
+    if mode == 'broken-nav' then
+      assert(
+        reading.import_warnings and #reading.import_warnings == 1,
+        'malformed navigation reports one recoverable import note'
+      )
+    end
+    assert(reading.toc[1].children[1].title == 'NCX internal section', 'NCX nesting retained')
+  end
+  err, units, reading = converted(samples .. '/unlabelled.epub', false)
+  assert(
+    not err and reading.toc[1].title == 'Second letter',
+    'unlabelled containers retain usable children without invented labels'
+  )
+  err, units, reading = converted(samples .. '/caption-label.epub', false)
+  assert(not err, tostring(err))
+  assert(
+    reading.toc[1].children[2].title == 'FIRST PRINTED HEADING',
+    'a mirrored caption is excluded structurally, without rewriting distinct authored labels'
+  )
+  assert(
+    table.concat(units[1].lines, '\n'):find('Illustration.', 1, true),
+    'caption remains body text'
+  )
+  err, units, reading = converted(samples .. '/long.epub', false)
+  assert(not err, tostring(err))
+  local chapter = reading.toc[1].children[2]
+  assert(
+    not chapter.unit and chapter.children[1].title:find('Part 1 of ', 1, true),
+    'long sections keep numbered reading parts under their source chapter'
+  )
+  assert(
+    chapter.children[1].unit and chapter.children[2].unit,
+    'technical parts resolve to ordinary units'
+  )
+  err, units, reading = converted(samples .. '/no-toc.epub', false)
+  assert(
+    not err and not reading.toc and #units > 0,
+    'missing navigation falls back to body headings'
+  )
 
   err = converted('https://example.invalid/book.epub', false)
   assert(

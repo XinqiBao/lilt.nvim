@@ -126,7 +126,7 @@ function M.acquire(root, book, callback)
         source = { provider = 'Project Gutenberg', id = tostring(book.id), url = M.url(book) },
         plain_quotes = plain_quotes,
         filter = filter,
-      }, function(prepare_error)
+      }, function(prepare_error, prepared)
         if prepare_error then
           finish(prepare_error)
           return
@@ -145,7 +145,9 @@ function M.acquire(root, book, callback)
             'Pandoc converts the EPUB reading order and headings to UTF-8 reading units.',
             'Distribution boilerplate and images are omitted from reading text.',
             'Prose wraps at 72 columns; explicit verse and preformatted line breaks are retained.',
-            'Long sections divide at paragraph breaks. Titles come from structural headings.',
+            'Source nav/NCX supplies navigation; body headings are the fallback.',
+            'Long sections divide at paragraph breaks under their source chapter.',
+            table.concat(prepared.import_warnings or {}, ' '),
             plain_quotes
                 and 'English curly quotation marks and apostrophes are converted to straight quotes.'
               or 'Source punctuation is preserved.',
@@ -155,7 +157,9 @@ function M.acquire(root, book, callback)
             'Before sharing, retain SOURCE.epub and review the source license and trademark terms:',
             'https://www.gutenberg.org/policy/license.html',
           }, directory .. '/README.txt') == 0, 'cannot write attribution')
-          return library.add(root, directory)
+          local installed = library.add(root, directory)
+          installed.import_warnings = prepared.import_warnings
+          return installed
         end)
         if ok then
           finish(nil, result)

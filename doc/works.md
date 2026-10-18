@@ -102,11 +102,31 @@ cancels conversion. Add the resulting directory through **Add local work…**;
 conversion does not install it or touch manuscripts. Retain your source EPUB and
 any required credits/license separately.
 
-Titles follow structural headings; prose wraps at 72 columns, while explicit
-verse and preformatted breaks remain. Images are omitted. CSS-only layout and
-imperfect source headings can still limit the result. `plain_quotes` changes only
-`“ ” ‘ ’` in reference text to keyboard quotes, after parsing. It does not rewrite
-unit labels or other punctuation. Local conversion makes no language assumption.
+Navigation uses EPUB 3 `toc nav`, then EPUB 2 NCX, resolving local paths and
+anchors against the cleaned text. Source labels and nesting are retained;
+unlinked groups need usable children. Missing, external, image-only, and removed
+targets are omitted. Without usable navigation, body headings remain the fallback.
+Unlisted text stays available under **Other reading units**. A target inside a
+paragraph or table opens the unit containing that intact block.
+
+The linear spine determines body order; directory aliases never duplicate text.
+Long sections get numbered reading parts beneath their source chapter. Source
+labels can differ from printed headings. When a label reproduces a heading with
+a marked illustration caption, that caption is excluded from the label and kept
+in the reference. EPUB identifiers and styling attributes are excluded from
+rendered text. Prose wraps at 72 columns; explicit verse/preformatted breaks remain.
+Images are omitted. CSS-only layout and imperfect source editing can still limit
+the result. Nonlinear resources are excluded; unsupported spine resource types
+fail conversion explicitly.
+
+Pandoc parses/renders XHTML; bundled [SLAXML](../pandoc/vendor/README.md) reads XML
+package/navigation metadata. No separate XML tool is required. Malformed navigation
+falls back to available structure; returned `work.import_warnings` reports that
+fallback. Acquired copies retain these notes in `README.txt`.
+
+`plain_quotes` changes only `“ ” ‘ ’` in reference text to keyboard quotes after
+parsing. It does not rewrite unit labels or other punctuation. Local conversion
+makes no language assumption.
 
 Source cleanup is opt-in: `filter = "/path/source-filter.lua"` passes a Pandoc Lua
 filter supplied by the caller. No filter or source detection is enabled by
@@ -218,9 +238,10 @@ Existing acquisitions and local imports are not converted.
 New acquisitions require [Pandoc 3.1.1+](https://pandoc.org/installing.html) on
 `PATH`. Lilt runs `pandoc --version` before downloading, rejecting missing,
 unusable, or older tools with installation guidance. Existing works and prepared
-local imports need no Pandoc. Pandoc reads the image-free EPUB's document order and
-structured headings. Lilt uses those headings as unit titles, without guessing
-chapter names from prose. Documents without headings use the work title; material
+local imports need no Pandoc. The EPUB's linear spine supplies
+body order, with source nav/NCX for labels and hierarchy; see [conversion](#convert-a-local-epub).
+Body headings provide a fallback, without guessing chapter names from prose.
+Documents without headings use the work title; material
 before the first heading is labeled `Front matter`. Long sections split at
 paragraph breaks with numbered parts.
 

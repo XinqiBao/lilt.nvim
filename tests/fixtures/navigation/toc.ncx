@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/">
+  <navMap>
+    <navPoint id="p">
+      <navLabel>
+        <text>NCX collection</text>
+      </navLabel>
+      <content src="one%20dir/chapter.xhtml#start"/>
+      <navPoint id="c">
+        <navLabel>
+          <text>NCX internal section</text>
+        </navLabel>
+        <content src="one%20dir/chapter.xhtml#middle"/>
+      </navPoint>
+    </navPoint>
+  </navMap>
+</ncx>

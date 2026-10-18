@@ -28,9 +28,7 @@ New pages reset the shared window's scroll. Returning, cancelling search, and
 resizing retain the cursor item and its wrapped-line offset (clamped when text
 reflows). Detail text is bounded and wraps with the window. Duplicate local
 titles show directory names only when needed to distinguish them. Unit
-percentages report saved rows. Source directory trees appear on one page with
-indented children; narrow terminals cap indentation. Unlisted units remain
-accessible after the tree.
+percentages report saved rows.
 Action-local shortcut keys are displayed with their labels and active only on
 that page; busy pages disable actions. q/Escape exits from any menu, while
 h/Backspace goes back. Escape in the search editor cancels only the input.
@@ -81,16 +79,30 @@ library installation nor manuscript paths. Metadata comes from the caller;
 exist; existing destinations are refused. Failed validation removes only output
 created by this conversion. The input is unchanged.
 
-Pandoc reads the EPUB spine/XHTML, decodes entities and owns text rendering.
-`pandoc/units.lua` is a custom writer for structural headings and reading
-units. Captions nested in headings remain in the reference but not the label.
+`pandoc/epub.lua` reads the local container with Pandoc's ZIP API and bundled
+SLAXML for package/nav/NCX XML. It sends each linear spine XHTML document through
+Pandoc's HTML reader with EPUB extensions, preserving full-path/fragment identity
+before combining documents. It never fetches or extracts resources. Source
+navigation is metadata, separate from the body. Unsupported spine resource types
+fail explicitly; nonlinear resources are excluded.
+
+`pandoc/units.lua` resolves navigation after source cleanup: usable nav takes
+precedence over NCX; otherwise structural headings supply units. Grouping,
+linked parents, aliases and different source labels survive in an optional local
+`toc`. Empty, missing or removed targets produce no action. Inline/table targets
+enter at the enclosing block, never cut text apart. Units remain ordered by
+spine, nonoverlapping, and independently accessible when absent from the TOC.
+Long sections divide near 300 rows at paragraph breaks, avoiding tiny tails;
+TOC chapters group their numbered reading parts. The Picker displays one indented
+list, caps indentation on narrow terminals, and appends unlisted reading units.
+
 There is no chapter-name matching, locale keyword list or plain-text fallback.
-Material before the first heading is Front matter; documents without headings
-use the work title. Long sections divide near 300 rows at paragraph breaks,
-avoiding tiny tails, with explicit part numbers on every segment. Prose wraps at
-72 columns; explicit verse/preformatted breaks remain. CSS-only layout can differ.
-Images are omitted without fetching assets; notes, tables and source contents
-remain text.
+Caption spans mirrored in a heading's directory label are excluded from that
+label and retained in body text. Presentation attributes/identifiers never enter
+rendered references. Prose wraps at 72 columns; explicit verse/preformatted
+breaks remain. CSS-only layout can differ. Images are omitted without fetching
+assets; notes, tables and readable source contents remain text. Malformed
+navigation falls back with import notes; it does not hide readable body text.
 
 Source cleanup is a separate Pandoc filter, `pandoc/gutenberg.lua`, supplied only
 by acquisition. It requires exactly one marked distribution header and footer;
@@ -111,6 +123,8 @@ conversion invokes Pandoc without a network preflight.
 
 Download and conversion each have a 45-second deadline. Conversion uses Pandoc's
 sandbox and a private output file, checked against 48 MiB before JSON decoding.
+Container reads are capped at 48 MiB total; metadata XML at 4 MiB and 64 levels.
+These are validation bounds, not a subprocess memory quota.
 The request's download expires when its callback returns; acquisition first
 copies it to private staging. Once conversion succeeds, acquisition moves that
 input into the work as SOURCE.epub, writes provenance, then calls `library.add`.

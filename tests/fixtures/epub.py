@@ -34,3 +34,44 @@ def write_epub(path):
 <li><a href="book.xhtml#first">The letter — 第一封信</a></li>
 <li><a href="reply.xhtml#second">A reply</a></li>
 </ol></nav></body></html>''')
+
+
+def write_navigation_epub(path, mode="nav"):
+    """Authored TOC differs from headings, filenames collide, and order differs."""
+    source = Path(__file__).with_name("navigation")
+    names = {
+        "META-INF/container.xml": "container.xml",
+        "EPUB/book.opf": "book.opf",
+        "EPUB/one dir/chapter.xhtml": "first.xhtml",
+        "EPUB/two/chapter.xhtml": "second.xhtml",
+        "EPUB/other.xhtml": "other.xhtml",
+        "EPUB/supplement.xhtml": "supplement.xhtml",
+        "EPUB/nav.xhtml": "nav.xhtml",
+        "EPUB/toc.ncx": "toc.ncx",
+    }
+    files = {name: (source / filename).read_text(encoding="utf-8")
+             for name, filename in names.items()}
+    if mode == "long":
+        files["EPUB/one dir/chapter.xhtml"] = files["EPUB/one dir/chapter.xhtml"].replace(
+            '<section id="middle">',
+            ('<p>' + 'A long paragraph of prose. ' * 20 + '</p>') * 60 + '<section id="middle">')
+    elif mode == "unlabelled":
+        files["EPUB/nav.xhtml"] = files["EPUB/nav.xhtml"].replace(
+            '<span>Collected letters</span>', '')
+    elif mode == "caption-label":
+        files["EPUB/one dir/chapter.xhtml"] = files["EPUB/one dir/chapter.xhtml"].replace(
+            'id="start">FIRST', 'id="start"><span class="caption">Illustration. </span>FIRST')
+        files["EPUB/nav.xhtml"] = files["EPUB/nav.xhtml"].replace(
+            '>First letter</a>', '>Illustration. FIRST PRINTED HEADING</a>')
+    elif mode == "broken-nav":
+        files["EPUB/nav.xhtml"] = "<html><unclosed>"
+    elif mode == "unusable-nav":
+        files["EPUB/nav.xhtml"] = files["EPUB/nav.xhtml"].replace("chapter.xhtml#", "chapter.xhtml#missing-")
+    elif mode == "no-toc":
+        files.pop("EPUB/nav.xhtml")
+        files.pop("EPUB/toc.ncx")
+        files["EPUB/book.opf"] = files["EPUB/book.opf"].replace(' properties="nav"', '')
+    with ZipFile(path, "w", compression=ZIP_DEFLATED) as archive:
+        archive.writestr("mimetype", "application/epub+zip", compress_type=ZIP_STORED)
+        for name, contents in files.items():
+            archive.writestr(name, contents)

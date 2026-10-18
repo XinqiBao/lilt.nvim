@@ -1,8 +1,7 @@
 -- Local file conversion. The caller owns downloading, attribution, and installation.
 local work = require('lilt.work')
 local M = {}
-local writer = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':h:h:h:h')
-  .. '/pandoc/units.lua'
+local resources = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':h:h:h:h') .. '/pandoc/'
 local install = 'Ensure Pandoc 3.1.1+ is installed on PATH: https://pandoc.org/installing.html'
 
 -- Check before downloading. No version manager, shell, or persistent tool cache.
@@ -72,8 +71,8 @@ function M.prepare(path, directory, options, callback)
     local args = {
       'pandoc',
       '--sandbox',
-      '--from=epub',
-      '--to=' .. writer,
+      '--from=' .. resources .. 'epub.lua',
+      '--to=' .. resources .. 'units.lua',
       '--metadata=lilt-title:' .. options.title,
       '--output=' .. output,
     }
@@ -95,7 +94,8 @@ function M.prepare(path, directory, options, callback)
           if not stat or stat.size > 48 * 1024 * 1024 then
             error('Lilt: prepared text is missing or exceeds 48 MiB', 0)
           end
-          local units = vim.json.decode(table.concat(work.read(output), '\n'))
+          local converted = vim.json.decode(table.concat(work.read(output), '\n'))
+          local units = converted.units
           if type(units) ~= 'table' or not vim.islist(units) or #units == 0 then
             error('Lilt: invalid EPUB preparation result', 0)
           end
@@ -121,10 +121,24 @@ function M.prepare(path, directory, options, callback)
             end
             manifest.units[i] = { title = unit.title, path = filename }
           end
+          local function navigation(nodes)
+            local mapped = {}
+            for _, node in ipairs(nodes) do
+              mapped[#mapped + 1] = {
+                title = node.title,
+                path = node.unit and manifest.units[node.unit].path or nil,
+                children = node.children and navigation(node.children) or nil,
+              }
+            end
+            return mapped
+          end
+          manifest.toc = converted.toc and navigation(converted.toc) or nil
           if vim.fn.writefile({ vim.json.encode(manifest) }, directory .. '/lilt.json') ~= 0 then
             error('Lilt: cannot write manifest', 0)
           end
-          return work.validate(directory)
+          local reading = work.validate(directory)
+          reading.import_warnings = converted.warnings
+          return reading
         end)
         cleanup()
         if not prepared and created then

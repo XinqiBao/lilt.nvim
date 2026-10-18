@@ -7,7 +7,7 @@ import subprocess
 import sys
 import tempfile
 
-from fixtures.epub import write_epub
+from fixtures.epub import write_epub, write_navigation_epub
 
 SUITES = {
     "compare": "core/compare.lua",
@@ -39,6 +39,8 @@ def main():
         fixture = Path(directory) / "source.epub"
         write_epub(fixture)
         env["LILT_TEST_EPUB"] = str(fixture)
+        for mode in ("nav", "broken-nav", "unusable-nav", "no-toc", "long", "caption-label", "unlabelled"):
+            write_navigation_epub(Path(directory) / (mode + ".epub"), mode)
         commands = [
             [args.nvim, "--version"],
             ["stylua", "--version"],

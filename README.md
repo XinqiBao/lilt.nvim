@@ -14,7 +14,7 @@ edit, undo, and save as usual.
   for a local hint; correct it with your usual editing commands.
 - **Split:** browse or search the complete reference beside your manuscript.
 - **Library:** find works online, add a local collection, or try bundled
-  examples. Preview a chapter before opening it.
+  examples. Browse source chapter hierarchies and preview text before opening it.
 - **Manuscripts:** save and resume chapters as plain text. Switching views or
   chapters preserves unsaved edits and native undo history.
 

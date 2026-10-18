@@ -81,13 +81,14 @@ require("lilt").setup({
 
 ## Online sources
 
-- **curl** on `PATH` for online discovery and acquisition. No account or API key.
+- **curl** for online discovery; [Pandoc 3.1.1+](https://pandoc.org/installing.html)
+  for acquiring new works. Both use `PATH`; local reading needs neither.
 - [Gutendex](https://gutendex.com/) supplies the searchable catalog. Literary texts
   come from [Project Gutenberg](https://www.gutenberg.org/) through its designated
   PGLAF mirror. Acquired works remain available offline.
 
 Check copyright in your country before downloading or sharing. Downloads retain
-the original credits and license in `SOURCE.txt`; see [sources and redistribution
+the original EPUB, credits, and license in `SOURCE.epub`; see [sources and redistribution
 terms](doc/works.md#online-acquisition). Lilt is an independent client; Project
 Gutenberg is a registered trademark. The plugin’s [MIT license](LICENSE) applies
 to its code, separately from literary texts. Each bundled example records its

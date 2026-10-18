@@ -2,8 +2,11 @@
 local work = require('lilt.work')
 local library = require('lilt.library')
 local request = require('lilt.online.request')
+local epub = require('lilt.import.epub')
 local M = {}
 local mirror = 'https://gutenberg.pglaf.org/cache/epub/'
+local filter = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':h:h:h:h')
+  .. '/pandoc/gutenberg.lua'
 
 local function fail(message)
   error('Lilt: ' .. message, 0)
@@ -70,94 +73,105 @@ function M.acquire(root, book, callback)
     local cancelled = false
     vim.schedule(function()
       if not cancelled then
-        callback('Lilt: this work has no supported public-domain plain text')
+        callback('Lilt: this work has no supported public-domain EPUB')
       end
     end)
     return function()
       cancelled = true
     end
   end
-  local url = mirror .. book.id .. '/pg' .. book.id .. '.txt'
-  return request(url, function(err, path)
-    if err then
-      callback(err)
-      return
-    end
-    local staging = vim.fn.tempname()
-    local ok, result = pcall(function()
-      local preserve_lines = false
-      for _, subject in ipairs(book.subjects) do
-        local lower = subject:lower()
-        if
-          lower:find('poet', 1, true)
-          or lower:find('poems', 1, true)
-          or lower:find('drama', 1, true)
-          or lower:find('verse', 1, true)
-          or lower:find('plays', 1, true)
-        then
-          preserve_lines = true
-        end
-      end
-      local plain_quotes = #book.languages == 1 and book.languages[1] == 'en'
-      local prepared = require('lilt.online.gutenberg').prepare(work.read(path), book.title, {
-        preserve_lines = preserve_lines,
-        plain_quotes = plain_quotes,
-      })
-      local directory = staging .. '/' .. M.name(book)
-      checked(vim.fn.mkdir(directory, 'p') == 1, 'cannot create acquisition staging directory')
-      local manifest = {
-        title = book.title,
-        author = book.author ~= '' and book.author or nil,
-        source = { provider = 'Project Gutenberg', id = tostring(book.id), url = M.url(book) },
-        units = {},
-      }
-      for i, unit in ipairs(prepared) do
-        local filename = string.format('%03d.txt', i)
-        checked(
-          vim.fn.writefile(unit.lines, directory .. '/' .. filename) == 0,
-          'cannot write unit'
-        )
-        manifest.units[i] = { title = unit.title, path = filename }
-      end
-      checked(vim.uv.fs_copyfile(path, directory .. '/SOURCE.txt', { excl = true }))
-      checked(vim.fn.writefile({
-        book.title,
-        book.author,
-        '',
-        'Source: Project Gutenberg #' .. book.id,
-        M.url(book),
-        'Downloaded from: ' .. url,
-        '',
-        'SOURCE.txt is the unmodified download, including credits and the Gutenberg license.',
-        'Reading units omit the distribution header/footer and blank padding at unit edges.',
-        plain_quotes
-            and 'English curly quotation marks and apostrophes are converted to straight quotes.'
-          or 'Source punctuation is preserved.',
-        preserve_lines
-            and 'Source line breaks and indentation are preserved (cataloged poetry/drama).'
-          or 'Source layout is retained; unindented prose lines over 80 columns wrap at 72.',
-        'Headings and paragraph breaks divide long sections into reading units.',
-        '',
-        'Public domain in the USA. Check the law in your country before use.',
-        'Project Gutenberg is a registered trademark; Lilt is an independent client.',
-        'Before sharing, retain SOURCE.txt and review the source license and trademark terms:',
-        'https://www.gutenberg.org/policy/license.html',
-      }, directory .. '/README.txt') == 0, 'cannot write attribution')
-      checked(
-        vim.fn.writefile({ vim.json.encode(manifest) }, directory .. '/lilt.json') == 0,
-        'cannot write manifest'
-      )
-      return library.add(root, directory)
-    end)
+  local url = mirror .. book.id .. '/pg' .. book.id .. '.epub'
+  local staging, cancel_step, cancelled = vim.fn.tempname(), nil, false
+  local function cleanup()
     if vim.uv.fs_lstat(staging) and vim.fn.delete(staging, 'rf') ~= 0 then
       vim.notify('Lilt: could not remove acquisition staging: ' .. staging, vim.log.levels.WARN)
     end
-    if ok then
-      callback(nil, result)
-    else
-      callback(tostring(result))
+  end
+  local function finish(err, value)
+    cleanup()
+    if not cancelled then
+      callback(err, value)
     end
+  end
+  cancel_step = epub.check(function(tool_error)
+    if tool_error then
+      finish(tool_error)
+      return
+    end
+    cancel_step = request(url, function(err, path)
+      if cancelled then
+        return
+      end
+      if err then
+        finish(err)
+        return
+      end
+      local source = staging .. '/SOURCE.epub'
+      local directory = staging .. '/' .. M.name(book)
+      -- The request deletes its download when this callback returns. Keep an
+      -- acquisition-owned input until conversion finishes; the converter only
+      -- receives local paths and metadata, never a URL or library root.
+      local copied, copy_error = pcall(function()
+        checked(vim.fn.mkdir(staging, 'p') == 1, 'cannot create acquisition staging directory')
+        checked(vim.uv.fs_copyfile(path, source, { excl = true }))
+      end)
+      if not copied then
+        finish(tostring(copy_error))
+        return
+      end
+      local plain_quotes = #book.languages == 1 and book.languages[1] == 'en'
+      cancel_step = epub.prepare(source, directory, {
+        title = book.title,
+        author = book.author ~= '' and book.author or nil,
+        source = { provider = 'Project Gutenberg', id = tostring(book.id), url = M.url(book) },
+        plain_quotes = plain_quotes,
+        filter = filter,
+      }, function(prepare_error)
+        if prepare_error then
+          finish(prepare_error)
+          return
+        end
+        local ok, result = pcall(function()
+          checked(vim.uv.fs_rename(source, directory .. '/SOURCE.epub'))
+          checked(vim.fn.writefile({
+            book.title,
+            book.author,
+            '',
+            'Source: Project Gutenberg #' .. book.id,
+            M.url(book),
+            'Downloaded from: ' .. url,
+            '',
+            'SOURCE.epub is the unmodified download, including original credits and license.',
+            'Pandoc converts the EPUB reading order and headings to UTF-8 reading units.',
+            'Distribution boilerplate and images are omitted from reading text.',
+            'Prose wraps at 72 columns; explicit verse and preformatted line breaks are retained.',
+            'Long sections divide at paragraph breaks. Titles come from structural headings.',
+            plain_quotes
+                and 'English curly quotation marks and apostrophes are converted to straight quotes.'
+              or 'Source punctuation is preserved.',
+            '',
+            'Public domain in the USA. Check the law in your country before use.',
+            'Project Gutenberg is a registered trademark; Lilt is an independent client.',
+            'Before sharing, retain SOURCE.epub and review the source license and trademark terms:',
+            'https://www.gutenberg.org/policy/license.html',
+          }, directory .. '/README.txt') == 0, 'cannot write attribution')
+          return library.add(root, directory)
+        end)
+        if ok then
+          finish(nil, result)
+        else
+          finish(tostring(result))
+        end
+      end)
+    end)
   end)
+  return function()
+    cancelled = true
+    if cancel_step then
+      cancel_step()
+    end
+    cleanup()
+  end
 end
 
 return M

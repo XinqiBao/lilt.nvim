@@ -13,7 +13,6 @@ SUITES = {
     "compare": "core/compare.lua",
     "work": "core/work.lua",
     "epub": "core/epub.lua",
-    "gutenberg": "core/gutenberg.lua",
     "library": "core/library.lua",
     "manuscript": "editor/manuscript.lua",
     "session": "editor/session.lua",

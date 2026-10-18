@@ -6,9 +6,15 @@ local root = vim.fn.tempname()
 local home = root .. '/library'
 local system, notify = vim.system, vim.notify
 local requests, jobs, messages = {}, {}, {}
-local mode, held = 'ok', false
-local fixture = '\239\187\191'
-  .. table.concat(vim.fn.readfile('tests/fixtures/gutenberg.txt', 'b'), '\r\n')
+local mode, held, conversion, tool_check = 'ok', false, nil, nil
+local fixture_path = assert(vim.env.LILT_TEST_EPUB, 'run through tests/run.py')
+local function read_binary(path)
+  local file = assert(io.open(path, 'rb'))
+  local bytes = assert(file:read('*a'))
+  file:close()
+  return bytes
+end
+local fixture = read_binary(fixture_path)
 local function entry(id, title)
   return {
     id = id,
@@ -19,7 +25,7 @@ local function entry(id, title)
     copyright = false,
     media_type = 'Text',
     formats = {
-      ['text/plain; charset=utf-8'] = 'https://www.gutenberg.org/ebooks/' .. id .. '.txt.utf-8',
+      ['application/epub+zip'] = 'https://www.gutenberg.org/ebooks/' .. id .. '.epub.noimages',
     },
   }
 end
@@ -28,6 +34,9 @@ local function body(url)
     return fixture
   end
   local results = { entry(11), entry(12, 'A second work') }
+  if mode == 'plain-only' then
+    results[1].formats = { ['text/plain'] = 'https://example.invalid/text.txt' }
+  end
   results[2].copyright = true
   if url:find('search=', 1, true) then
     results = {}
@@ -44,7 +53,40 @@ end
 vim.notify = function(message)
   messages[#messages + 1] = message
 end
-vim.system = function(args, _, callback)
+vim.system = function(args, opts, callback)
+  if args[1] == 'pandoc' then
+    if args[2] == '--version' then
+      tool_check = { killed = false }
+      function tool_check:kill()
+        self.killed = true
+      end
+      function tool_check.finish()
+        callback({
+          code = mode == 'broken-pandoc' and 127 or 0,
+          stdout = mode == 'old-pandoc' and 'pandoc 3.0' or 'pandoc 3.8.3',
+        })
+      end
+      if mode ~= 'hold-tool-check' then
+        vim.schedule(tool_check.finish)
+      end
+      return tool_check
+    end
+    if mode == 'hold-conversion' then
+      conversion = { source = args[#args] }
+      for _, arg in ipairs(args) do
+        conversion.output = arg:match('^%-%-output=(.+)$') or conversion.output
+      end
+      function conversion:kill()
+        self.killed = true
+      end
+      function conversion.finish()
+        vim.fn.writefile({ '[]' }, conversion.output)
+        callback({ code = 0, stderr = '' })
+      end
+      return conversion
+    end
+    return system(args, opts, callback)
+  end
   if mode == 'spawn-error' then
     error('cannot start curl')
   end
@@ -70,8 +112,7 @@ vim.system = function(args, _, callback)
   end
   function job.finish()
     local text = mode == 'invalid-json' and '{bad'
-      or mode == 'invalid-text' and '\255'
-      or mode == 'no-markers' and 'An incomplete download.'
+      or mode == 'invalid-epub' and 'An incomplete download.'
       or body(url)
     local file = assert(io.open(path, 'wb'))
     file:write(text)
@@ -135,6 +176,15 @@ local function run()
   assert(not err and #page.books == 2 and page.more, 'popular catalog')
   local book = page.books[1]
   assert(book.supported and not page.books[2].supported, 'copyright/format availability')
+  mode = 'plain-only'
+  err, page = call(function(cb)
+    catalog.fetch(catalog.default_url, {}, cb)
+  end)
+  assert(
+    not err and not page.books[1].supported,
+    'plain-text availability must not imply EPUB support'
+  )
+  mode = 'ok'
   err, page = call(function(cb)
     catalog.fetch(catalog.default_url, { search = 'café & `x`', page = 2 }, cb)
   end)
@@ -175,7 +225,43 @@ local function run()
     'cancel and late completion cleanup'
   )
   held = false
-  for _, failure in ipairs({ 'network-error', 'invalid-text', 'no-markers' }) do
+  local request_count = #requests
+  vim.fn.executable = function(name)
+    return name == 'pandoc' and 0 or executable(name)
+  end
+  err = call(function(cb)
+    acquisition.acquire(home, book, cb)
+  end)
+  vim.fn.executable = executable
+  assert(
+    err and err:find('requires Pandoc', 1, true) and #requests == request_count,
+    'missing conversion tool must explain installation before downloading'
+  )
+  for _, failure in ipairs({ 'old-pandoc', 'broken-pandoc' }) do
+    mode = failure
+    err = call(function(cb)
+      acquisition.acquire(home, book, cb)
+    end)
+    assert(
+      err and err:find('3.1.1', 1, true) and #requests == request_count,
+      'unusable tools must fail before any download'
+    )
+  end
+  mode = 'hold-tool-check'
+  delivered = false
+  cancel = acquisition.acquire(home, book, function()
+    delivered = true
+  end)
+  cancel()
+  tool_check.finish()
+  vim.wait(20, function()
+    return false
+  end)
+  assert(
+    tool_check.killed and not delivered and #requests == request_count,
+    'cancelling preflight must suppress a late success before downloading'
+  )
+  for _, failure in ipairs({ 'network-error', 'invalid-epub' }) do
     mode = failure
     err = call(function(cb)
       acquisition.acquire(home, book, cb)
@@ -197,6 +283,29 @@ local function run()
   vim.uv.fs_copyfile = copy
   assert(err and err:find('disk failure', 1, true), 'conversion/install disk failure')
   no_staging()
+
+  mode = 'hold-conversion'
+  delivered = false
+  cancel = acquisition.acquire(root .. '/cancel-converter', book, function()
+    delivered = true
+  end)
+  wait_for(function()
+    return conversion ~= nil
+  end, 'conversion did not start')
+  assert(vim.uv.fs_stat(conversion.source), 'conversion needs its own surviving source copy')
+  cancel()
+  conversion.finish()
+  wait_for(function()
+    return not vim.uv.fs_stat(conversion.output)
+  end, 'late converter output was not removed')
+  assert(
+    conversion.killed
+      and not delivered
+      and not vim.uv.fs_stat(conversion.source)
+      and not vim.uv.fs_stat(root .. '/cancel-converter/references/gutenberg-11'),
+    'cancelling preparation must clean staging and never publish or deliver'
+  )
+  mode = 'ok'
 
   -- The actual entry point, picker, preparation, library and reading session.
   local lilt = require('lilt')
@@ -295,8 +404,11 @@ local function run()
   assert(table.concat(lines(), '\n'):find('retry', 1, true), 'download failure offers retry')
   mode = 'ok'
   keys('r')
+  wait_for(function()
+    return table.concat(lines(), '\n'):find('The letter — 第一封信', 1, true) ~= nil
+  end, 'acquisition did not reach unit selection')
   assert(
-    table.concat(lines(), '\n'):find('CHAPTER I.', 1, true),
+    table.concat(lines(), '\n'):find('The letter — 第一封信', 1, true),
     'acquisition proceeds directly to reading units'
   )
   local installed = work.validate(home .. '/references/gutenberg-11')
@@ -305,7 +417,7 @@ local function run()
     'portable provenance'
   )
   assert(
-    table.concat(vim.fn.readfile(installed.root .. '/SOURCE.txt', 'b'), '\n') == fixture,
+    read_binary(installed.root .. '/SOURCE.epub') == fixture,
     'original and license retained verbatim'
   )
   local original = table.concat(work.read(installed.units[2].reference), '\n')
@@ -346,9 +458,13 @@ local function run()
   original = '“An earlier reading copy.”'
   vim.fn.writefile({ original }, installed.units[2].reference)
   local count = #requests
+  vim.fn.executable = function()
+    return 0
+  end
   err, installed = call(function(cb)
     acquisition.acquire(home, book, cb)
   end)
+  vim.fn.executable = executable
   assert(
     not err and installed.name == 'gutenberg-11' and #requests == count,
     'duplicates reuse stable copy without a download'

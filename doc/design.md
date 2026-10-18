@@ -56,7 +56,7 @@ flow. Returning from details restores the loaded result selection and viewport
 without a request.
 
 `online/catalog.lua` queries Gutendex and validates catalog metadata.
-`online/acquire.lua` downloads UTF-8 plain text from Gutenberg's listed PGLAF
+`online/acquire.lua` downloads image-free EPUB from Gutenberg's listed PGLAF
 mirror, prepares an ordinary work, and delegates validation and publication to
 `library.add`. Both use `online/request.lua` for bounded, cancellable requests.
 The optional manifest `source` records portable attribution; a matching
@@ -69,22 +69,51 @@ Requests use argument-vector curl, HTTPS-only redirects, time/size limits and
 owned temporary files. Only the current catalog page remains on the page stack;
 there is no background polling, persistent catalog cache, or remote reading state.
 
-`online/gutenberg.lua` prepares source text without network or installation
-side effects. It requires unambiguous distribution markers and retains the body,
-including front matter, contents, notes, and illustration labels. English-only
-acquisitions simplify curly quotation marks and apostrophes to straight quotes;
-other punctuation and letters are retained. Unknown, mixed, or other catalog
-languages keep source punctuation. This applies only to new acquisitions, never
-existing references, local imports, manuscript text, or comparison. The verbatim
-original retains its punctuation, credits, and license. Preparation preserves
-layout and wraps only long unindented lines without tabular spacing, except in
-works cataloged as poetry/drama. Recognizable section headings and isolated capitals
-provide unit titles; extra blank padding before headings avoids treating
-blank-separated contents entries as chapters. Compact or unrecognized layouts
-fall back to paragraph-based parts. After chapter/act structure begins, embedded
-capitals stay inside that structure. Sections divide near 300 physical rows at
-paragraph breaks, avoiding tiny tails. Unit-edge blank padding is omitted. These
-are plain text heuristics, not semantic reconstruction of an EPUB.
+`import/epub.lua` is a local-file converter: `prepare(input, destination,
+options, callback)` produces a validated, ordinary work with `lilt.json` and
+numbered reference files in a new directory. It knows neither URLs, Gutendex,
+library installation nor manuscript paths. Metadata comes from the caller;
+`source` is optional ordinary manifest attribution. The destination's parent must
+exist; existing destinations are refused. Failed validation removes only output
+created by this conversion. The input is unchanged.
+
+Pandoc reads the EPUB spine/XHTML, decodes entities and owns text rendering.
+`pandoc/units.lua` is a custom writer for structural headings and reading
+units. Captions nested in headings remain in the reference but not the label.
+There is no chapter-name matching, locale keyword list or plain-text fallback.
+Material before the first heading is Front matter; documents without headings
+use the work title. Long sections divide near 300 rows at paragraph breaks,
+avoiding tiny tails, with explicit part numbers on every segment. Prose wraps at
+72 columns; explicit verse/preformatted breaks remain. CSS-only layout can differ.
+Images are omitted without fetching assets; notes, tables and source contents
+remain text.
+
+Source cleanup is a separate Pandoc filter, `pandoc/gutenberg.lua`, supplied only
+by acquisition. It requires exactly one marked distribution header and footer;
+ordinary local EPUBs need neither marker. Original credits/license remain in the
+archive owned by acquisition. The writer does not change punctuation. After
+parsing, the converter optionally replaces four curly quote characters in
+reference lines before writing and validating them. Acquisition enables that
+policy only for English-only catalog entries. Local conversion defaults to
+preserving punctuation. Unit labels, other punctuation, existing references and
+manuscripts are not rewritten.
+
+Acquisition first reuses an existing copy, then checks the PATH executable with
+`pandoc --version` (5-second deadline) before downloading. Missing, broken or older
+than 3.1.1 tools report installation guidance. Runtime code never invokes mise,
+a shell or an installer, and does not cache tool availability across operations.
+The independent `import/epub.check(callback)` supports this preflight; direct local
+conversion invokes Pandoc without a network preflight.
+
+Download and conversion each have a 45-second deadline. Conversion uses Pandoc's
+sandbox and a private output file, checked against 48 MiB before JSON decoding.
+The request's download expires when its callback returns; acquisition first
+copies it to private staging. Once conversion succeeds, acquisition moves that
+input into the work as SOURCE.epub, writes provenance, then calls `library.add`.
+Cancellation terminates the active check/download/conversion, removes private
+files and suppresses queued callbacks. Conversion errors never publish a partial
+library work. Opening existing copies checks neither curl nor Pandoc. Reading
+views have no dependency on any conversion module or tool.
 
 Gutendex offers popular/newest ordering, title/author search, subjects and
 pagination without credentials. The public host has no documented rate quota or

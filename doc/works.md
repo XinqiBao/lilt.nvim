@@ -46,7 +46,7 @@ be UTF-8 without NUL bytes. A UTF-8 BOM and CRLF line endings are accepted. Empt
 reference files are allowed, though usually not useful. Include source and
 attribution and license information in a separate README when appropriate;
 `source` alone does not establish licensing or public-domain status. Online
-acquisition records provenance and keeps the original distribution in `SOURCE.txt`.
+acquisition records provenance and keeps the original distribution in `SOURCE.epub`.
 
 ## Text preparation
 
@@ -169,15 +169,15 @@ Acquired works become ordinary library works named `gutenberg-<id>`, available o
 Acquiring one again opens the existing copy; references and manuscripts are never
 updated or overwritten. Each copy records its source in `lilt.json` and
 `README.txt`, and retains the original download, credits, and license in
-`SOURCE.txt`.
+`SOURCE.epub`.
 
-Only works cataloged as public domain in the USA with plain text are supported.
+Only works cataloged as public domain in the USA with EPUB are supported.
 Public-domain status varies by country; check your local law before downloading
 or sharing. The plugin's MIT license does not relicense acquired texts.
 [Project Gutenberg's license](https://www.gutenberg.org/policy/license.html) and
 [permission guidance](https://www.gutenberg.org/policy/permission.html) explain
 redistribution and use of its registered trademark. Keep the original credits
-and license in `SOURCE.txt` with a shared work, and review those terms when
+and license in `SOURCE.epub` with a shared work, and review those terms when
 sharing prepared units. Lilt is an independent client, not an endorsed Project
 Gutenberg or Gutendex product.
 
@@ -185,16 +185,31 @@ New acquisitions cataloged solely as English convert curly double quotes
 (`“ ”`) to `"` and curly single quotes/apostrophes (`‘ ’`) to `'` for keyboard
 input. Other punctuation, spelling, and accents are retained. Non-English,
 multilingual, and unknown-language works keep their source punctuation.
-`SOURCE.txt` always retains the original bytes; `README.txt` records preparation.
+`SOURCE.epub` always retains the original bytes; `README.txt` records preparation.
 Existing acquisitions and local imports are not converted.
 
-Source editions vary: Lilt preserves indentation, wraps long unindented lines,
-and uses recognizable headings and paragraph breaks for units. Poetry/drama
-identified by catalog subjects keeps even long lines intact. These layout
-heuristics can miss chapter boundaries or wrap long verse embedded in prose.
-Plain-text illustration labels and emphasis marks remain; images and EPUB/HTML conversion
-are unsupported. Missing text boundaries or invalid encoding fail safely.
-Requests have a 45-second timeout and a 12 MiB size limit. Gutendex is a separate,
+New acquisitions require [Pandoc 3.1.1+](https://pandoc.org/installing.html) on
+`PATH`. Lilt runs `pandoc --version` before downloading, rejecting missing,
+unusable, or older tools with installation guidance. Existing works and prepared
+local imports need no Pandoc. Pandoc reads the image-free EPUB's document order and
+structured headings. Lilt uses those headings as unit titles, without guessing
+chapter names from prose. Documents without headings use the work title; material
+before the first heading is labeled `Front matter`. Long sections split at
+paragraph breaks with numbered parts.
+
+Acquisition supplies a separate Gutenberg filter to remove its marked
+distribution header/footer. Ordinary local EPUB conversion does not use that
+filter or require those markers. The reading copy omits images. Prose wraps
+at 72 columns; explicit verse and preformatted line breaks remain. Notes, tables,
+contents and front/back matter are retained as text. CSS-only layout and unusual
+source markup can render differently; structural labels can still reflect
+imperfect source editing. Unsupported or ambiguous distribution boundaries fail
+without installing a partial work. There is no plain-text fallback. Older
+acquisitions retain their previous unit layout and `SOURCE.txt`; opening them
+never downloads or repartitions their references.
+
+Downloads have a 45-second timeout and a 12 MiB size limit. Conversion has its
+own 45-second deadline and a 48 MiB prepared-text limit. Gutendex is a separate,
 best-effort service; unavailable catalog entries or mirror files can be retried
 later. Its maintainers recommend hosting your own server for long-term use;
 set `catalog` to its HTTPS URL (see `:help lilt-setup`).

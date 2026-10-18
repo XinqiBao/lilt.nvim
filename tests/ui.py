@@ -11,6 +11,8 @@ import time
 from pathlib import Path
 import pynvim
 
+from fixtures.epub import write_epub
+
 nvim = pynvim.attach("child", argv=[sys.argv[1] if len(sys.argv) > 1 else "nvim",
                                   "--embed", "--headless", "-u", "NONE", "-i", "NONE"])
 grid, highlights, colors = {}, {}, {}
@@ -428,21 +430,26 @@ def online_tests():
     global width, height
     with tempfile.TemporaryDirectory(prefix="lilt-online-ui-") as directory:
         home = Path(directory) / "library"
-        fixture = Path("tests/fixtures/gutenberg.txt").read_text(encoding="utf-8")
+        fixture = Path(directory) / "source.epub"
+        write_epub(fixture)
         book = {
             "id": 11, "title": "Test Letters", "authors": [{"name": "A. Writer"}],
             "subjects": ["Letters -- Fiction"], "languages": ["en"], "copyright": False,
-            "media_type": "Text", "formats": {"text/plain; charset=utf-8": "https://www.gutenberg.org/ebooks/11.txt.utf-8"},
+            "media_type": "Text", "formats": {"application/epub+zip": "https://www.gutenberg.org/ebooks/11.epub.noimages"},
         }
         other_book = dict(book, id=12, title="Other Letters", copyright=True)
         catalog = json.dumps({"count": 2, "next": None, "results": [book, other_book]})
         # Control only the process boundary; exercise the real floating search,
         # async redraw, catalog parser, converter, installation, and reading UI.
         nvim.exec_lua("""
-            local home, catalog, text = ...
+            local home, catalog, source = ...
+            local file = assert(io.open(source, 'rb'))
+            local text = file:read('*a')
+            file:close()
             _G.lilt_test_system = vim.system
             _G.lilt_test_requests = {}
-            vim.system = function(args, _, callback)
+            vim.system = function(args, opts, callback)
+                if args[1] == 'pandoc' then return _G.lilt_test_system(args, opts, callback) end
                 local path, url
                 for i, arg in ipairs(args) do
                     if arg == '--output' then path = args[i + 1] end
@@ -460,7 +467,7 @@ def online_tests():
                 return {kill=function() killed=true end}
             end
             require('lilt').setup({library=home})
-        """, str(home), catalog, fixture)
+        """, str(home), catalog, str(fixture))
         try:
             input_keys(":Lilt<CR>")
             rows = choose("Discover online")
@@ -576,8 +583,11 @@ def online_tests():
             check(any("Downloading" in row for row in rows), "acquisition progress stays visible")
             check((detail_size["width"], detail_size["height"]) == (pending_size["width"], pending_size["height"]),
                   "acquisition keeps the detail float dimensions")
-            rows = pause(130)
-            check(any("CHAPTER I." in row for row in rows), "download goes straight to unit selection")
+            ready = nvim.exec_lua("""return vim.wait(5000, function()
+                return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\\n'):find('The letter', 1, true) ~= nil
+            end, 10)""")
+            rows = screen()
+            check(ready and any("The letter" in row for row in rows), "download goes straight to unit selection")
             rows = input_keys("jl")
             check(nvim.current.buffer.name == str(home / "manuscripts/gutenberg-11/002.txt"),
                   "acquired units use ordinary named manuscripts")

@@ -39,8 +39,7 @@ function M.open(s, root, catalog, units, refresh)
       items[#items + 1] = { label = 'Available offline in your library' }
       items[#items + 1] = open_copy(existing)
     elseif book.supported then
-      items[#items + 1] =
-        { label = 'Available: UTF-8 plain text · public domain in the USA', wrap = true }
+      items[#items + 1] = { label = 'Available: EPUB · public domain in the USA', wrap = true }
       items[#items + 1] =
         { label = 'Check copyright in your country before downloading.', wrap = true }
       local acquire
@@ -63,8 +62,7 @@ function M.open(s, root, catalog, units, refresh)
       }
       items[#items + 1] = acquire
     else
-      items[#items + 1] =
-        { label = 'Unavailable: requires public-domain UTF-8 plain text.', wrap = true }
+      items[#items + 1] = { label = 'Unavailable: requires a public-domain EPUB.', wrap = true }
     end
     -- An explicit return keeps metadata-only pages usable by menu navigation.
     items[#items + 1] = {

@@ -2,7 +2,8 @@
 
 Lilt places a reference beside an ordinary manuscript buffer. Use native editing,
 undo, redo, and :write. There are no scores, automatic corrections, or autosave.
-Requires Neovim 0.11 or newer; online discovery also requires curl on PATH.
+Requires Neovim 0.11 or newer. Online discovery needs curl; acquiring new works
+also needs Pandoc 3.1.1+ on PATH. Local reading needs neither tool.
 
 START                                                        *lilt-start*
 
@@ -105,7 +106,8 @@ UTF-8 codepoints, not full grapheme layout.
 
 Discovery uses Gutendex (https://gutendex.com/); literary texts come from Project
 Gutenberg's PGLAF mirror. Public-domain status in the USA does not establish status
-in your country. Acquisitions preserve the original credits/license in SOURCE.txt.
+in your country. Acquisitions preserve the original EPUB and credits/license in
+SOURCE.epub. Existing plain-text acquisitions retain their original SOURCE.txt.
 Review https://www.gutenberg.org/policy/license.html before sharing, including
 terms for the Project Gutenberg registered trademark. Lilt is an independent
 client. Details on preparation, service limits, and redistribution: doc/works.md.

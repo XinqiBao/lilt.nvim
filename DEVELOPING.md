@@ -1,7 +1,7 @@
 # Developing Lilt
 
 Reading needs only **Neovim 0.11.0 or newer**; online discovery also requires
-`curl` on `PATH`. Local EPUB conversion uses Pandoc 3.1.1+. For development,
+`curl` on `PATH`; acquiring new works also uses Pandoc 3.1.1+. For development,
 [mise](https://mise.jdx.dev/) pins StyLua, Selene, Pandoc, and uv in
 [mise.toml](mise.toml). It deliberately leaves Neovim on your own `PATH`.
 [uv](https://docs.astral.sh/uv/) manages the test-only Python interpreter in
@@ -73,7 +73,7 @@ through the relevant delay when checking absence.
 
 For a live smoke check, use a temporary library: search an author/title, browse
 popular/newest and poetry, acquire prose and verse, inspect the units against
-`SOURCE.txt`, then save and resume. CI uses controlled fixtures for these flows.
+`SOURCE.epub`, then save and resume. CI uses controlled fixtures for these flows.
 
 The minimum is **Neovim 0.11.0**, because Ghost uses
 `virt_lines_overflow='scroll'`. CI independently installs `v0.11.0` and Neovim's

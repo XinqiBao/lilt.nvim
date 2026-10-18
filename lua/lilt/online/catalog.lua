@@ -76,23 +76,14 @@ function M.fetch(base, query, callback)
           end
         end
         local formats = type(entry.formats) == 'table' and entry.formats or {}
-        local plain = false
-        for mime in pairs(formats) do
-          if
-            mime == 'text/plain'
-            or mime == 'text/plain; charset=utf-8'
-            or mime == 'text/plain; charset=us-ascii'
-          then
-            plain = true
-          end
-        end
+        local epub = clean(formats['application/epub+zip']) ~= ''
         books[#books + 1] = {
           id = entry.id,
           title = clean(entry.title),
           author = table.concat(authors, '; '),
           languages = strings(entry.languages),
           subjects = strings(entry.subjects),
-          supported = plain and entry.copyright == false and entry.media_type == 'Text',
+          supported = epub and entry.copyright == false and entry.media_type == 'Text',
         }
       end
       return { books = books, count = data.count, more = type(data.next) == 'string' }

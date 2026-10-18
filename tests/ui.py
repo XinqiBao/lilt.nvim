@@ -503,7 +503,25 @@ def online_tests():
             check((loading_size["width"], loading_size["height"]) == (loaded_size["width"], loaded_size["height"]),
                   "catalog completion keeps the float dimensions")
             check(any("Test Letters" in row for row in rows), "online entry browses works without a query")
+            formatting = {name: nvim.api.get_option_value(name, {"scope": "global"})
+                          for name in ("textwidth", "wrapmargin", "formatoptions")}
+            try:
+                for name, value in {"textwidth": 12, "wrapmargin": 2, "formatoptions": "t"}.items():
+                    nvim.api.set_option_value(name, value, {"scope": "global"})
+                input_keys("s")
+                query = "a writer with a long literary name"
+                input_keys(query)
+                check(nvim.current.buffer[:] == [query], "editor formatting does not split a search query")
+                input_keys("<CR>")
+                pause(130)
+                check(nvim.exec_lua("return _G.lilt_test_requests[#_G.lilt_test_requests]").endswith(
+                    "search=a%20writer%20with%20a%20long%20literary%20name"),
+                    "search submits the complete query despite editor formatting defaults")
+            finally:
+                for name, value in formatting.items():
+                    nvim.api.set_option_value(name, value, {"scope": "global"})
             rows = input_keys("s")
+            input_keys("<C-u>")
             check(any("Search title or author" in row for row in rows), "search stays inside the Picker float")
             check(nvim.eval("mode()") == "i" and len(floats()) == 1, "search focuses one editable line in the same float")
             width, height = 24, 8
@@ -517,7 +535,7 @@ def online_tests():
             input_keys("<CR>")
             rows = pause(130)
             check(any("Test Letters" in row for row in rows), "search returns to the online picker")
-            check(nvim.exec_lua("return _G.lilt_test_requests[2]:find('search=writer',1,true) ~= nil"),
+            check(nvim.exec_lua("return _G.lilt_test_requests[#_G.lilt_test_requests]:find('search=writer',1,true) ~= nil"),
                   "query reaches the catalog")
             previous = (nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"])
             requests = nvim.exec_lua("return #_G.lilt_test_requests")

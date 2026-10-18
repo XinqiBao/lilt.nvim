@@ -353,6 +353,10 @@ function M.new(on_close)
     save()
     local buf = api.nvim_create_buf(false, true)
     self.input = { buf = buf }
+    -- Queries stay on one line regardless of the user's prose formatting.
+    vim.bo[buf].textwidth = 0
+    vim.bo[buf].wrapmargin = 0
+    vim.bo[buf].formatoptions = ''
     api.nvim_buf_set_lines(buf, 0, -1, false, { default })
     api.nvim_win_set_buf(self.win, buf)
     self:render()

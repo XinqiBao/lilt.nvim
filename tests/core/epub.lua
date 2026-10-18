@@ -321,6 +321,24 @@ local function run()
     killed and not completed and not vim.uv.fs_stat(root .. '/cancelled'),
     'cancelled conversion must not deliver or write a work'
   )
+  local timeout_error
+  epub.prepare(source, root .. '/timed-out', { title = 'Timed out' }, function(error)
+    timeout_error = error
+  end)
+  vim.fn.writefile({ 'partial output' }, output)
+  finish({ code = 124, stderr = '' })
+  assert(
+    vim.wait(1000, function()
+      return timeout_error ~= nil
+    end, 5),
+    'timeout result was not delivered'
+  )
+  assert(
+    timeout_error:find('exceeded 45 seconds', 1, true)
+      and not vim.uv.fs_stat(output)
+      and not vim.uv.fs_stat(root .. '/timed-out'),
+    'timeouts explain the deadline and remove partial output without creating a work'
+  )
   for _, version in ipairs({
     { code = 0, stdout = 'pandoc 3.1.1\nFeatures: +server', supported = true },
     { code = 0, stdout = 'pandoc 4.0\n', supported = true },

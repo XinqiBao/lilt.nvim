@@ -88,6 +88,9 @@ function M.prepare(path, directory, options, callback)
         end
         local prepared, value = pcall(function()
           if result.code ~= 0 then
+            if result.code == 124 then
+              error('Lilt: EPUB conversion exceeded 45 seconds', 0)
+            end
             error('Lilt: EPUB preparation failed: ' .. vim.trim(result.stderr), 0)
           end
           local stat = vim.uv.fs_stat(output)

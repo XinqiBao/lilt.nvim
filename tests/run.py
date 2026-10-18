@@ -7,10 +7,26 @@ import subprocess
 import sys
 import tempfile
 
+SUITES = {
+    "compare": "core/compare.lua",
+    "work": "core/work.lua",
+    "gutenberg": "core/gutenberg.lua",
+    "library": "core/library.lua",
+    "manuscript": "editor/manuscript.lua",
+    "session": "editor/session.lua",
+    "lifecycle": "editor/lifecycle.lua",
+    "cache": "editor/cache.lua",
+    "picker": "editor/picker.lua",
+    "online": "editor/online.lua",
+    "ui": "ui.py",
+}
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--nvim", default="nvim", help="Neovim executable (default: PATH)")
+    parser.add_argument("--suite", action="append", choices=SUITES,
+                        help="run only this suite (repeatable; default: all)")
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent
     with tempfile.TemporaryDirectory(prefix="lilt-tests-") as directory:
@@ -25,10 +41,13 @@ def main():
             ["stylua", "--check", "lua", "plugin", "tests"],
             ["selene", "lua", "plugin", "tests"],
         ]
-        for suite in ("compare", "work", "gutenberg", "library", "reading", "picker", "online", "headless", "lifecycle", "cache"):
-            commands.append([args.nvim, "--headless", "-u", "NONE", "-i", "NONE",
-                             "--cmd", "set rtp^=.", "-l", f"tests/{suite}.lua"])
-        commands.append([sys.executable, "tests/ui.py", args.nvim])
+        for suite in args.suite or SUITES:
+            path = "tests/" + SUITES[suite]
+            if path.endswith(".lua"):
+                commands.append([args.nvim, "--headless", "-u", "NONE", "-i", "NONE",
+                                 "--cmd", "set rtp^=.", "-l", path])
+            else:
+                commands.append([sys.executable, path, args.nvim])
         print(sys.version, flush=True)
         for command in commands:
             print("+ " + " ".join(command), flush=True)

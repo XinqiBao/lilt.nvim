@@ -123,6 +123,45 @@ local function run()
     no_resources(buf)
     origin = ref
   end
+  -- Native :edit exercises buffer replacement and scheduled cleanup without
+  -- requiring an attached screen. Cover both views and the reference pane.
+  local path = vim.fn.tempname()
+  vim.fn.writefile({ 'Other writing' }, path)
+  for _, case in ipairs({ { 'ghost', false }, { 'split', false }, { 'split', true } }) do
+    open(case[1])
+    local buf = api.nvim_get_current_buf()
+    local text = api.nvim_buf_get_lines(buf, 0, -1, false)
+    if case[2] then
+      for _, win in ipairs(api.nvim_tabpage_list_wins(0)) do
+        if win ~= api.nvim_get_current_win() then
+          api.nvim_set_current_win(win)
+          break
+        end
+      end
+    end
+    local win = api.nvim_get_current_win()
+    vim.cmd('edit ' .. vim.fn.fnameescape(path))
+    assert(
+      vim.wait(1000, function()
+        return not pcall(api.nvim_get_autocmds, { group = 'LiltSession' })
+      end),
+      'native edit cleanup timed out'
+    )
+    assert(
+      api.nvim_get_current_win() == win and api.nvim_buf_get_name(0) == path,
+      'native edit must retain the repurposed pane and its focus'
+    )
+    assert(
+      vim.deep_equal(api.nvim_buf_get_lines(0, 0, -1, false), { 'Other writing' })
+        and vim.deep_equal(api.nvim_buf_get_lines(buf, 0, -1, false), text),
+      'native edit must preserve the new file and the retained manuscript'
+    )
+    restored(win)
+    no_resources(buf)
+    vim.cmd.quit()
+    assert(#api.nvim_list_tabpages() == 1, 'native quit must close the repurposed tab')
+  end
+  vim.fn.delete(path)
   print('Lilt lifecycle: failure recovery and final-window restoration passed')
 end
 

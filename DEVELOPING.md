@@ -36,32 +36,43 @@ Add `--upgrade` when deliberately updating already locked dependencies. Commit
 both files together. Do not edit the generated lock or install dependencies with
 a second package manager.
 
-`tests/run.py` runs formatting, static analysis, and all suites, prints tool
-versions, isolates Neovim's XDG directories, disables personal init/Shada files,
-and bounds each subprocess to 60 seconds. It accepts `--nvim /path/to/nvim`.
-Work/library suites validate real temporary directories, failed-copy cleanup,
-and saved progress. Reading checks cover named buffers and unsaved protections;
-Picker checks cover XDG configuration, multiple example works/units, back
-navigation, temporary manuscripts, automatic reference excerpts, and cleanup.
-The UI suite drives the floating search editor and native path prompt, exercises
-preview placement and terminal resizing, and resumes in a second process.
-Navigation regressions bring scrolled work metadata back into view and check
-that informational cursor positions survive resizing and search cancellation.
-Tests use temporary files and an embedded Neovim; no display server is needed.
-The UI notification loop also has a deadline and reports the screen on assertion
-failures. Positive hint checks poll for the visible float; absence checks wait
-through the relevant delay.
+## Verification
 
-Gutenberg preparation checks run independently of network and Picker setup,
-protecting body text, word boundaries, layout, and meaningful unit boundaries.
-Online checks replace only the process boundary with controlled catalog/text
-fixtures. They cover pagination, floating search, failures/retry, cancellation and
-late callbacks, text fidelity, provenance, installation, duplicate acquisition,
-and the full picker → acquire → Ghost/Split → save → local resume journey.
-CI requires no network services. For a live check, choose **Discover online…**,
-browse popular/newest and poetry, search an author/title, and acquire prose and
-verse. Inspect the units against `SOURCE.txt`, then save and resume through the
-library. Use a temporary library to keep live checks separate from personal work.
+`tests/run.py` runs formatting, static analysis, and all suites in isolated XDG
+directories. Each subprocess has a 60-second deadline. No display server or live
+catalog service is required.
+
+| Location | Responsibility |
+| --- | --- |
+| `tests/core/` | Comparison contracts, work validation, library files, Gutenberg preparation |
+| `tests/editor/` | Manuscripts, session lifecycle/cache, Picker navigation, online acquisition |
+| `tests/ui.py` | Attached redraw grids, highlights, floats, native prompts, resize/focus, process restart |
+| `tests/fixtures/` | Shared literary source text |
+| `tests/benchmarks/` | Optional diagnostics, excluded from verification |
+
+Run selected suites through the same isolated entry point:
+
+```sh
+mise exec -- .venv/bin/python tests/run.py --suite picker --suite online
+mise exec -- .venv/bin/python tests/run.py --suite ui --nvim /path/to/nvim
+```
+
+`--help` lists suite names. A Lua suite can also run directly:
+
+```sh
+mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/editor/lifecycle.lua
+```
+
+Keep behavioral checks at the lowest useful level. Use UI tests for visible
+rendering and native input, rather than repeating filesystem or buffer checks.
+Retain focused regressions for unsaved edits, failed initialization, cancellation,
+and text fidelity; avoid fixed row positions, incidental padding, or repeated
+loops that add no distinct transition. Hint tests poll for appearance and wait
+through the relevant delay when checking absence.
+
+For a live smoke check, use a temporary library: search an author/title, browse
+popular/newest and poetry, acquire prose and verse, inspect the units against
+`SOURCE.txt`, then save and resume. CI uses controlled fixtures for these flows.
 
 The minimum is **Neovim 0.11.0**, because Ghost uses
 `virt_lines_overflow='scroll'`. CI independently installs `v0.11.0` and Neovim's
@@ -76,30 +87,6 @@ and select its executable for that run:
 mise exec -- .venv/bin/python tests/run.py --nvim /path/to/nvim-linux-x86_64/bin/nvim
 ```
 
-Individual suites remain directly runnable from the root:
-
-```sh
-mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/compare.lua
-mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/work.lua
-mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/gutenberg.lua
-mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/library.lua
-mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/reading.lua
-mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/picker.lua
-mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/online.lua
-mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/headless.lua
-mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/lifecycle.lua
-mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/cache.lua
-mise exec -- .venv/bin/python tests/ui.py /path/to/nvim
-```
-
-Comparison examples and generated short inputs check semantic ranges and
-invariants without duplicating the algorithm. Headless integration exercises
-native edits, undo/redo, saving, reload, window ownership, and retained buffers.
-Lifecycle regressions exercise actual E36 failures and final-window restoration.
-Cache checks compare rendered results against fresh computations through row
-shifts, replacement, reload, and reopening. Attached UI tests check actual redraw
-grids, highlights, layouts, resizing, and delayed hint cancellation.
-
 Format Lua with `mise exec -- stylua lua plugin tests`. Selene uses Lua 5.1 and a
 small declaration of Neovim's `vim` global; LuaLS is optional editor tooling.
 Hosted checks are in [Verify](https://github.com/XinqiBao/lilt.nvim/actions/workflows/verify.yml).
@@ -107,7 +94,7 @@ Hosted checks are in [Verify](https://github.com/XinqiBao/lilt.nvim/actions/work
 ## Focused performance check
 
 ```sh
-mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/benchmark.lua
+mise exec -- nvim --headless -u NONE -i NONE --cmd 'set rtp^=.' -l tests/benchmarks/compare.lua
 ```
 
 This diagnostic warms the comparison with five early mismatches, then with every

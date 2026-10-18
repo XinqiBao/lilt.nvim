@@ -12,10 +12,11 @@ validates that text. JSON uses Neovim's built-in parser without vendored code.
 
 `library.lua` installs local copies through hidden staging and derives manuscript
 paths and saved progress. `init.lua` holds configuration and command entry
-points. `picker.lua` owns one scratch floating window and its page stack, with
-shared work/unit navigation for library works and examples. It owns no reading
-resources. Native `vim.ui.input` supplies the local directory prompt; there is no
-custom path editor or global UI override.
+points. `picker.lua` coordinates shared work/unit navigation for library works
+and examples. `picker/discover.lua` owns catalog and acquisition navigation;
+`picker/ui.lua` owns the scratch float, page stack, and request lifetime.
+The picker owns no reading resources. Native `vim.ui.input` supplies the local
+directory prompt; there is no custom path editor or global UI override.
 
 `online.lua` requests catalog pages from Gutendex and UTF-8 plain text from
 Gutenberg's listed PGLAF mirror. It prepares an ordinary work, then delegates

@@ -5,7 +5,7 @@ if not data_home or data_home:sub(1, 1) ~= '/' then
   data_home = vim.env.HOME .. '/.local/share'
 end
 local library_root = vim.fs.normalize(data_home .. '/lilt')
-local catalog = require('lilt.online').default_catalog
+local catalog = require('lilt.online.catalog').default_url
 local root = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h:h:h')
 
 function M.setup(options)

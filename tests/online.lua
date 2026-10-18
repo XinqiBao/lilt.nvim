@@ -1,7 +1,8 @@
 local api = vim.api
-local online = require('lilt.online')
+local catalog = require('lilt.online.catalog')
+local acquisition = require('lilt.online.acquire')
 local work = require('lilt.work')
-local prep = require('lilt.gutenberg')
+local prep = require('lilt.online.gutenberg')
 local root = vim.fn.tempname()
 local home = root .. '/library'
 local system, notify = vim.system, vim.notify
@@ -250,13 +251,13 @@ local function run()
   assert(#parts == 2 and #parts[2].lines >= 80, 'long texts need useful parts, without tiny tails')
 
   local err, page = call(function(cb)
-    online.catalog(online.default_catalog, {}, cb)
+    catalog.fetch(catalog.default_url, {}, cb)
   end)
   assert(not err and #page.books == 2 and page.more, 'popular catalog')
   local book = page.books[1]
   assert(book.supported and not page.books[2].supported, 'copyright/format availability')
   err, page = call(function(cb)
-    online.catalog(online.default_catalog, { search = 'café & `x`', page = 2 }, cb)
+    catalog.fetch(catalog.default_url, { search = 'café & `x`', page = 2 }, cb)
   end)
   assert(not err and #page.books == 1 and not page.more, 'pagination')
   assert(
@@ -266,7 +267,7 @@ local function run()
   for _, failure in ipairs({ 'network-error', 'invalid-json', 'oversized', 'spawn-error' }) do
     mode = failure
     err = call(function(cb)
-      online.catalog(online.default_catalog, {}, cb)
+      catalog.fetch(catalog.default_url, {}, cb)
     end)
     assert(err, 'catalog failure must be reported')
   end
@@ -275,13 +276,13 @@ local function run()
     return 0
   end
   err = call(function(cb)
-    online.catalog(online.default_catalog, {}, cb)
+    catalog.fetch(catalog.default_url, {}, cb)
   end)
   vim.fn.executable = executable
   assert(err and err:find('requires curl', 1, true), 'missing curl has an actionable error')
   mode, held = 'ok', true
   local delivered = false
-  local cancel = online.catalog(online.default_catalog, {}, function()
+  local cancel = catalog.fetch(catalog.default_url, {}, function()
     delivered = true
   end)
   local job = jobs[#jobs]
@@ -298,7 +299,7 @@ local function run()
   for _, failure in ipairs({ 'network-error', 'invalid-text', 'no-markers' }) do
     mode = failure
     err = call(function(cb)
-      online.acquire(home, book, cb)
+      acquisition.acquire(home, book, cb)
     end)
     assert(
       err and not vim.uv.fs_stat(home .. '/references/gutenberg-11'),
@@ -312,7 +313,7 @@ local function run()
     error('disk failure')
   end
   err = call(function(cb)
-    online.acquire(home, book, cb)
+    acquisition.acquire(home, book, cb)
   end)
   vim.uv.fs_copyfile = copy
   assert(err and err:find('disk failure', 1, true), 'conversion/install disk failure')
@@ -336,7 +337,7 @@ local function run()
   choose('Discover online')
   assert(requests[#requests] == 'https://catalog.example.test/api/books/', 'custom Gutendex base')
   keys('hq')
-  lilt.setup({ catalog = online.default_catalog })
+  lilt.setup({ catalog = catalog.default_url })
   lilt.setup({ library = home })
   lilt.open()
   choose('Discover online')
@@ -347,7 +348,7 @@ local function run()
   choose('Next page')
   assert(table.concat(lines(), '\n'):find('Another page', 1, true), 'navigate additional results')
   assert(
-    requests[#requests] == online.default_catalog .. '/books/?page=2',
+    requests[#requests] == catalog.default_url .. '/books/?page=2',
     'never follow foreign pagination URL'
   )
   choose('Previous page')
@@ -449,7 +450,7 @@ local function run()
   lilt.close()
   local count = #requests
   err, installed = call(function(cb)
-    online.acquire(home, book, cb)
+    acquisition.acquire(home, book, cb)
   end)
   assert(
     not err and installed.name == 'gutenberg-11' and #requests == count,
@@ -463,7 +464,7 @@ local function run()
   local collision = root .. '/collision'
   vim.fn.mkdir(collision .. '/manuscripts/gutenberg-11', 'p')
   err = call(function(cb)
-    online.acquire(collision, book, cb)
+    acquisition.acquire(collision, book, cb)
   end)
   assert(err and #requests == count, 'orphan manuscripts block acquisition before downloading')
   require('lilt.library').add(collision, 'examples/tyger')
@@ -480,7 +481,7 @@ local function run()
   vim.fn.writefile({ vim.json.encode(local_manifest) }, root .. '/local/gutenberg-11/lilt.json')
   require('lilt.library').add(root .. '/local-library', root .. '/local/gutenberg-11')
   err = call(function(cb)
-    online.acquire(root .. '/local-library', book, cb)
+    acquisition.acquire(root .. '/local-library', book, cb)
   end)
   assert(err and #requests == count, 'same-name local work cannot be mistaken for a duplicate')
   assert(

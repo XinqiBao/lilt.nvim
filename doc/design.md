@@ -14,8 +14,8 @@ validates that text. JSON uses Neovim's built-in parser without vendored code.
 paths and saved progress. `init.lua` holds configuration and command entry
 points. `picker.lua` coordinates local work/unit navigation and retains only
 example buffer handles. `picker/discover.lua` owns online navigation; it uses
-`online.lua` without involving reading views. `picker/ui.lua` owns the scratch
-float, selection, page stack, search editor, and request lifetime.
+the `online/` modules without involving reading views. `picker/ui.lua` owns the
+scratch float, selection, page stack, search editor, and request lifetime.
 
 Menu rows distinguish informational text from actions. Movement skips headings;
 native scrolling can still inspect metadata on short terminals. Detail text is
@@ -38,12 +38,13 @@ page actions. Work details add one level; acquired units use the shared local
 flow. Returning from details restores the loaded result selection and viewport
 without a request.
 
-`online.lua` requests catalog pages from Gutendex and UTF-8 plain text from
-Gutenberg's listed PGLAF mirror. It prepares an ordinary work, then delegates
-validation and publication to `library.add`. The optional manifest `source`
-records portable attribution; a matching provider/id permits reopening an
-existing copy without fetching or changing its reference edition. Colliding
-local works and orphan manuscripts block acquisition.
+`online/catalog.lua` queries Gutendex and validates catalog metadata.
+`online/acquire.lua` downloads UTF-8 plain text from Gutenberg's listed PGLAF
+mirror, prepares an ordinary work, and delegates validation and publication to
+`library.add`. Both use `online/request.lua` for bounded, cancellable requests.
+The optional manifest `source` records portable attribution; a matching
+provider/id permits reopening an existing copy without fetching or changing its
+reference edition. Colliding local works and orphan manuscripts block acquisition.
 
 The picker owns each asynchronous request's cancellation function. Back, leaving
 the picker, and editor exit cancel it; callbacks also check page/picker lifetime.
@@ -51,7 +52,8 @@ Requests use argument-vector curl, HTTPS-only redirects, time/size limits and
 owned temporary files. Only the current catalog page remains on the page stack;
 there is no background polling, persistent catalog cache, or remote reading state.
 
-`gutenberg.lua` requires unambiguous distribution markers and preserves all body
+`online/gutenberg.lua` prepares source text without network or installation
+side effects. It requires unambiguous distribution markers and preserves all body
 text, including front matter, contents, notes, and illustration labels. Credits
 and the license survive in the verbatim original. Preparation preserves layout
 and wraps only long unindented lines without tabular spacing, except in works

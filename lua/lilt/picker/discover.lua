@@ -1,5 +1,6 @@
 -- Online navigation stays separate from the local library and reading flow.
-local online = require('lilt.online')
+local catalog_api = require('lilt.online.catalog')
+local acquisition = require('lilt.online.acquire')
 local M = {}
 
 function M.open(s, root, catalog, units, refresh)
@@ -13,7 +14,7 @@ function M.open(s, root, catalog, units, refresh)
           .. (#book.languages > 0 and table.concat(book.languages, ', ') or 'Unknown'),
       },
       { label = 'Source: Project Gutenberg #' .. book.id },
-      { label = online.url(book) },
+      { label = acquisition.url(book) },
     }
     if #book.subjects > 0 then
       items[#items + 1] =
@@ -21,7 +22,7 @@ function M.open(s, root, catalog, units, refresh)
     end
     items[#items + 1] = { label = '' }
     local page = { title = 'Work details', items = items }
-    local ok, existing = pcall(online.existing, root, book)
+    local ok, existing = pcall(acquisition.existing, root, book)
     local function open_copy(reading)
       return {
         label = 'Open library copy',
@@ -45,7 +46,7 @@ function M.open(s, root, catalog, units, refresh)
         label = 'Acquire and read',
         select = function()
           s:request(page, function(callback)
-            return online.acquire(root, book, callback)
+            return acquisition.acquire(root, book, callback)
           end, function(reading)
             refresh()
             acquire.label, acquire.select =
@@ -120,7 +121,7 @@ function M.open(s, root, catalog, units, refresh)
       s:replace(page)
     end
     s:request(page, function(callback)
-      return online.catalog(catalog or online.default_catalog, query, callback)
+      return catalog_api.fetch(catalog or catalog_api.default_url, query, callback)
     end, function(result)
       page.selected = nil
       context.label = title .. ' · ' .. result.count .. ' works · page ' .. (query.page or 1)

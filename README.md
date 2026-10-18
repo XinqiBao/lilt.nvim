@@ -60,7 +60,7 @@ Backspace goes back, and `q` / Esc quits. Shortcuts appear beside their actions.
 ### Save and resume
 
 - **Library works:** use `:w`. In a later Neovim process, select the same work and
-  chapter through `:Lilt` to resume. Percentages count saved lines, not correctness;
+  unit through `:Lilt` to resume. Percentages count saved lines, not correctness;
   unsaved edits are excluded.
 - **Examples:** manuscripts are temporary. Add an example directory as a local
   work for persistent progress.

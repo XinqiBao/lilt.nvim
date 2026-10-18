@@ -48,8 +48,8 @@ Escape inside the search editor cancels only that input.
 
 Works with a table of contents show its hierarchy on one page. Group headings
 are informational; linked entries open ordinary units. Long chapters group their
-numbered reading parts. Units absent from the directory remain accessible under
-Other reading units. Directory aliases share the same manuscript and progress.
+numbered reading parts. Units absent from the table of contents remain accessible
+under Other reading units. Aliases share the same manuscript and progress.
 
 Selecting a unit automatically shows its opening reference text in a passive,
 read-only preview: on the right in wide terminals, below in narrower ones, or
@@ -112,7 +112,7 @@ UTF-8 codepoints, not full grapheme layout.
 Discovery uses Gutendex (https://gutendex.com/); literary texts come from Project
 Gutenberg's PGLAF mirror. Public-domain status in the USA does not establish status
 in your country. Acquisitions preserve the original EPUB and credits/license in
-SOURCE.epub. Existing plain-text acquisitions retain their original SOURCE.txt.
+SOURCE.epub.
 Review https://www.gutenberg.org/policy/license.html before sharing, including
 terms for the Project Gutenberg registered trademark. Lilt is an independent
 client. Details on preparation, service limits, and redistribution: doc/works.md.

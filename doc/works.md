@@ -57,7 +57,7 @@ An optional `toc` preserves navigation independently of reading order:
 ```
 
 Each entry has a `title` and a `path`, nonempty `children`, or both. Paths must
-name entries in `units`; multiple directory entries may share a unit. Nesting is
+name entries in `units`; multiple navigation entries may share a unit. Nesting is
 limited to 64 levels. The Picker displays the tree on one page, followed by any
 units absent from it. Manuscripts and saved progress still belong to unit paths.
 Works without `toc` use the ordinary unit list.
@@ -106,10 +106,12 @@ Navigation uses EPUB 3 `toc nav`, then EPUB 2 NCX, resolving local paths and
 anchors against the cleaned text. Source labels and nesting are retained;
 unlinked groups need usable children. Missing, external, image-only, and removed
 targets are omitted. Without usable navigation, body headings remain the fallback.
+Without navigation or headings, units use the work title. Text before the first
+heading is labeled `Front matter`.
 Unlisted text stays available under **Other reading units**. A target inside a
 paragraph or table opens the unit containing that intact block.
 
-The linear spine determines body order; directory aliases never duplicate text.
+The linear spine determines body order; navigation aliases never duplicate text.
 Long sections get numbered reading parts beneath their source chapter. Source
 labels can differ from printed headings. When a label reproduces a heading with
 a marked illustration caption, that caption is excluded from the label and kept
@@ -238,23 +240,13 @@ Existing acquisitions and local imports are not converted.
 New acquisitions require [Pandoc 3.1.1+](https://pandoc.org/installing.html) on
 `PATH`. Lilt runs `pandoc --version` before downloading, rejecting missing,
 unusable, or older tools with installation guidance. Existing works and prepared
-local imports need no Pandoc. The EPUB's linear spine supplies
-body order, with source nav/NCX for labels and hierarchy; see [conversion](#convert-a-local-epub).
-Body headings provide a fallback, without guessing chapter names from prose.
-Documents without headings use the work title; material
-before the first heading is labeled `Front matter`. Long sections split at
-paragraph breaks with numbered parts.
+local imports need no Pandoc. See [local conversion](#convert-a-local-epub) for
+navigation, text preparation, and rendering limits.
 
 Acquisition supplies a separate Gutenberg filter to remove its marked
-distribution header/footer. Ordinary local EPUB conversion does not use that
-filter or require those markers. The reading copy omits images. Prose wraps
-at 72 columns; explicit verse and preformatted line breaks remain. Notes, tables,
-contents and front/back matter are retained as text. CSS-only layout and unusual
-source markup can render differently; structural labels can still reflect
-imperfect source editing. Unsupported or ambiguous distribution boundaries fail
-without installing a partial work. There is no plain-text fallback. Older
-acquisitions retain their previous unit layout and `SOURCE.txt`; opening them
-never downloads or repartitions their references.
+distribution header/footer. Unsupported or ambiguous boundaries fail without
+installing a partial work. Ordinary local EPUB conversion needs no such markers.
+Opening an existing work never downloads or repartitions its references.
 
 Downloads have a 45-second timeout and a 12 MiB size limit. Conversion has its
 own 45-second deadline and a 48 MiB prepared-text limit. Gutendex is a separate,

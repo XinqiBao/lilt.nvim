@@ -97,7 +97,7 @@ TOC chapters group their numbered reading parts. The Picker displays one indente
 list, caps indentation on narrow terminals, and appends unlisted reading units.
 
 There is no chapter-name matching, locale keyword list or plain-text fallback.
-Caption spans mirrored in a heading's directory label are excluded from that
+Caption spans mirrored in a heading's navigation label are excluded from that
 label and retained in body text. Presentation attributes/identifiers never enter
 rendered references. Prose wraps at 72 columns; explicit verse/preformatted
 breaks remain. CSS-only layout can differ. Images are omitted without fetching

@@ -461,11 +461,13 @@ def online_tests():
     with tempfile.TemporaryDirectory(prefix="lilt-online-ui-") as directory:
         home = Path(directory) / "library"
         fixture = Path("tests/fixtures/gutenberg.txt").read_text(encoding="utf-8")
-        catalog = json.dumps({"count": 1, "next": None, "results": [{
+        book = {
             "id": 11, "title": "Test Letters", "authors": [{"name": "A. Writer"}],
             "subjects": ["Letters -- Fiction"], "languages": ["en"], "copyright": False,
             "media_type": "Text", "formats": {"text/plain; charset=utf-8": "https://www.gutenberg.org/ebooks/11.txt.utf-8"},
-        }]})
+        }
+        other_book = dict(book, id=12, title="Other Letters", copyright=True)
+        catalog = json.dumps({"count": 2, "next": None, "results": [book, other_book]})
         # Control only the process boundary; exercise the real floating search,
         # async redraw, catalog parser, converter, installation, and reading UI.
         nvim.exec_lua("""
@@ -532,6 +534,26 @@ def online_tests():
                   and nvim.funcs.winsaveview()["topline"] == metadata_view[1]
                   and not nvim.current.window.options["cursorline"],
                   "cancelled search also restores an informational row")
+            width, height = 40, 10
+            nvim.ui_try_resize(width, height)
+            input_keys("")
+            for title in ("Test Letters", "Other Letters", "Test Letters"):
+                result_row = next(row for row, line in enumerate(nvim.current.buffer[:], 1) if title in line)
+                nvim.current.window.cursor = (result_row, 0)
+                input_keys("")
+                result_view = (nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"])
+                rows = input_keys("<CR>")
+                check(nvim.funcs.winsaveview()["topline"] == 1 and any(title in row for row in rows),
+                      "each online work opens its details from the title")
+                input_keys("G")
+                check(nvim.funcs.winsaveview()["topline"] > 1, "details can scroll away from the title")
+                input_keys("h")
+                check(nvim.current.window.cursor == result_view[0]
+                      and nvim.funcs.winsaveview()["topline"] == result_view[1],
+                      "return from scrolled details restores result selection and scroll")
+            width, height = 90, 22
+            nvim.ui_try_resize(width, height)
+            input_keys("")
             choose("Test Letters")
             input_keys("h")
             check(nvim.exec_lua("return #_G.lilt_test_requests") == requests, "details back retains loaded results")

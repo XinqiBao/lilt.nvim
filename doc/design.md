@@ -20,9 +20,11 @@ scratch float, selection, page stack, search editor, and request lifetime.
 Menu rows distinguish informational text from actions. Native line movement
 reaches every row, including headings, metadata, and blank separators; gg/G
 reach the first/last line. Only actions activate and receive cursor-line
-highlighting. Initial focus prefers an action, but returning, cancelling search,
-and resizing retain the cursor item and its wrapped-line offset (clamped when
-text reflows). Detail text is bounded and wraps with the window. Duplicate local
+highlighting. Menus initially prefer an action; online work details start at
+the title so identity and availability can be inspected before acquisition.
+New pages reset the shared window's scroll. Returning, cancelling search, and
+resizing retain the cursor item and its wrapped-line offset (clamped when text
+reflows). Detail text is bounded and wraps with the window. Duplicate local
 titles show directory names only when needed to distinguish them. Unit
 percentages report saved rows.
 Action-local shortcut keys are displayed with their labels and active only on

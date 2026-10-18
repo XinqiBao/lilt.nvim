@@ -260,11 +260,10 @@ function M.new(on_close)
     end
     vim.wo[self.win].wrap = false
     vim.wo[self.win].linebreak = true
-    if restore and page.view then
-      api.nvim_win_call(self.win, function()
-        vim.fn.winrestview(page.view)
-      end)
-    end
+    api.nvim_win_call(self.win, function()
+      -- Pages share a window, but a new page must not inherit its scroll.
+      vim.fn.winrestview(restore and page.view or { topline = 1, leftcol = 0 })
+    end)
     if not selected then
       for i in ipairs(lines) do
         if actionable(i) then

@@ -37,8 +37,9 @@ a / o            Acquire / open the local copy, from work details.
 r                Retry a failed request.
 
 Only actions receive a cursor-line highlight and respond to Enter/l/Right.
-Headings and metadata are informational; activating them does nothing. Pages
-initially focus an action. Action shortcuts appear beside their labels.
+Headings and metadata are informational; activating them does nothing. Menus
+initially focus an action; online work details start at the title. Use a/o to
+acquire/open directly. Action shortcuts appear beside their labels.
 Escape inside the search editor cancels only that input.
 
 Selecting a unit automatically shows its opening reference text in a passive,

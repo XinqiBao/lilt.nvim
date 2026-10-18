@@ -58,8 +58,9 @@ Escape cancels. An empty query returns to Popular.
 
 **Next page** and **Previous page** keep the current query. Changing a query,
 preset, or page replaces the results; back returns to the library. Selecting a
-work shows its identity, source, and availability. Back from details restores
-your result selection and scrolling. Choose **Acquire and read**, then a unit.
+work opens its details from the title, followed by source and availability.
+Back from details restores your result selection and scrolling.
+Choose **Acquire and read** (or press `a`), then a unit.
 Downloads run asynchronously; back or close cancels, and failures offer retry.
 
 Acquired works join your local library and remain available offline. No account

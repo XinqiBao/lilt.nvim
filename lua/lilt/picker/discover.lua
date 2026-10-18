@@ -21,7 +21,8 @@ function M.open(s, root, catalog, units, refresh)
         { label = 'Subjects: ' .. table.concat(book.subjects, '; '), wrap = true, max_lines = 2 }
     end
     items[#items + 1] = { label = '' }
-    local page = { title = 'Work details', items = items }
+    -- Inspect a new work from its identity; a/o still reaches the primary action.
+    local page = { title = 'Work details', items = items, selected = items[1] }
     local ok, existing = pcall(acquisition.existing, root, book)
     local function open_copy(reading)
       return {

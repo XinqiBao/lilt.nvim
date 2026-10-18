@@ -257,7 +257,9 @@ def theme_tests(start):
 
 def open_example():
     nvim.command("Lilt")
-    return input_keys("Glll")
+    input_keys("e")
+    choose(json.loads(Path("examples/alice/lilt.json").read_text(encoding="utf-8"))["title"])
+    return input_keys("<CR>")
 
 
 def picker_session_tests(buf):
@@ -397,7 +399,7 @@ def library_tests():
         input_keys(":Lilt<CR>ll")
         check(nvim.current.buffer.number == buf, "chapter selection reuses named buffer")
         check(nvim.api.buf_get_lines(second, 0, -1, False) == ["Reply"], "chapter switch retains unsaved edits")
-        input_keys(":Lilt<CR>Gllh")
+        input_keys(":Lilt<CR>elh")
         check(any("Alice" in line for line in nvim.current.buffer[:]), "h returns from units to example works")
         input_keys("q")
         check(nvim.current.buffer.number == buf, "quit from nested pages restores reading focus")
@@ -425,7 +427,7 @@ def library_tests():
             resumed.exec_lua("require('lilt').setup({library=...}); require('lilt').open()", str(home))
             resumed.exec_lua("vim.api.nvim_feedkeys('ll', 'xt', false)")
             check(resumed.current.buffer[:] == ["First line."], "new Neovim process resumes saved manuscript through picker")
-            resumed.exec_lua("require('lilt').open(); vim.api.nvim_feedkeys('Glll', 'xt', false)")
+            resumed.exec_lua("require('lilt').open(); vim.api.nvim_feedkeys('ell', 'xt', false)")
             check(resumed.current.buffer.name == "", "example opens from a readonly plugin installation")
         finally:
             try:

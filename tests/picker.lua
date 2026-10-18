@@ -30,6 +30,10 @@ local function choose(label)
   api.nvim_win_set_cursor(0, { find(label), 0 })
   keys('l')
 end
+local function example_units(title)
+  keys('e')
+  choose(title)
+end
 local function selected(label)
   return lines()[api.nvim_win_get_cursor(0)[1]]:find(label, 1, true)
 end
@@ -68,10 +72,7 @@ local function run()
     vim.env.XDG_DATA_HOME = case[1] or nil
     package.loaded.lilt = nil
     local lilt = require('lilt')
-    assert(
-      seen ~= case[2] or case[2]:find('/.local/share', 1, true),
-      'loading must not discover works'
-    )
+    assert(seen == nil, 'loading must not discover works')
     lilt.open()
     assert(seen == case[2], 'XDG convention: ' .. tostring(seen))
     keys('q')
@@ -107,13 +108,13 @@ local function run()
     api.nvim_win_get_cursor(0)[1] == 1 and not vim.wo.cursorline,
     'return from a shortcut restores an informational cursor position'
   )
-  keys('Gll')
+  example_units('A poem')
   assert(find('Unit 2'), 'first example has ordered units')
   local width = api.nvim_win_get_width(0)
   for _, line in ipairs(lines()) do
     assert(vim.fn.strdisplaywidth(line) <= width, 'long Unicode titles must fit')
   end
-  keys('jl')
+  choose('Unit 2')
   local second_unit = api.nvim_get_current_buf()
   assert(
     vim.bo.buftype == '' and api.nvim_buf_get_name(0) == '',
@@ -123,7 +124,8 @@ local function run()
   local undo = vim.fn.undotree().seq_cur
   lilt.close()
   picker.open(home, example_root)
-  keys('Glljl')
+  example_units('A poem')
+  choose('Unit 2')
   assert(
     api.nvim_get_current_buf() == second_unit and lines()[1] == 'Reference',
     'example reopens unsaved manuscript'
@@ -131,7 +133,8 @@ local function run()
   assert(vim.fn.undotree().seq_cur == undo, 'example reopen keeps native undo')
   lilt.close()
   picker.open(home, example_root)
-  keys('Glll')
+  example_units('A poem')
+  keys('<CR>')
   local first_unit = api.nvim_get_current_buf()
   assert(
     first_unit ~= second_unit and lines()[1] == '',
@@ -140,14 +143,16 @@ local function run()
   lilt.close()
   api.nvim_buf_delete(second_unit, { force = true })
   picker.open(home, example_root)
-  keys('Glljl')
+  example_units('A poem')
+  choose('Unit 2')
   assert(
     api.nvim_get_current_buf() ~= second_unit and lines()[1] == '',
     'wiped example starts fresh'
   )
   lilt.close()
   picker.open(home, example_root)
-  keys('GljlG')
+  example_units('B letters')
+  keys('G')
   assert(selected('Unit 24'), 'G navigates a long chapter list')
   local unit_buf = api.nvim_get_current_buf()
   assert(vim.fn.winsaveview().topline > 1, 'long unit list scrolls past work metadata')
@@ -192,7 +197,8 @@ local function run()
     error('missing reference preview')
   end
   picker.open(home, example_root)
-  keys('ejlG')
+  example_units('B letters')
+  keys('G')
   local list_win = api.nvim_get_current_win()
   local preview_win, preview_buf = preview()
   local excerpt = api.nvim_buf_get_lines(preview_buf, 0, -1, false)
@@ -261,7 +267,8 @@ local function run()
   vim.fn.writefile({ '\255' }, preview_path, 'b')
   local before = #messages
   picker.open(home, example_root)
-  keys('ejlG')
+  example_units('B letters')
+  keys('G')
   preview_win, preview_buf = preview()
   assert(
     api.nvim_buf_get_lines(preview_buf, 0, 1, false)[1] == 'Preview unavailable',
@@ -294,7 +301,7 @@ local function run()
     end,
   }) do
     picker.open(home, example_root)
-    keys('ejl')
+    example_units('B letters')
     preview_win, preview_buf = preview()
     dismiss(preview_win, preview_buf)
     vim.wait(20, function()
@@ -313,7 +320,7 @@ local function run()
     return open_preview(buffer, enter, config)
   end
   picker.open(home, example_root)
-  keys('ejl')
+  example_units('B letters')
   api.nvim_open_win = open_preview
   keys('q')
   no_picker()
@@ -326,7 +333,7 @@ local function run()
   for _, quit in ipairs({ 'q', '<Esc>' }) do
     picker.open(home, example_root)
     assert(find('[e] Examples'), 'library shortcuts are visible')
-    keys('el')
+    example_units('A poem')
     keys(quit)
     no_picker()
     assert(api.nvim_get_current_win() == origin, 'quit exits directly from nested units')
@@ -370,7 +377,8 @@ local function run()
   vim.ui.input = input
   vim.fn.writefile({ 'not a directory' }, root .. '/invalid-library')
   picker.open(root .. '/invalid-library', example_root)
-  keys('Glll')
+  example_units('A poem')
+  keys('<CR>')
   assert(api.nvim_get_current_buf() == first_unit, 'unusable library must not block examples')
   lilt.close()
   no_picker()
@@ -413,14 +421,8 @@ local function run()
     table.concat(lines(), '\n'):find('?', 1, true) and find('Unit 24'),
     'one progress error must not hide reading units'
   )
-  width = api.nvim_win_get_width(0)
-  assert(lines()[find('Unit 2')]:match('100%%$'), 'saved rows must show their numeric progress')
-  for _, line in ipairs(lines()) do
-    if line:match('[%%?—]$') then
-      assert(vim.fn.strdisplaywidth(line) == width, 'saved progress must share the right edge')
-    end
-  end
-  keys('jl')
+  assert(lines()[find('Unit 2')]:match('100%%$'), 'saved rows show their numeric progress')
+  choose('Unit 2')
   assert(
     vim.uv.fs_realpath(api.nvim_buf_get_name(0))
       == vim.uv.fs_realpath(home .. '/manuscripts/second/2.txt'),

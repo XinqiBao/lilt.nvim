@@ -42,9 +42,9 @@ and bounds each subprocess to 60 seconds. It accepts `--nvim /path/to/nvim`.
 Work/library suites validate real temporary directories, failed-copy cleanup,
 and saved progress. Reading checks cover named buffers and unsaved protections;
 Picker checks cover XDG configuration, multiple example works/units, back
-navigation, temporary manuscripts, read-only previews, and cleanup. The UI suite
-drives the floating search editor and native path prompt, exercises terminal
-resizing, and resumes in a second process.
+navigation, temporary manuscripts, automatic reference excerpts, and cleanup.
+The UI suite drives the floating search editor and native path prompt, exercises
+preview placement and terminal resizing, and resumes in a second process.
 Tests use temporary files and an embedded Neovim; no display server is needed.
 The UI notification loop also has a deadline and reports the screen on assertion
 failures. Positive hint checks poll for the visible float; absence checks wait
@@ -154,7 +154,7 @@ At this width Split stacks its panes; wider windows open them side by side.
 
 The capture uses temporary XDG directories, `--clean -i NONE`, the default dark
 colorscheme, and DejaVu Sans Mono. It adjusts only display options and never
-uses the owner's library. The checked-in GIF is about 36 seconds at 1200 × 550,
+uses the owner's library. The checked-in GIF is about 35 seconds at 1480 × 550,
 recorded with Neovim 0.12.5 and VHS 0.12.1.
 
 Recording is optional, outside the test environment and CI. Install

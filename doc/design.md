@@ -25,13 +25,20 @@ Action-local shortcut keys are displayed with their labels and active only on
 that page; busy pages disable actions. q/Escape exits from any menu, while
 h/Backspace goes back. Escape in the search editor cancels only the input.
 
-A unit preview replaces the list in the same float with protected reference
-text, starts at the beginning, and supports native scrolling/search. Back restores
-the list selection and viewport. A side pane would narrow both documents and
-need focus/resize rules; an always-visible lower pane would shorten the list.
-The on-demand document avoids those costs. Preview reads the selected local
-reference through `work.read_unit`; it never opens a manuscript or comparison.
-Online details never download text for previews.
+Unit selection automatically previews a local reference excerpt. The UI owns a
+single passive float through `picker/preview.lua`; it never receives focus or
+mappings. Wide terminals place it beside the unit list; narrower terminals with
+enough height place it below. Very small terminals keep only the list. The list
+and preview form one centered layout, and resizing retains the selected unit.
+There is no separate preview page or reading/navigation state.
+
+Preview reads the selected reference through `work.read_unit`, keeps only the
+last selection's text, and puts at most one viewport of physical rows in the
+protected scratch buffer. Source paths and UTF-8 still receive the normal
+validation. Read failures appear in the preview without notification spam and
+leave navigation usable. Leaving the unit list releases the preview resources.
+It never opens a manuscript or comparison. Online details never download text
+for previews.
 
 Catalog search edits one line in the existing float and preserves the results
 behind it until submission. Native `vim.ui.input` supplies the local directory

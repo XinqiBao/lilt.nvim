@@ -7,7 +7,7 @@ Set Shell "bash"
 Set FontFamily "DejaVu Sans Mono"
 Set FontSize 20
 Set LineHeight 1.2
-Set Width 1200
+Set Width 1480
 Set Height 550
 Set Padding 24
 Set Framerate 12
@@ -22,16 +22,10 @@ Show
 Type@100ms ":Lilt"
 Enter
 Sleep 1s
-Type "G"
-Sleep 300ms
-Enter
+Type "e"
 Sleep 1200ms
 Enter
-Sleep 1200ms
-Type "p"
-Sleep 1500ms
-Type "h"
-Sleep 500ms
+Sleep 2700ms
 Enter
 Sleep 1s
 Type "iAlice wax beginning to get very tired"

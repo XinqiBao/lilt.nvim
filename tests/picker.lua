@@ -150,63 +150,157 @@ local function run()
   assert(api.nvim_get_current_win() == origin, 'back/close restores original focus')
   no_picker()
 
-  -- Preview is a local reference document, with no manuscript or reading state.
+  -- Selection passively previews references, without navigation or manuscripts.
   local reference = { 'Beginning — 文学 🐇', '', 'Third physical row.' }
   for i = 4, 60 do
     reference[i] = 'Reference row ' .. i
   end
   local preview_path = example_root .. '/second/24.txt'
   vim.fn.writefile(reference, preview_path)
+  local columns, editor_lines = vim.o.columns, vim.o.lines
+  vim.o.columns, vim.o.lines = 120, 30
+  local listed = #vim.fn.getbufinfo({ buflisted = 1 })
+  local function preview()
+    for _, target in ipairs(api.nvim_list_wins()) do
+      if
+        api.nvim_win_get_config(target).relative ~= '' and target ~= api.nvim_get_current_win()
+      then
+        return target, api.nvim_win_get_buf(target)
+      end
+    end
+    error('missing reference preview')
+  end
   picker.open(home, example_root)
-  keys('GljlG')
+  keys('ejlG')
   local list_win = api.nvim_get_current_win()
-  local list_view = vim.fn.winsaveview()
-  local listed = vim.fn.getbufinfo({ buflisted = 1 })
-  keys('p')
-  assert(api.nvim_get_current_win() == list_win, 'preview reuses the picker window')
+  local preview_win, preview_buf = preview()
+  local excerpt = api.nvim_buf_get_lines(preview_buf, 0, -1, false)
   assert(
-    vim.deep_equal(lines(), reference),
-    'preview preserves Unicode, blank rows and full local text'
+    vim.deep_equal(excerpt, vim.list_slice(reference, 1, #excerpt)),
+    'preview keeps Unicode and blank rows'
   )
-  assert(api.nvim_win_get_cursor(0)[1] == 1, 'preview starts at the beginning')
+  assert(#excerpt < #reference, 'preview holds only an opening excerpt')
   assert(
-    vim.bo.readonly and not vim.bo.modifiable and vim.bo.buftype == 'nofile',
-    'preview is protected scratch text'
+    api.nvim_win_get_position(preview_win)[2] > api.nvim_win_get_position(list_win)[2],
+    'wide preview sits beside the list'
+  )
+  assert(not api.nvim_win_get_config(preview_win).focusable, 'preview never takes list focus')
+  assert(
+    vim.bo[preview_buf].readonly and not vim.bo[preview_buf].modifiable,
+    'preview is protected'
   )
   assert(
-    not pcall(api.nvim_buf_set_lines, 0, 0, 1, false, { 'changed' }),
-    'preview rejects editing'
+    not pcall(api.nvim_buf_set_lines, preview_buf, 0, 1, false, { 'changed' }),
+    'preview rejects edits'
   )
-  assert(#vim.fn.getbufinfo({ buflisted = 1 }) == #listed, 'preview creates no ordinary buffers')
-  assert(vim.fn.isdirectory(home) == 0, 'preview never writes progress or manuscripts')
+  assert(#vim.fn.getbufinfo({ buflisted = 1 }) == listed, 'preview creates no ordinary buffer')
+  assert(vim.fn.isdirectory(home) == 0, 'preview writes no progress or manuscript')
+  picker.open(home, example_root)
+  assert(api.nvim_get_current_win() == list_win, 'reentry keeps list focus')
+  keys('k')
+  assert(
+    api.nvim_buf_get_lines(preview_buf, 0, 1, false)[1] == 'Reference 23',
+    'movement updates the same preview buffer'
+  )
   keys('G')
-  assert(api.nvim_win_get_cursor(0)[1] == #reference, 'preview supports native full-text browsing')
-  keys('h')
+  vim.o.columns = 80
+  api.nvim_exec_autocmds('VimResized', {})
   assert(
-    selected('Unit 24') and vim.fn.winsaveview().topline == list_view.topline,
-    'preview back restores selection and list scrolling'
+    api.nvim_win_get_position(preview_win)[1] > api.nvim_win_get_position(list_win)[1],
+    'narrow preview sits below the list'
   )
-  keys('p<CR>')
+  assert(selected('Unit 24'), 'resize keeps selection')
+  vim.o.lines = 8
+  api.nvim_exec_autocmds('VimResized', {})
   assert(
-    vim.bo.buftype == '' and lines()[1] == '',
-    'Enter in preview opens a fresh ordinary manuscript'
+    not api.nvim_win_is_valid(preview_win) and not api.nvim_buf_is_valid(preview_buf),
+    'small terminals release preview resources'
   )
-  require('lilt').close()
+  assert(selected('Unit 24'), 'small terminals retain the unit list')
+  local read_unit, reads = work.read_unit, 0
+  work.read_unit = function(...)
+    reads = reads + 1
+    return read_unit(...)
+  end
+  keys('kG')
+  work.read_unit = read_unit
+  assert(reads == 0, 'hidden previews do not read reference files')
+  vim.o.columns, vim.o.lines = 120, 30
+  api.nvim_exec_autocmds('VimResized', {})
+  preview_win, preview_buf = preview()
+  keys('<CR>')
+  no_picker()
+  assert(vim.bo.buftype == '' and lines()[1] == '', 'Enter reads directly from the unit list')
+  lilt.close()
   assert(
     vim.deep_equal(vim.fn.readfile(preview_path), reference),
-    'preview and reading leave the source intact'
+    'preview and reading preserve the source'
   )
-  -- A failed preview leaves the unit list usable and cannot open a manuscript.
+  -- Automatic preview failures stay local and cannot disrupt the list.
   vim.fn.writefile({ '\255' }, preview_path, 'b')
+  local before = #messages
   picker.open(home, example_root)
-  keys('GljlGp')
+  keys('ejlG')
+  preview_win, preview_buf = preview()
   assert(
-    selected('Unit 24') and vim.bo.buftype == 'nofile',
-    'invalid preview stays on the selected unit'
+    api.nvim_buf_get_lines(preview_buf, 0, 1, false)[1] == 'Preview unavailable',
+    'invalid preview explains the failure inline'
   )
-  keys('hhh')
+  assert(
+    selected('Unit 24') and #messages == before,
+    'failed preview leaves navigation usable without notification spam'
+  )
+  keys('k')
+  assert(
+    api.nvim_buf_get_lines(preview_buf, 0, 1, false)[1] == 'Reference 23',
+    'movement recovers from preview failure'
+  )
+  keys('q')
   no_picker()
   vim.fn.writefile(reference, preview_path)
+  for _, dismiss in ipairs({
+    function(target_win)
+      api.nvim_win_close(target_win, true)
+    end,
+    function(_, target_buf)
+      api.nvim_buf_delete(target_buf, { force = true })
+    end,
+    function(target_win)
+      api.nvim_win_set_buf(target_win, api.nvim_create_buf(true, false))
+    end,
+    function()
+      api.nvim_set_current_win(origin)
+    end,
+  }) do
+    picker.open(home, example_root)
+    keys('ejl')
+    preview_win, preview_buf = preview()
+    dismiss(preview_win, preview_buf)
+    vim.wait(20, function()
+      return false
+    end)
+    no_picker()
+    assert(not api.nvim_buf_is_valid(preview_buf), 'native dismissal releases preview text')
+  end
+  -- Partial preview initialization must also release its scratch buffer.
+  local open_preview, partial_buffer = api.nvim_open_win, nil
+  api.nvim_open_win = function(buffer, enter, config)
+    if config.focusable == false then
+      partial_buffer = buffer
+      error('preview initialization failure')
+    end
+    return open_preview(buffer, enter, config)
+  end
+  picker.open(home, example_root)
+  keys('ejl')
+  api.nvim_open_win = open_preview
+  keys('q')
+  no_picker()
+  assert(
+    partial_buffer and not api.nvim_buf_is_valid(partial_buffer),
+    'partial preview cleanup releases its buffer'
+  )
+  vim.o.columns, vim.o.lines = columns, editor_lines
 
   for _, quit in ipairs({ 'q', '<Esc>' }) do
     picker.open(home, example_root)
@@ -322,9 +416,12 @@ local function run()
     'unique titles do not need identifiers'
   )
   choose('[third]')
-  keys('p')
-  assert(lines()[1] == 'Reference 1', 'duplicate titles select their own local work')
-  keys('hhhh')
+  local _, duplicate_preview = preview()
+  assert(
+    api.nvim_buf_get_lines(duplicate_preview, 0, 1, false)[1] == 'Reference 1',
+    'duplicate titles preview their own reference'
+  )
+  keys('q')
   no_picker()
   print('Lilt picker: XDG, hierarchy, multiple examples, buffer reuse and cleanup passed')
 end

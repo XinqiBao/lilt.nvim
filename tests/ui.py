@@ -278,9 +278,9 @@ def picker_session_tests(buf):
                       "picker cancellation preserves unsaved manuscript")
         nvim.current.window = user
         check(nvim.funcs.undotree()["seq_cur"] == undo, "picker leaves native undo history intact")
-    input_keys(":Lilt<CR>lp")
+    input_keys(":Lilt<CR>l")
     check(nvim.api.buf_get_lines(buf, 0, -1, False) == text, "preview during reading preserves unsaved writing")
-    input_keys("h<CR>")
+    input_keys("<CR>")
     check(nvim.current.buffer.number == buf and nvim.current.buffer[:] == text,
           "selecting the active unit reuses its unsaved buffer")
 
@@ -336,23 +336,33 @@ def library_tests():
         choose("Add local work")
         rows = input_keys(str(source) + "<CR>")
         check(any("Opening" in row and "—" in row for row in rows), "import proceeds to ordered unit selection")
-        preview_win = nvim.current.window
-        rows = input_keys("p")
-        check(nvim.current.window == preview_win and len(floats()) == 1, "preview reuses the focused picker float")
-        check(nvim.current.buffer[:] == ["First line.", "", "Last line."], "preview preserves the local reference rows")
-        check(nvim.current.buffer.options["readonly"] and not nvim.current.buffer.options["modifiable"],
+        list_win = nvim.current.window
+        preview_win = next(win for win in floats() if win != list_win)
+        check(nvim.current.window == list_win and len(floats()) == 2, "unit selection previews automatically without focus changes")
+        check(preview_win.buffer[:] == ["First line.", "", "Last line."], "preview preserves the reference opening")
+        check(preview_win.buffer.options["readonly"] and not preview_win.buffer.options["modifiable"],
               "unit preview is read-only")
-        input_keys("/Last<CR>")
-        check(nvim.current.window.cursor[0] == 3, "preview supports native text search")
+        input_keys("j")
+        check(preview_win.buffer[:] == ["Reply."], "moving the list changes the excerpt")
+        input_keys("k")
+        width, height = 120, 30
+        nvim.ui_try_resize(width, height)
+        rows = input_keys("")
+        check(nvim.api.win_get_position(preview_win.handle)[1] > nvim.api.win_get_position(list_win.handle)[1],
+              "wide terminals show preview on the right")
+        check(any("First line." in row for row in rows), "reference excerpt is visible beside selection")
+        width, height = 80, 24
+        nvim.ui_try_resize(width, height)
+        rows = input_keys("")
+        check(nvim.api.win_get_position(preview_win.handle)[0] > nvim.api.win_get_position(list_win.handle)[0],
+              "narrow terminals show preview below")
         width, height = 24, 8
         nvim.ui_try_resize(width, height)
         rows = input_keys("")
-        config = nvim.api.win_get_config(preview_win.handle)
-        check(config["width"] + 2 <= width and config["height"] + 2 <= height,
-              "preview fits a small terminal")
-        check(nvim.current.window.options["wrap"], "small preview wraps the reference")
-        input_keys("h")
-        check("Opening" in nvim.current.buffer[nvim.current.window.cursor[0] - 1], "preview returns to the selected unit")
+        config = nvim.api.win_get_config(list_win.handle)
+        check(config["width"] + 2 <= width and config["height"] + 2 <= height and len(floats()) == 1,
+              "small terminals prioritize the unit list")
+        check("Opening" in nvim.current.buffer[nvim.current.window.cursor[0] - 1], "resize preserves unit selection")
         check(not (home / "manuscripts").exists(), "preview leaves manuscripts and progress untouched")
         width, height = 90, 22
         nvim.ui_try_resize(width, height)

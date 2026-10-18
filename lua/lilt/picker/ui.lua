@@ -1,6 +1,7 @@
 -- Picker presentation and lifetime. Pages contain information and actions;
 -- only actions participate in selection. Reading resources never live here.
 local api = vim.api
+local preview = require('lilt.picker.preview')
 local M = {}
 local namespace = api.nvim_create_namespace('lilt.picker')
 
@@ -43,7 +44,8 @@ function M.attempt(callback)
 end
 
 function M.new(on_close)
-  local s = { pages = {}, buf = api.nvim_create_buf(false, true), rows = {} }
+  local s =
+    { pages = {}, buf = api.nvim_create_buf(false, true), rows = {}, preview = preview.new() }
   s.group = api.nvim_create_augroup('LiltPicker', { clear = true })
   vim.bo[s.buf].bufhidden = 'hide'
   vim.bo[s.buf].modifiable = false
@@ -75,6 +77,7 @@ function M.new(on_close)
     api.nvim_del_augroup_by_id(self.group)
     on_close()
     local function cleanup()
+      self.preview:close()
       if self.win and api.nvim_win_is_valid(self.win) then
         api.nvim_win_close(self.win, true)
       end
@@ -100,8 +103,13 @@ function M.new(on_close)
       return
     end
     local page = self:page()
-    local width = math.max(1, math.min(76, vim.o.columns - 4))
+    local available = math.max(1, vim.o.columns - 4)
+    local room = math.max(1, vim.o.lines - vim.o.cmdheight - 4)
+    local side = page.preview and available >= 100 and room >= 8
+    local total = side and math.min(120, available) or math.min(76, available)
+    local width = side and math.floor(total * 0.44) or total
     if self.input then
+      self.preview:close()
       api.nvim_win_set_config(self.win, {
         relative = 'editor',
         width = width,
@@ -129,48 +137,63 @@ function M.new(on_close)
         marks[#marks + 1] = { #lines - 1, item.hl or 'Comment' }
       end
     end
-    if page.text then
-      lines = #page.text > 0 and page.text or { '' }
-    else
-      local items = vim.list_extend(vim.list_slice(page.items), page.status or {})
-      for _, item in ipairs(items) do
-        local indent = item.select and '    ' or '  '
-        if item.key then
-          self.shortcuts[#self.shortcuts + 1] = item.key
-          vim.keymap.set('n', item.key, function()
-            if not page.busy then
-              M.attempt(item.select)
-            end
-          end, { buffer = self.buf, silent = true })
-          indent = indent .. '[' .. item.key .. '] '
-        end
-        if item.wrap then
-          for _, text in ipairs(wrap(item.label, math.max(1, width - 4), item.max_lines or 4)) do
-            row(clip(indent .. text, width), item)
+    local items = vim.list_extend(vim.list_slice(page.items), page.status or {})
+    for _, item in ipairs(items) do
+      local indent = item.select and '    ' or '  '
+      if item.key then
+        self.shortcuts[#self.shortcuts + 1] = item.key
+        vim.keymap.set('n', item.key, function()
+          if not page.busy then
+            M.attempt(item.select)
           end
-        else
-          local label = indent .. item.label
-          local suffix_width = item.suffix and vim.fn.strdisplaywidth(item.suffix)
-          if suffix_width and width > suffix_width + 6 then
-            label = clip(label, width - suffix_width - 2)
-            label = label .. string.rep(' ', width - vim.fn.strdisplaywidth(label) - suffix_width)
-            label = label .. item.suffix
-          end
-          row(clip(label, width), item)
+        end, { buffer = self.buf, silent = true })
+        local hint = item.key:match('%w') and ('[' .. item.key .. ']') or item.key
+        indent = indent .. hint .. ' '
+      end
+      if item.wrap then
+        for _, text in ipairs(wrap(item.label, math.max(1, width - 4), item.max_lines or 4)) do
+          row(clip(indent .. text, width), item)
         end
+      else
+        local label = indent .. item.label
+        local suffix_width = item.suffix and vim.fn.strdisplaywidth(item.suffix)
+        if suffix_width and width > suffix_width + 6 then
+          label = clip(label, width - suffix_width - 2)
+          label = label .. string.rep(' ', width - vim.fn.strdisplaywidth(label) - suffix_width)
+          label = label .. item.suffix
+        end
+        row(clip(label, width), item)
       end
     end
     if #lines == 0 then
       lines = { '' }
     end
     page.height = page.height or #lines
-    local height = math.max(1, math.min(page.height, vim.o.lines - vim.o.cmdheight - 4))
-    local footer = page.text and ' Enter read · h back · q/Esc quit '
-      or (
-        ' Enter select · '
-        .. (page.preview and 'p preview · ' or page.search and 's search · ' or '')
-        .. 'h/BS back · q/Esc quit '
-      )
+    local height = math.min(page.height, room)
+    local below = page.preview and not side and available >= 44 and room >= 14
+    if below then
+      height = math.min(height, math.max(6, math.floor(math.min(room, 20) * 0.6)))
+    end
+    local row_pos = math.max(
+      0,
+      math.floor((vim.o.lines - vim.o.cmdheight - (below and math.min(room, 20) or height) - 2) / 2)
+    )
+    local col_pos = math.max(0, math.floor((vim.o.columns - total - 2) / 2))
+    self.preview_config = side
+        and {
+          row = row_pos,
+          col = col_pos + width + 2,
+          width = total - width - 2,
+          height = height,
+        }
+      or below and {
+        row = row_pos + height + 2,
+        col = col_pos,
+        width = width,
+        height = math.max(1, math.min(room, 20) - height - 2),
+      }
+      or nil
+    local footer = ' Enter select · h/BS back · q/Esc quit '
     if width < 50 then
       footer = width < 30 and ' h back · q quit ' or ' Enter · h back · q/Esc quit '
     elseif width >= 58 then
@@ -183,8 +206,8 @@ function M.new(on_close)
       relative = 'editor',
       width = width,
       height = height,
-      row = math.max(0, math.floor((vim.o.lines - vim.o.cmdheight - height - 2) / 2)),
-      col = math.max(0, math.floor((vim.o.columns - width - 2) / 2)),
+      row = row_pos,
+      col = col_pos,
       border = 'rounded',
       title = clip(' Lilt · ' .. page.title .. ' ', width),
       footer = clip(footer, width),
@@ -220,27 +243,28 @@ function M.new(on_close)
         api.nvim_set_option_value(name, value, { win = self.win })
       end
     end
-    vim.wo[self.win].wrap = page.text ~= nil
+    vim.wo[self.win].wrap = false
     vim.wo[self.win].linebreak = true
-    vim.wo[self.win].cursorline = not page.text and not page.busy
+    vim.wo[self.win].cursorline = not page.busy
     if restore and page.view then
       api.nvim_win_call(self.win, function()
         vim.fn.winrestview(page.view)
       end)
-    elseif page.text then
-      api.nvim_win_set_cursor(self.win, { 1, 0 })
     end
-    if not page.text then
-      if not selected then
-        for i in ipairs(lines) do
-          if selectable(i) then
-            selected = i
-            break
-          end
+    if not selected then
+      for i in ipairs(lines) do
+        if selectable(i) then
+          selected = i
+          break
         end
       end
-      api.nvim_win_set_cursor(self.win, { selected or 1, 0 })
     end
+    api.nvim_win_set_cursor(self.win, { selected or 1, 0 })
+    self:update_preview()
+  end
+
+  function s:update_preview()
+    self.preview:show(self.rows[api.nvim_win_get_cursor(self.win)[1]], self.preview_config)
   end
 
   local function save()
@@ -345,38 +369,35 @@ function M.new(on_close)
     vim.cmd.startinsert({ bang = true })
   end
 
+  local function move(row)
+    api.nvim_win_set_cursor(s.win, { row, 0 })
+    M.attempt(function()
+      s:update_preview()
+    end)
+  end
+
   local function activate()
     M.attempt(function()
       local page = s:page()
       local item = s.rows[api.nvim_win_get_cursor(s.win)[1]]
-      if page.text then
-        page.read()
-      elseif item and item.select and not page.busy then
+      if item and item.select and not page.busy then
         item.select()
       end
     end)
   end
   for _, key in ipairs({ '<CR>', 'l', '<Right>' }) do
     vim.keymap.set('n', key, function()
-      if key == 'l' and s:page().text then
-        vim.cmd('normal! l')
-      else
-        activate()
-      end
+      activate()
     end, { buffer = s.buf, silent = true })
   end
   for key, direction in pairs({ gg = 1, G = -1 }) do
     vim.keymap.set('n', key, function()
-      if s:page().text then
-        vim.cmd('normal! ' .. (vim.v.count > 0 and vim.v.count or '') .. key)
-        return
-      end
       local row = direction == 1 and 1 or #s.rows
       while row > 0 and row <= #s.rows and not selectable(row) do
         row = row + direction
       end
       if selectable(row) then
-        api.nvim_win_set_cursor(s.win, { row, 0 })
+        move(row)
       end
     end, { buffer = s.buf, silent = true })
   end
@@ -392,11 +413,6 @@ function M.new(on_close)
   end
   for key, direction in pairs({ j = 1, k = -1, ['<Down>'] = 1, ['<Up>'] = -1 }) do
     vim.keymap.set('n', key, function()
-      local page = s:page()
-      if page.text then
-        vim.cmd('normal! ' .. vim.v.count1 .. (direction == 1 and 'j' or 'k'))
-        return
-      end
       local row = api.nvim_win_get_cursor(s.win)[1]
       for _ = 1, vim.v.count1 do
         local next_row = row + direction
@@ -408,29 +424,22 @@ function M.new(on_close)
         end
         row = next_row
       end
-      api.nvim_win_set_cursor(s.win, { row, 0 })
-    end, { buffer = s.buf, silent = true })
-  end
-  for key, field in pairs({ p = 'preview' }) do
-    vim.keymap.set('n', key, function()
-      local page = s:page()
-      if page[field] and not page.busy then
-        M.attempt(function()
-          page[field](s.rows[api.nvim_win_get_cursor(s.win)[1]])
-        end)
-      end
+      move(row)
     end, { buffer = s.buf, silent = true })
   end
   api.nvim_create_autocmd('CursorMoved', {
     group = s.group,
     buffer = s.buf,
     callback = function()
-      if s.closed or not s.win or not api.nvim_win_is_valid(s.win) or s:page().text or s.input then
+      if s.closed or not s.win or not api.nvim_win_is_valid(s.win) or s.input then
         return
       end
       local row = api.nvim_win_get_cursor(s.win)[1]
       vim.wo[s.win].cursorline = selectable(row) and true or false
       s:page().selected = s.rows[row]
+      M.attempt(function()
+        s:update_preview()
+      end)
     end,
   })
   api.nvim_create_autocmd('VimResized', {
@@ -451,13 +460,17 @@ function M.new(on_close)
     callback = function(event)
       if
         (event.event == 'WinLeave' and api.nvim_get_current_win() == s.win)
-        or (event.event == 'WinClosed' and tonumber(event.match) == s.win)
+        or (event.event == 'WinClosed' and (tonumber(event.match) == s.win or tonumber(event.match) == s.preview.win))
         -- Search intentionally hides the menu; finish clears input ownership
         -- before restoring it. Other buffer replacements dismiss the picker.
-        or (event.event == 'BufWinLeave' and ((event.buf == s.buf and not s.input) or (s.input and event.buf == s.input.buf)))
+        or (event.event == 'BufWinLeave' and ((event.buf == s.buf and not s.input) or event.buf == s.preview.buf or (s.input and event.buf == s.input.buf)))
         or (
           event.event == 'BufWipeout'
-          and (event.buf == s.buf or (s.input and event.buf == s.input.buf))
+          and (
+            event.buf == s.buf
+            or event.buf == s.preview.buf
+            or (s.input and event.buf == s.input.buf)
+          )
         )
       then
         s:close(true)

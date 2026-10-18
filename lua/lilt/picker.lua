@@ -74,24 +74,15 @@ local function browse(root, example_root, catalog, installed)
           or nil,
         select = read,
         preview = function()
-          -- No manuscript is opened and no comparison/session is involved.
-          s:push({
-            title = 'Preview · ' .. unit.title,
-            text = work.read_unit(reading, unit),
-            read = read,
-            height = 20,
-          })
+          return work.read_unit(reading, unit)
         end,
       }
     end
     s:push({
       title = reading.title,
       items = items,
-      preview = function(item)
-        if item and item.preview then
-          item.preview()
-        end
-      end,
+      preview = true,
+      height = 20,
     })
   end
 

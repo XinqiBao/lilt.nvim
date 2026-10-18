@@ -79,11 +79,14 @@ The picker is a centered float: `j/k` or arrows move, `Enter` / `l` selects,
 `h` / Backspace returns, and `q` / `Esc` quits from any menu. `gg/G` selects
 the first/last action. Shortcuts appear beside actions: `d` discover, `a` add,
 `e` examples; in Discover, `s` searches and `[` / `]` changes pages. Details
-offer `a` to acquire or `o` to open a library copy; `r` retries a failed request. Selecting a work shows its ordered units and saved progress. Press `p` on a unit
-to preview its local reference in the same float. The preview is read-only: use
-native scrolling and search, Enter to read, or back to return to the unit list.
-Previewing never opens a manuscript or changes progress. Online details use
-metadata until you acquire the text.
+offer `a` to acquire or `o` to open a library copy; `r` retries a failed request.
+
+Selecting a work shows its ordered units and saved progress. Moving between
+units automatically previews the opening reference text beside the list.
+The read-only preview stays on the right in wide terminals, below in narrower
+ones, and hides when space is limited. Focus stays on the list; Enter starts
+reading. Previewing never opens a manuscript or changes progress. Online details
+use metadata until you acquire the text.
 
 Titles are clipped to fit and the picker resizes with the terminal. `j/k` skip
 headings and metadata. See `:help lilt` for commands, controls, and saving.

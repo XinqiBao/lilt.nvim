@@ -85,7 +85,6 @@ function M.open(s, root, catalog, units, refresh)
         )
       end)
     end
-    page.search = search
     local context = { label = title .. ' · page ' .. (query.page or 1), hl = 'Title', wrap = true }
     page.items = {
       { key = 's', label = 'Search title or author…', select = search },

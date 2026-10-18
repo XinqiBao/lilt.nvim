@@ -25,25 +25,26 @@ independent of your manuscript. Use CTRL-W commands to move and resize panes.
 
 PICKER                                                       *lilt-picker*
 
-j/k, Up/Down   Move between actions, skipping headings and metadata.
-gg/G           Select the first/last action.
+j/k, Up/Down     Move between actions, skipping headings and metadata.
+gg/G             Select the first/last action.
 Enter, l, Right  Select an action.
 h, BS, Left      Go back; close at the library page.
 q, Escape        Quit the Picker from any menu.
-p              Preview the selected local unit's reference.
-d / a / e      Discover online / add local work / examples, from the library.
-s              Edit a catalog search while in Discover.
-[ / ]          Previous / next result page, when available.
-a / o          Acquire / open the local copy, from work details.
-r              Retry a failed request.
+d / a / e        Discover online / add local work / examples, from the library.
+s                Edit a catalog search while in Discover.
+[ / ]            Previous / next result page, when available.
+a / o            Acquire / open the local copy, from work details.
+r                Retry a failed request.
 
-Action shortcuts appear in brackets beside their labels. Enter still selects
-every action. Escape inside the search editor cancels only that input.
+Action shortcuts appear beside their labels. Enter still selects every action.
+Escape inside the search editor cancels only that input.
 
-Preview reuses the float. Native scrolling and / search browse the full local
-reference; Enter starts reading and back returns to the selected unit. It is
-read-only, creates no manuscript, and does not change progress. Remote texts are
-only downloaded through Acquire and read.
+Selecting a unit automatically shows its opening reference text in a passive,
+read-only preview: on the right in wide terminals, below in narrower ones, or
+hidden on very small terminals. Focus stays on the list; Enter starts reading.
+There is no preview mode, scrolling, or extra navigation step. Previewing creates
+no manuscript and does not change progress. Remote texts are only downloaded
+through Acquire and read.
 
 Your works come first. Secondary actions are Discover online, Add local work,
 and Examples. Add local work expects a directory containing lilt.json and UTF-8

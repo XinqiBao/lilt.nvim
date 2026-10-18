@@ -4,7 +4,7 @@ local work = require('lilt.work')
 local prep = require('lilt.gutenberg')
 local root = vim.fn.tempname()
 local home = root .. '/library'
-local system, notify, input = vim.system, vim.notify, vim.ui.input
+local system, notify = vim.system, vim.notify
 local requests, jobs, messages = {}, {}, {}
 local mode, held = 'ok', false
 local fixture = '\239\187\191'
@@ -373,23 +373,20 @@ local function run()
     'query and page changes do not add back navigation depth'
   )
   choose('Discover online')
-  vim.ui.input = function(_, callback)
-    callback('no such book')
-  end
   keys('s')
+  api.nvim_buf_set_lines(0, 0, -1, false, { 'no such book' })
+  keys('<CR>')
   assert(table.concat(lines(), '\n'):find('No works found', 1, true), 'empty search')
-  vim.ui.input = function(_, callback)
-    callback(nil)
-  end
   keys('s')
+  api.nvim_buf_set_lines(0, 0, -1, false, { 'cancelled' })
+  keys('<Esc>')
   assert(
     table.concat(lines(), '\n'):find('No works found', 1, true),
     'search cancellation preserves browsing'
   )
-  vim.ui.input = function(_, callback)
-    callback('')
-  end
   keys('s')
+  api.nvim_buf_set_lines(0, 0, -1, false, { '' })
+  keys('<CR>')
   assert(
     table.concat(lines(), '\n'):find('Test Letters', 1, true),
     'empty query returns to popular works'
@@ -570,11 +567,45 @@ local function run()
     'closing cancels and releases picker resources'
   )
   held = false
+  -- Search owns an additional editable buffer, including during native dismissal.
+  for _, dismiss in ipairs({
+    function()
+      api.nvim_win_close(0, true)
+    end,
+    function()
+      api.nvim_buf_delete(0, { force = true })
+    end,
+    function()
+      api.nvim_win_set_buf(0, api.nvim_create_buf(true, false))
+    end,
+    function()
+      api.nvim_set_current_win(api.nvim_tabpage_list_wins(0)[1])
+    end,
+  }) do
+    lilt.open()
+    choose('Discover online')
+    local menu = api.nvim_get_current_buf()
+    keys('s')
+    local search_buf, before_search_close = api.nvim_get_current_buf(), #requests
+    dismiss()
+    vim.wait(20, function()
+      return false
+    end)
+    assert(
+      not api.nvim_buf_is_valid(menu) and not api.nvim_buf_is_valid(search_buf),
+      'search dismissal releases both buffers'
+    )
+    assert(
+      #requests == before_search_close
+        and not pcall(api.nvim_get_autocmds, { group = 'LiltPicker' }),
+      'search dismissal sends no request or leaves callbacks'
+    )
+  end
   no_staging()
   print('Lilt online: catalog, cancellation, fidelity, installation and discover-to-reading passed')
 end
 local ok, err = xpcall(run, debug.traceback)
-vim.system, vim.notify, vim.ui.input = system, notify, input
+vim.system, vim.notify = system, notify
 pcall(require('lilt').close)
 vim.fn.delete(root, 'rf')
 if not ok then

@@ -410,6 +410,7 @@ def library_tests():
 
 
 def online_tests():
+    global width, height
     with tempfile.TemporaryDirectory(prefix="lilt-online-ui-") as directory:
         home = Path(directory) / "library"
         fixture = Path("tests/fixtures/gutenberg.txt").read_text(encoding="utf-8")
@@ -418,7 +419,7 @@ def online_tests():
             "subjects": ["Letters -- Fiction"], "languages": ["en"], "copyright": False,
             "media_type": "Text", "formats": {"text/plain; charset=utf-8": "https://www.gutenberg.org/ebooks/11.txt.utf-8"},
         }]})
-        # Control only the process boundary; exercise the real native prompt,
+        # Control only the process boundary; exercise the real floating search,
         # async redraw, catalog parser, converter, installation, and reading UI.
         nvim.exec_lua("""
             local home, catalog, text = ...
@@ -454,8 +455,17 @@ def online_tests():
                   "catalog completion keeps the float dimensions")
             check(any("Test Letters" in row for row in rows), "online entry browses works without a query")
             rows = input_keys("s")
-            check(any("Title or author:" in row for row in rows), "search uses the native input prompt")
-            input_keys("writer<CR>")
+            check(any("Search title or author" in row for row in rows), "search stays inside the Picker float")
+            check(nvim.eval("mode()") == "i" and len(floats()) == 1, "search focuses one editable line in the same float")
+            width, height = 24, 8
+            nvim.ui_try_resize(width, height)
+            rows = input_keys("writx<BS>er")
+            config = nvim.api.win_get_config(nvim.current.window.handle)
+            check(config["width"] + 2 <= width and nvim.eval("mode()") == "i", "search resizes without losing editing focus")
+            check(nvim.current.buffer[:] == ["writer"], "search retains native insertion and Backspace")
+            width, height = 90, 22
+            nvim.ui_try_resize(width, height)
+            input_keys("<CR>")
             rows = pause(130)
             check(any("Test Letters" in row for row in rows), "search returns to the online picker")
             check(nvim.exec_lua("return _G.lilt_test_requests[2]:find('search=writer',1,true) ~= nil"),
@@ -463,6 +473,7 @@ def online_tests():
             previous = (nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"])
             requests = nvim.exec_lua("return #_G.lilt_test_requests")
             input_keys("s")
+            check(nvim.current.buffer[:] == ["writer"], "search reopens the current query")
             input_keys("<C-u>discard me<Esc>")
             check(nvim.exec_lua("return #_G.lilt_test_requests") == requests, "cancelled search sends no request")
             check(nvim.current.window.cursor == previous[0] and nvim.funcs.winsaveview()["topline"] == previous[1],

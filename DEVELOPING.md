@@ -43,7 +43,7 @@ Work/library suites validate real temporary directories, failed-copy cleanup,
 and saved progress. Reading checks cover named buffers and unsaved protections;
 Picker checks cover XDG configuration, multiple example works/units, back
 navigation, temporary manuscripts, and cleanup. The UI suite
-drives native search and path prompts, exercises terminal
+drives the floating search editor and native path prompt, exercises terminal
 resizing, and resumes in a second process.
 Tests use temporary files and an embedded Neovim; no display server is needed.
 The UI notification loop also has a deadline and reports the screen on assertion
@@ -51,7 +51,7 @@ failures. Positive hint checks poll for the visible float; absence checks wait
 through the relevant delay.
 
 Online checks replace only the process boundary with controlled catalog/text
-fixtures. They cover pagination, native search, failures/retry, cancellation and
+fixtures. They cover pagination, floating search, failures/retry, cancellation and
 late callbacks, text fidelity, provenance, installation, duplicate acquisition,
 and the full picker → acquire → Ghost/Split → save → local resume journey.
 CI requires no network services. For a live check, choose **Discover online…**,

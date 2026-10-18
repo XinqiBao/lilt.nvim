@@ -53,8 +53,8 @@ comparison never changes it.
 To build your collection, choose **Discover online…**. **Popular** orders by
 Gutenberg downloads; **Newest** orders by the latest catalog IDs. **Poetry** and
 **Short stories** browse popular works in those topics. Choose **Search title or
-author…** (or press `s`) to enter a query; Enter searches and Escape cancels.
-An empty query returns to Popular.
+author…** (or press `s`) to edit a query inside the float; Enter searches and
+Escape cancels. An empty query returns to Popular.
 
 **Next page** and **Previous page** keep the current query. Changing a query,
 preset, or page replaces the results; back returns to the library. Selecting a

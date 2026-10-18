@@ -45,7 +45,7 @@ end
 function M.new(on_close)
   local s = { pages = {}, buf = api.nvim_create_buf(false, true), rows = {} }
   s.group = api.nvim_create_augroup('LiltPicker', { clear = true })
-  vim.bo[s.buf].bufhidden = 'wipe'
+  vim.bo[s.buf].bufhidden = 'hide'
   vim.bo[s.buf].modifiable = false
   vim.bo[s.buf].readonly = true
 
@@ -69,14 +69,19 @@ function M.new(on_close)
     end
     self.closed = true
     self:cancel()
+    if self.input and api.nvim_get_current_win() == self.win then
+      vim.cmd.stopinsert()
+    end
     api.nvim_del_augroup_by_id(self.group)
     on_close()
     local function cleanup()
       if self.win and api.nvim_win_is_valid(self.win) then
         api.nvim_win_close(self.win, true)
       end
-      if api.nvim_buf_is_valid(self.buf) then
-        api.nvim_buf_delete(self.buf, { force = true })
+      for _, buf in ipairs({ self.buf, self.input and self.input.buf }) do
+        if api.nvim_buf_is_valid(buf) then
+          api.nvim_buf_delete(buf, { force = true })
+        end
       end
     end
     if defer then
@@ -96,6 +101,18 @@ function M.new(on_close)
     end
     local page = self:page()
     local width = math.max(1, math.min(76, vim.o.columns - 4))
+    if self.input then
+      api.nvim_win_set_config(self.win, {
+        relative = 'editor',
+        width = width,
+        height = 1,
+        row = math.max(0, math.floor((vim.o.lines - vim.o.cmdheight - 3) / 2)),
+        col = math.max(0, math.floor((vim.o.columns - width - 2) / 2)),
+        title = clip(' Search title or author ', width),
+        footer = clip(' Enter search · Esc cancel ', width),
+      })
+      return
+    end
     local lines, marks, selected = {}, {}, nil
     self.rows = {}
     local function row(text, item)
@@ -264,29 +281,41 @@ function M.new(on_close)
     end)
   end
 
+  -- A single ordinary editable line in the existing float. Keep path input on
+  -- vim.ui.input: Neovim's directory completion is more useful there.
   function s:search(default, callback)
     save()
-    self.prompt = true
-    local ok, err = pcall(
-      vim.ui.input,
-      { prompt = 'Title or author: ', default = default },
-      function(value)
-        if self.closed or not api.nvim_win_is_valid(self.win) then
-          return
-        end
-        api.nvim_set_current_win(self.win)
-        self.prompt = false
-        if value ~= nil then
-          callback(vim.trim(value))
-        else
-          self:render(true)
-        end
+    local buf = api.nvim_create_buf(false, true)
+    self.input = { buf = buf }
+    api.nvim_buf_set_lines(buf, 0, -1, false, { default })
+    api.nvim_win_set_buf(self.win, buf)
+    self:render()
+    vim.wo[self.win].cursorline = false
+    local function finish(submit)
+      local value = api.nvim_buf_get_lines(buf, 0, 1, false)[1]
+      vim.cmd.stopinsert()
+      self.input = nil
+      api.nvim_win_set_buf(self.win, self.buf)
+      api.nvim_buf_delete(buf, { force = true })
+      self:render(true)
+      if submit then
+        callback(vim.trim(value))
       end
-    )
-    if not ok then
-      self.prompt = false
-      error(err, 0)
     end
+    for _, mode in ipairs({ 'n', 'i' }) do
+      vim.keymap.set(mode, '<CR>', function()
+        M.attempt(function()
+          finish(true)
+        end)
+      end, { buffer = buf })
+      for _, key in ipairs({ '<Esc>', '<C-c>' }) do
+        vim.keymap.set(mode, key, function()
+          finish(false)
+        end, { buffer = buf })
+      end
+    end
+    api.nvim_win_set_cursor(self.win, { 1, #default })
+    vim.cmd.startinsert({ bang = true })
   end
 
   local function activate()
@@ -349,7 +378,7 @@ function M.new(on_close)
     group = s.group,
     buffer = s.buf,
     callback = function()
-      if s.closed or not s.win or not api.nvim_win_is_valid(s.win) then
+      if s.closed or not s.win or not api.nvim_win_is_valid(s.win) or s.input then
         return
       end
       local row = api.nvim_win_get_cursor(s.win)[1]
@@ -361,7 +390,9 @@ function M.new(on_close)
     group = s.group,
     callback = function()
       if not s.closed and s.win and api.nvim_win_is_valid(s.win) then
-        save()
+        if not s.input then
+          save()
+        end
         M.attempt(function()
           s:render(true)
         end)
@@ -371,14 +402,16 @@ function M.new(on_close)
   api.nvim_create_autocmd({ 'WinLeave', 'BufWinLeave', 'BufWipeout', 'WinClosed' }, {
     group = s.group,
     callback = function(event)
-      if event.event == 'WinLeave' and s.prompt then
-        return
-      end
       if
         (event.event == 'WinLeave' and api.nvim_get_current_win() == s.win)
         or (event.event == 'WinClosed' and tonumber(event.match) == s.win)
-        or (event.event == 'BufWinLeave' and event.buf == s.buf)
-        or (event.event == 'BufWipeout' and event.buf == s.buf)
+        -- Search intentionally hides the menu; finish clears input ownership
+        -- before restoring it. Other buffer replacements dismiss the picker.
+        or (event.event == 'BufWinLeave' and ((event.buf == s.buf and not s.input) or (s.input and event.buf == s.input.buf)))
+        or (
+          event.event == 'BufWipeout'
+          and (event.buf == s.buf or (s.input and event.buf == s.input.buf))
+        )
       then
         s:close(true)
       end

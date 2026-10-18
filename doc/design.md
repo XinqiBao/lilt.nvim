@@ -15,14 +15,15 @@ paths and saved progress. `init.lua` holds configuration and command entry
 points. `picker.lua` coordinates local work/unit navigation and retains only
 example buffer handles. `picker/discover.lua` owns online navigation; it uses
 `online.lua` without involving reading views. `picker/ui.lua` owns the scratch
-float, selection, page stack, and request lifetime.
+float, selection, page stack, search editor, and request lifetime.
 
 Menu rows distinguish informational text from actions. Movement skips headings;
 native scrolling can still inspect metadata on short terminals. Detail text is
 bounded and wraps with the window. Duplicate local titles show directory names
 only when needed to distinguish them. Unit percentages report saved rows.
 
-Native `vim.ui.input` supplies title/author search and the local directory
+Catalog search edits one line in the existing float and preserves the results
+behind it until submission. Native `vim.ui.input` supplies the local directory
 prompt, preserving path completion; there is no global UI override. Queries,
 presets and pagination replace the Discover page. Previous/Next are explicit
 page actions. Work details add one level; acquired units use the shared local

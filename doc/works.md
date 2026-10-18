@@ -148,8 +148,12 @@ other path's parents yourself.
 
 ## Online acquisition
 
-Lilt uses [Gutendex](https://gutendex.com/) for the Project Gutenberg catalog and
-Gutenberg's [PGLAF mirror](https://www.gutenberg.org/MIRRORS.ALL) for text files.
+Lilt uses [Gutendex](https://gutendex.com/), Gareth Johnson's
+[open source catalog API](https://github.com/garethbjohnson/gutendex), for discovery.
+Gutendex serves Project Gutenberg metadata; it does not supply Lilt's downloaded
+texts. Those come from Gutenberg's designated
+[PGLAF mirror](https://www.gutenberg.org/MIRRORS.ALL). Project Gutenberg's
+volunteers provide the digitized literary works and source credits.
 No account, API key, Python, EPUB converter, or UI dependency is needed. Acquired
 works become ordinary library works named `gutenberg-<id>`, available offline.
 Acquiring one again opens the existing copy; references and manuscripts are never
@@ -158,9 +162,17 @@ updated or overwritten. Each copy records its source in `lilt.json` and
 `SOURCE.txt`.
 
 Only works cataloged as public domain in the USA with plain text are supported.
-Check copyright in your country before downloading or sharing. Source editions
-vary: Lilt preserves text and indentation, wraps long unindented lines, and uses
-recognizable headings and paragraph breaks for units. Poetry/drama identified by
+Public-domain status varies by country; check your local law before downloading
+or sharing. The plugin's MIT license does not relicense acquired texts.
+[Project Gutenberg's license](https://www.gutenberg.org/policy/license.html) and
+[permission guidance](https://www.gutenberg.org/policy/permission.html) explain
+redistribution and use of its registered trademark. Keep the original credits
+and license in `SOURCE.txt` with a shared work, and review those terms when
+sharing prepared units. Lilt is an independent client, not an endorsed Project
+Gutenberg or Gutendex product.
+
+Source editions vary: Lilt preserves text and indentation, wraps long unindented
+lines, and uses recognizable headings and paragraph breaks for units. Poetry/drama identified by
 catalog subjects keeps even long lines intact. These layout heuristics can miss
 chapter boundaries or wrap long verse embedded in prose. Plain-text
 illustration labels and emphasis marks remain; images and EPUB/HTML conversion

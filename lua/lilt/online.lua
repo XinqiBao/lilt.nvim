@@ -310,6 +310,9 @@ function M.acquire(root, book, callback)
         'Headings and paragraph breaks divide long sections into reading units.',
         '',
         'Public domain in the USA. Check the law in your country before use.',
+        'Project Gutenberg is a registered trademark; Lilt is an independent client.',
+        'Before sharing, retain SOURCE.txt and review the source license and trademark terms:',
+        'https://www.gutenberg.org/policy/license.html',
       }, directory .. '/README.txt') == 0, 'cannot write attribution')
       checked(
         vim.fn.writefile({ vim.json.encode(manifest) }, directory .. '/lilt.json') == 0,

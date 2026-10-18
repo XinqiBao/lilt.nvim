@@ -7,8 +7,8 @@ writing and offers quiet feedback as you go. Your manuscript is an ordinary
 buffer: use your own editing habits, undo, redo, and saving. There are no scores,
 timed exercises, typing mappings, or automatic corrections.
 
-Browse, search for, and acquire literary works from Project Gutenberg directly
-in Neovim, or bring your own collection.
+Find literature through [Gutendex](https://gutendex.com/), acquire texts from
+[Project Gutenberg](https://www.gutenberg.org/), or bring your own collection.
 
 ![Real Neovim: choose a work, preview its text, type in Ghost, and browse in Split](assets/demo.gif)
 
@@ -180,6 +180,10 @@ next real character; Split marks the missing reference text.
 
 [Development and verification](DEVELOPING.md) · [Design contracts](doc/design.md)
 
-Plugin code is [MIT licensed](LICENSE). Bundled literary texts are public domain
-in the United States and in life-plus-70 jurisdictions; each example's README records
-its attribution, source, and preparation.
+Plugin code is [MIT licensed](LICENSE). Lilt is independent of Gutendex and
+Project Gutenberg; Project Gutenberg is a registered trademark. Text copyright
+and redistribution terms are separate from the plugin's license. See
+[Online acquisition](doc/works.md#online-acquisition) before sharing downloads.
+Bundled literary texts are public domain in the United States and in
+life-plus-70 jurisdictions; each example's README records its attribution, source,
+and preparation.

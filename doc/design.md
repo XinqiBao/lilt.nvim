@@ -67,10 +67,7 @@ Gutendex offers popular/newest ordering, title/author search, subjects and
 pagination without credentials. The public host has no documented rate quota or
 availability guarantee. Lilt requests only user-selected pages and files. The
 configurable HTTPS base also supports self-hosting as its documentation
-recommends. [Standard Ebooks' full OPDS catalog](https://standardebooks.org/feeds)
-requires Patrons Circle access. Gutenberg's official bulk CSV lacks format and
-copyright metadata and adds a large initial download. Neither justified another
-integration. Gutenberg's human-facing search is not scraped, following its
+recommends. Gutenberg's human-facing search is not scraped, following its
 [access policy](https://www.gutenberg.org/policy/robot_access.html);
 file downloads use its designated mirror.
 

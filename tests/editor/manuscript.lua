@@ -29,7 +29,23 @@ local function run()
     not pcall(manuscript.open, root .. '/directory.txt'),
     'manuscript directory must be rejected'
   )
+  local native_completion = vim.fn.exists('+autocomplete') == 1
+  local original_buffer = api.nvim_get_current_buf()
+  local default_completion, original_completion
+  if native_completion then
+    default_completion = api.nvim_get_option_value('autocomplete', { scope = 'global' })
+    original_completion = vim.bo[original_buffer].autocomplete
+    api.nvim_set_option_value('autocomplete', true, { scope = 'global' })
+  end
   local buf = open(path)
+  if native_completion then
+    assert(not vim.bo[buf].autocomplete, 'manuscripts must disable native automatic completion')
+    assert(
+      vim.bo[original_buffer].autocomplete == original_completion,
+      'manuscript completion settings must not affect other buffers'
+    )
+    api.nvim_set_option_value('autocomplete', default_completion, { scope = 'global' })
+  end
   assert(api.nvim_buf_get_name(buf) == path, 'manuscript must be named')
   assert(not vim.bo[buf].modified and vim.fn.filereadable(path) == 0, 'opening must not save')
   api.nvim_feedkeys(api.nvim_replace_termcodes('iA first<Esc>', true, false, true), 'xt', false)

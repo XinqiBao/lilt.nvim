@@ -19,6 +19,10 @@ function M.open(path)
   vim.bo[buf].bufhidden = 'hide'
   vim.bo[buf].filetype = 'text'
   if not vim.b[buf].lilt_manuscript then
+    -- Native automatic completion is buffer-local and available from 0.12.
+    if vim.fn.exists('+autocomplete') == 1 then
+      vim.bo[buf].autocomplete = false
+    end
     for name, value in pairs({
       textwidth = 0,
       wrapmargin = 0,

@@ -23,6 +23,9 @@ Normal mode for a local hint. Future virtual lines cannot be searched or browsed
 Split provides a complete protected reference pane with native search/scrolling,
 independent of your manuscript. Use CTRL-W commands to move and resize panes.
 
+Manuscripts disable native automatic completion on Neovim 0.12+. Third-party
+completion follows your configuration; b:lilt_manuscript identifies these buffers.
+
 PICKER                                                       *lilt-picker*
 
 j/k, Up/Down     Move through all text rows, including headings and metadata.

@@ -84,7 +84,7 @@ Previewing never opens a manuscript or changes progress. Online details use
 metadata until you acquire the text.
 
 Titles are clipped to fit and the picker resizes with the terminal. `j/k` skip
-headings and metadata.
+headings and metadata. See `:help lilt` for commands, controls, and saving.
 
 The library defaults to `${XDG_DATA_HOME:-$HOME/.local/share}/lilt/` on Linux and
 macOS; an unset or relative `XDG_DATA_HOME` uses the fallback. Loading or browsing

@@ -1,0 +1,98 @@
+*lilt.txt* *lilt*  Read literature through retyping in Neovim
+
+Lilt places a reference beside an ordinary manuscript buffer. Use native editing,
+undo, redo, and :write. There are no scores, automatic corrections, or autosave.
+Requires Neovim 0.11 or newer; online discovery also requires curl on PATH.
+
+START                                                        *lilt-start*
+
+Run :Lilt. Choose Examples, a work, and a reading unit for an offline first try.
+Press i and copy the reference, including its physical line and paragraph breaks.
+Examples retain temporary manuscripts for this Neovim process. To keep progress
+across processes, acquire a work online or add a prepared local work to the library.
+
+COMMANDS                                                     *lilt-commands*
+
+:Lilt          Open the library Picker. Repeated calls focus the existing Picker.
+:LiltGhost     Switch an active reading to Ghost; focus its manuscript.
+:LiltSplit     Switch an active reading to Split; focus its manuscript.
+:LiltClose     Close the reading presentation and retain the manuscript buffer.
+
+Ghost blends untyped reference text into your writing. Pause over a mistake in
+Normal mode for a local hint. Future virtual lines cannot be searched or browsed.
+Split provides a complete protected reference pane with native search/scrolling,
+independent of your manuscript. Use CTRL-W commands to move and resize panes.
+
+PICKER                                                       *lilt-picker*
+
+j/k, Up/Down   Move between actions, skipping headings and metadata.
+gg/G           Select the first/last action.
+Enter, l       Select an action.
+h, q, Escape   Go back; close at the library page.
+p              Preview the selected local unit's reference.
+s              Edit a catalog search while in Discover.
+
+Preview reuses the float. Native scrolling and / search browse the full local
+reference; Enter starts reading and back returns to the selected unit. It is
+read-only, creates no manuscript, and does not change progress. Remote texts are
+only downloaded through Acquire and read.
+
+Your works come first. Secondary actions are Discover online, Add local work,
+and Examples. Add local work expects a directory containing lilt.json and UTF-8
+reference files. The native path prompt offers directory completion with Tab.
+See doc/works.md in the plugin checkout for the manifest format and validation.
+
+Discover starts with Popular (Gutenberg download order). Newest uses descending
+catalog IDs; Poetry and Short stories browse popular works in those topics.
+Search edits a line inside the float: Enter submits, Escape/CTRL-C cancels.
+An empty query returns to Popular. Native insertion and editing remain available.
+Next page and Previous page preserve the query. Changing a query, preset or page
+replaces the results; back returns to the library. Details add one level and back
+restores your result selection and scroll. A failed request offers retry in place;
+back, leaving the window, or closing cancels outstanding requests.
+
+SAVING                                                       *lilt-saving*
+
+Save library manuscripts with :write. Their paths are:
+    <library>/manuscripts/<work>/<unit-path>
+Parents are created on write. Select the same work/unit in a later process to
+resume. Percentages count saved physical rows, including blanks, against reference
+rows; they do not measure correctness. Unsaved edits do not affect percentages.
+A dash means no saved manuscript; ? means progress could not be read.
+
+Closing or switching retains ordinary buffers and undo histories. Use :ls and
+:buffer to find them. Modified hidden manuscripts still block an ordinary :qall.
+Examples can be exported with :write /path/to/file.txt (create parents first), but
+that export does not make the example resume automatically in a later process.
+
+SETUP                                                        *lilt-setup*
+
+No setup call is required. Default library:
+    ${XDG_DATA_HOME:-$HOME/.local/share}/lilt/
+An unset or relative XDG_DATA_HOME uses the fallback. Browsing creates no files.
+Optional overrides: >lua
+    require('lilt').setup({ library = '~/Books/Lilt' })
+    -- Optional self-hosted Gutendex server:
+    require('lilt').setup({ catalog = 'https://your-gutendex-server' })
+<
+Highlights respect explicit overrides and follow your colorscheme:
+    LiltPending   Comment
+    LiltError     DiagnosticError
+    LiltExtra     DiagnosticWarn
+    LiltMissing   DiagnosticUnderlineWarn
+
+LIMITS AND SOURCES                                           *lilt-limits*
+
+Follow physical reference rows; there is no reflow or cross-line alignment.
+Keep reference files and unit paths stable after starting. Ghost may clip text
+in narrow windows; Split provides wrapped reference browsing. Comparison uses
+UTF-8 codepoints, not full grapheme layout.
+
+Discovery uses Gutendex (https://gutendex.com/); literary texts come from Project
+Gutenberg's PGLAF mirror. Public-domain status in the USA does not establish status
+in your country. Acquisitions preserve the original credits/license in SOURCE.txt.
+Review https://www.gutenberg.org/policy/license.html before sharing, including
+terms for the Project Gutenberg registered trademark. Lilt is an independent
+client. Details on preparation, service limits, and redistribution: doc/works.md.
+
+vim:tw=80:ts=8:noet:ft=help:norl:

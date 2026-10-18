@@ -27,10 +27,18 @@ PICKER                                                       *lilt-picker*
 
 j/k, Up/Down   Move between actions, skipping headings and metadata.
 gg/G           Select the first/last action.
-Enter, l       Select an action.
-h, q, Escape   Go back; close at the library page.
+Enter, l, Right  Select an action.
+h, BS, Left      Go back; close at the library page.
+q, Escape        Quit the Picker from any menu.
 p              Preview the selected local unit's reference.
+d / a / e      Discover online / add local work / examples, from the library.
 s              Edit a catalog search while in Discover.
+[ / ]          Previous / next result page, when available.
+a / o          Acquire / open the local copy, from work details.
+r              Retry a failed request.
+
+Action shortcuts appear in brackets beside their labels. Enter still selects
+every action. Escape inside the search editor cancels only that input.
 
 Preview reuses the float. Native scrolling and / search browse the full local
 reference; Enter starts reading and back returns to the selected unit. It is

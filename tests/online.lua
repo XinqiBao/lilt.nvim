@@ -334,7 +334,7 @@ local function run()
   end
   lilt.setup({ library = home, catalog = 'https://catalog.example.test/api/' })
   lilt.open()
-  choose('Discover online')
+  keys('d')
   assert(requests[#requests] == 'https://catalog.example.test/api/books/', 'custom Gutendex base')
   keys('hq')
   lilt.setup({ catalog = catalog.default_url })
@@ -345,13 +345,13 @@ local function run()
     table.concat(lines(), '\n'):find('Test Letters', 1, true),
     'browsing starts with popular results'
   )
-  choose('Next page')
+  keys(']')
   assert(table.concat(lines(), '\n'):find('Another page', 1, true), 'navigate additional results')
   assert(
     requests[#requests] == catalog.default_url .. '/books/?page=2',
     'never follow foreign pagination URL'
   )
-  choose('Previous page')
+  keys('[')
   assert(
     table.concat(lines(), '\n'):find('Test Letters', 1, true),
     'previous page returns to the same query'
@@ -411,11 +411,11 @@ local function run()
   )
   mode = 'network-error'
   local before_failure = #messages
-  choose('Acquire and read')
+  keys('a')
   assert(#messages == before_failure, 'request error appears once inside the picker')
   assert(table.concat(lines(), '\n'):find('retry', 1, true), 'download failure offers retry')
   mode = 'ok'
-  keys('l')
+  keys('r')
   assert(
     table.concat(lines(), '\n'):find('CHAPTER I.', 1, true),
     'acquisition proceeds directly to reading units'
@@ -540,6 +540,28 @@ local function run()
     assert(
       #messages == notifications and not pcall(api.nvim_get_autocmds, { group = 'LiltPicker' }),
       'dismissal must release resources without rendering into a destroyed window'
+    )
+    held = false
+  end
+
+  for _, quit in ipairs({ 'q', '<Esc>' }) do
+    lilt.open()
+    keys('d')
+    keys(']')
+    choose('Another page')
+    held = true
+    keys('a')
+    job = jobs[#jobs]
+    keys(quit)
+    job.finish()
+    vim.wait(20, function()
+      return false
+    end)
+    assert(
+      job.killed
+        and not vim.uv.fs_stat(home .. '/references/gutenberg-13')
+        and not pcall(api.nvim_get_autocmds, { group = 'LiltPicker' }),
+      'quit from acquiring details cancels the download and closes every page'
     )
     held = false
   end

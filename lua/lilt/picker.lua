@@ -127,6 +127,7 @@ local function browse(root, example_root, catalog, installed)
       { label = '' },
       { label = 'Find a work', hl = 'Title' },
       {
+        key = 'd',
         label = 'Discover online…',
         select = function()
           require('lilt.picker.discover').open(s, root, catalog, units, function()
@@ -135,6 +136,7 @@ local function browse(root, example_root, catalog, installed)
         end,
       },
       {
+        key = 'a',
         label = 'Add local work…',
         select = function()
           s:close()
@@ -158,6 +160,7 @@ local function browse(root, example_root, catalog, installed)
         end,
       },
       {
+        key = 'e',
         label = 'Examples',
         select = function()
           local samples, sample_errors = discover(example_root)

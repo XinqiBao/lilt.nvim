@@ -146,7 +146,7 @@ local function run()
   assert(selected('Unit 24'), 'G navigates a long chapter list')
   keys('ggh')
   assert(selected('B letters'), 'back restores work selection')
-  keys('<Esc>q')
+  keys('<Esc>')
   assert(api.nvim_get_current_win() == origin, 'back/close restores original focus')
   no_picker()
 
@@ -207,6 +207,22 @@ local function run()
   keys('hhh')
   no_picker()
   vim.fn.writefile(reference, preview_path)
+
+  for _, quit in ipairs({ 'q', '<Esc>' }) do
+    picker.open(home, example_root)
+    assert(find('[e] Examples'), 'library shortcuts are visible')
+    keys('el')
+    keys(quit)
+    no_picker()
+    assert(api.nvim_get_current_win() == origin, 'quit exits directly from nested units')
+  end
+  picker.open(home, example_root)
+  keys('e<Right><BS>')
+  assert(selected('A poem'), 'backspace restores the selected work')
+  keys('<Left>')
+  assert(find('Discover online'), 'left returns to the library')
+  keys('q')
+  no_picker()
 
   local open_win = api.nvim_open_win
   api.nvim_open_win = function()

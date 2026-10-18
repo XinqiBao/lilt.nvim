@@ -351,7 +351,7 @@ def library_tests():
         check(config["width"] + 2 <= width and config["height"] + 2 <= height,
               "preview fits a small terminal")
         check(nvim.current.window.options["wrap"], "small preview wraps the reference")
-        input_keys("<Esc>")
+        input_keys("h")
         check("Opening" in nvim.current.buffer[nvim.current.window.cursor[0] - 1], "preview returns to the selected unit")
         check(not (home / "manuscripts").exists(), "preview leaves manuscripts and progress untouched")
         width, height = 90, 22
@@ -375,8 +375,8 @@ def library_tests():
         check(nvim.api.buf_get_lines(second, 0, -1, False) == ["Reply"], "chapter switch retains unsaved edits")
         input_keys(":Lilt<CR>Gllh")
         check(any("Alice" in line for line in nvim.current.buffer[:]), "h returns from units to example works")
-        input_keys("qh")
-        check(nvim.current.buffer.number == buf, "back from nested pages restores reading focus")
+        input_keys("q")
+        check(nvim.current.buffer.number == buf, "quit from nested pages restores reading focus")
         nvim.command("LiltClose")
         nvim.command("LiltGhost")
         check(len(nvim.tabpages) == 1 and not floats(), "Ghost cannot reopen a closed session")
@@ -424,7 +424,7 @@ def library_tests():
         check(config["width"] + 2 <= width and config["height"] + 2 <= height,
               "picker fits after narrowing and shortening the terminal")
         check(any("Examples" in row for row in rows), "native G scrolls to the final item in a short picker")
-        check(any("q/Esc back" in row for row in rows), "compact picker keeps cancellation controls readable")
+        check(any("q quit" in row for row in rows), "compact picker keeps cancellation controls readable")
         input_keys("<Esc>")
         check(not floats(), "small picker closes without resources")
         width, height = 90, 22

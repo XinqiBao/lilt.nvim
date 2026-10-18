@@ -25,6 +25,7 @@ function M.open(s, root, catalog, units, refresh)
     local ok, existing = pcall(acquisition.existing, root, book)
     local function open_copy(reading)
       return {
+        key = 'o',
         label = 'Open library copy',
         select = function()
           units(reading, false)
@@ -43,12 +44,14 @@ function M.open(s, root, catalog, units, refresh)
         { label = 'Check copyright in your country before downloading.', wrap = true }
       local acquire
       acquire = {
+        key = 'a',
         label = 'Acquire and read',
         select = function()
           s:request(page, function(callback)
             return acquisition.acquire(root, book, callback)
           end, function(reading)
             refresh()
+            acquire.key = 'o'
             acquire.label, acquire.select =
               'Open library copy', function()
                 units(reading, false)
@@ -85,7 +88,7 @@ function M.open(s, root, catalog, units, refresh)
     page.search = search
     local context = { label = title .. ' · page ' .. (query.page or 1), hl = 'Title', wrap = true }
     page.items = {
-      { label = 'Search title or author…', select = search },
+      { key = 's', label = 'Search title or author…', select = search },
       { label = 'Order', hl = 'Title' },
       {
         label = 'Popular · most downloaded',
@@ -141,6 +144,7 @@ function M.open(s, root, catalog, units, refresh)
       end
       if (query.page or 1) > 1 then
         page.items[#page.items + 1] = {
+          key = '[',
           label = 'Previous page',
           select = function()
             local previous = vim.deepcopy(query)
@@ -151,6 +155,7 @@ function M.open(s, root, catalog, units, refresh)
       end
       if result.more then
         page.items[#page.items + 1] = {
+          key = ']',
           label = 'Next page',
           select = function()
             local next_query = vim.deepcopy(query)

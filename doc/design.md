@@ -21,6 +21,9 @@ Menu rows distinguish informational text from actions. Movement skips headings;
 native scrolling can still inspect metadata on short terminals. Detail text is
 bounded and wraps with the window. Duplicate local titles show directory names
 only when needed to distinguish them. Unit percentages report saved rows.
+Action-local shortcut keys are displayed with their labels and active only on
+that page; busy pages disable actions. q/Escape exits from any menu, while
+h/Backspace goes back. Escape in the search editor cancels only the input.
 
 A unit preview replaces the list in the same float with protected reference
 text, starts at the beginning, and supports native scrolling/search. Back restores

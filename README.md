@@ -75,9 +75,11 @@ names are never overwritten. See [Preparing a Lilt work](doc/works.md) for the
 small JSON manifest, text preparation, validation, attribution, and sharing.
 The path prompt uses native directory completion with Tab.
 
-The picker is a centered float: `j/k` move, `Enter` or `l` selects, and `h`,
-`Esc`, or `q` goes back (or closes at the library page). `gg/G` selects the
-first/last action. Selecting a work shows its ordered units and saved progress. Press `p` on a unit
+The picker is a centered float: `j/k` or arrows move, `Enter` / `l` selects,
+`h` / Backspace returns, and `q` / `Esc` quits from any menu. `gg/G` selects
+the first/last action. Shortcuts appear beside actions: `d` discover, `a` add,
+`e` examples; in Discover, `s` searches and `[` / `]` changes pages. Details
+offer `a` to acquire or `o` to open a library copy; `r` retries a failed request. Selecting a work shows its ordered units and saved progress. Press `p` on a unit
 to preview its local reference in the same float. The preview is read-only: use
 native scrolling and search, Enter to read, or back to return to the unit list.
 Previewing never opens a manuscript or changes progress. Online details use

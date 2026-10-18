@@ -113,6 +113,10 @@ function M.new(on_close)
       })
       return
     end
+    for _, key in ipairs(self.shortcuts or {}) do
+      vim.keymap.del('n', key, { buffer = self.buf })
+    end
+    self.shortcuts = {}
     local lines, marks, selected = {}, {}, nil
     self.rows = {}
     local function row(text, item)
@@ -131,6 +135,15 @@ function M.new(on_close)
       local items = vim.list_extend(vim.list_slice(page.items), page.status or {})
       for _, item in ipairs(items) do
         local indent = item.select and '    ' or '  '
+        if item.key then
+          self.shortcuts[#self.shortcuts + 1] = item.key
+          vim.keymap.set('n', item.key, function()
+            if not page.busy then
+              M.attempt(item.select)
+            end
+          end, { buffer = self.buf, silent = true })
+          indent = indent .. '[' .. item.key .. '] '
+        end
         if item.wrap then
           for _, text in ipairs(wrap(item.label, math.max(1, width - 4), item.max_lines or 4)) do
             row(clip(indent .. text, width), item)
@@ -152,14 +165,14 @@ function M.new(on_close)
     end
     page.height = page.height or #lines
     local height = math.max(1, math.min(page.height, vim.o.lines - vim.o.cmdheight - 4))
-    local footer = page.text and ' Enter read · h/q/Esc back '
+    local footer = page.text and ' Enter read · h back · q/Esc quit '
       or (
         ' Enter select · '
         .. (page.preview and 'p preview · ' or page.search and 's search · ' or '')
-        .. 'h/q/Esc back '
+        .. 'h/BS back · q/Esc quit '
       )
-    if width < 40 then
-      footer = page.preview and ' p preview · q/Esc back ' or ' Enter · q/Esc back '
+    if width < 50 then
+      footer = width < 30 and ' h back · q quit ' or ' Enter · h back · q/Esc quit '
     elseif width >= 58 then
       footer = ' j/k move ·' .. footer
     end
@@ -276,6 +289,7 @@ function M.new(on_close)
       M.attempt(function()
         if err then
           local retry = {
+            key = 'r',
             label = 'Request failed — retry',
             select = function()
               self:request(page, start, done, message)
@@ -342,7 +356,7 @@ function M.new(on_close)
       end
     end)
   end
-  for _, key in ipairs({ '<CR>', 'l' }) do
+  for _, key in ipairs({ '<CR>', 'l', '<Right>' }) do
     vim.keymap.set('n', key, function()
       if key == 'l' and s:page().text then
         vim.cmd('normal! l')
@@ -366,9 +380,14 @@ function M.new(on_close)
       end
     end, { buffer = s.buf, silent = true })
   end
-  for _, key in ipairs({ 'h', '<Esc>', 'q' }) do
+  for _, key in ipairs({ 'h', '<BS>', '<Left>' }) do
     vim.keymap.set('n', key, function()
       s:back()
+    end, { buffer = s.buf, silent = true })
+  end
+  for _, key in ipairs({ 'q', '<Esc>' }) do
+    vim.keymap.set('n', key, function()
+      s:close()
     end, { buffer = s.buf, silent = true })
   end
   for key, direction in pairs({ j = 1, k = -1, ['<Down>'] = 1, ['<Up>'] = -1 }) do
@@ -392,7 +411,7 @@ function M.new(on_close)
       api.nvim_win_set_cursor(s.win, { row, 0 })
     end, { buffer = s.buf, silent = true })
   end
-  for key, field in pairs({ p = 'preview', s = 'search' }) do
+  for key, field in pairs({ p = 'preview' }) do
     vim.keymap.set('n', key, function()
       local page = s:page()
       if page[field] and not page.busy then

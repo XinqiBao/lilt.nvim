@@ -64,6 +64,11 @@ function M.prepare(path, directory, options, callback)
     if vim.uv.fs_lstat(directory) then
       error('Lilt: conversion destination already exists: ' .. directory, 0)
     end
+    local input = vim.uv.fs_realpath(path)
+    local input_stat = input and vim.uv.fs_stat(input)
+    if not input_stat or input_stat.type ~= 'file' then
+      error('Lilt: expected a local EPUB file: ' .. path, 0)
+    end
     local args = {
       'pandoc',
       '--sandbox',
@@ -75,7 +80,7 @@ function M.prepare(path, directory, options, callback)
     if options.filter then
       args[#args + 1] = '--lua-filter=' .. options.filter
     end
-    args[#args + 1] = path
+    args[#args + 1] = input
     process = vim.system(args, { timeout = 45000 }, function(result)
       vim.schedule(function()
         if cancelled then

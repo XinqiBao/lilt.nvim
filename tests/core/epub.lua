@@ -94,6 +94,12 @@ local function run()
   )
   assert(bytes(source) == original, 'conversion mutated EPUB')
 
+  err = converted('https://example.invalid/book.epub', false)
+  assert(
+    err and err:find('expected a local EPUB file', 1, true),
+    'conversion must reject URLs before Pandoc can fetch them'
+  )
+
   local result
   epub.prepare(source, root, { title = 'Existing directory' }, function(error)
     result = error

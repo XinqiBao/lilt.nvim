@@ -73,7 +73,8 @@ require("lilt.import.epub").prepare("/path/book.epub", "/path/new-work", {
 end)
 ```
 
-The destination must not exist and its parent must exist. Conversion creates
+The input must be an existing local file; URLs are not accepted. The destination
+must not exist and its parent must exist. Conversion creates
 `lilt.json` and numbered UTF-8 reference files, validates the complete work, and
 removes its output on failure. The input EPUB is unchanged. The returned function
 cancels conversion. Add the resulting directory through **Add local work…**;

@@ -148,7 +148,8 @@ local function run()
       'native edit cleanup timed out'
     )
     assert(
-      api.nvim_get_current_win() == win and api.nvim_buf_get_name(0) == path,
+      api.nvim_get_current_win() == win
+        and vim.uv.fs_realpath(api.nvim_buf_get_name(0)) == vim.uv.fs_realpath(path),
       'native edit must retain the repurposed pane and its focus'
     )
     assert(

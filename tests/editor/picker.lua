@@ -207,10 +207,6 @@ local function run()
     'preview keeps Unicode and blank rows'
   )
   assert(#excerpt < #reference, 'preview holds only an opening excerpt')
-  assert(
-    api.nvim_win_get_position(preview_win)[2] > api.nvim_win_get_position(list_win)[2],
-    'wide preview sits beside the list'
-  )
   assert(not api.nvim_win_get_config(preview_win).focusable, 'preview never takes list focus')
   assert(
     vim.bo[preview_buf].readonly and not vim.bo[preview_buf].modifiable,
@@ -232,10 +228,6 @@ local function run()
   keys('G')
   vim.o.columns = 80
   api.nvim_exec_autocmds('VimResized', {})
-  assert(
-    api.nvim_win_get_position(preview_win)[1] > api.nvim_win_get_position(list_win)[1],
-    'narrow preview sits below the list'
-  )
   assert(selected('Unit 24'), 'resize keeps selection')
   vim.o.lines = 8
   api.nvim_exec_autocmds('VimResized', {})

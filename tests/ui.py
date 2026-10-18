@@ -513,7 +513,10 @@ def online_tests():
             check(nvim.exec_lua("return #_G.lilt_test_requests") == requests, "cancelled search sends no request")
             check(nvim.current.window.cursor == previous[0] and nvim.funcs.winsaveview()["topline"] == previous[1],
                   "cancelled search restores selection and scroll")
-            input_keys("2gg")  # the informational Order heading
+            order_row = next(row for row, line in enumerate(nvim.current.buffer[:], 1)
+                             if line.strip() == "Order")
+            nvim.current.window.cursor = (order_row, 0)
+            input_keys("")
             metadata_view = (nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"])
             input_keys("s<Esc>")
             check(nvim.current.window.cursor == metadata_view[0]

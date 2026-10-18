@@ -92,6 +92,44 @@ local function run()
     'deferred cleanup must not close the newly selected session'
   )
   session.close()
+  -- Comparison pairs codepoints, including decomposed accents. Hint projection
+  -- must use the same indices and keep the following word out of the context.
+  for _, case in ipairs({
+    { 'café noir', 'xafé noir', 0, 'café', 'xafé' },
+    { 'áb cd', 'xyz cd', 2, 'áb', 'xyz' },
+  }) do
+    local hint_buf = manuscript.open()
+    api.nvim_buf_set_lines(hint_buf, 0, -1, false, { case[2] })
+    session.open('ghost', { manuscript = hint_buf, reference = { case[1] } })
+    api.nvim_win_set_cursor(0, { 1, case[3] })
+    vim.cmd('doautocmd CursorMoved')
+    local hint
+    assert(
+      vim.wait(1000, function()
+        for _, win in ipairs(api.nvim_list_wins()) do
+          if api.nvim_win_get_config(win).relative ~= '' then
+            hint = api.nvim_buf_get_lines(api.nvim_win_get_buf(win), 0, -1, false)
+            return true
+          end
+        end
+        return false
+      end),
+      'expected a hint for the replacement'
+    )
+    assert(
+      vim.deep_equal(hint, { 'Expected  ' .. case[4], 'Typed     ' .. case[5] }),
+      'hint context must follow codepoint alignment: ' .. vim.inspect(hint)
+    )
+    assert(
+      api.nvim_get_current_buf() == hint_buf
+        and api.nvim_buf_get_lines(hint_buf, 0, -1, false)[1] == case[2],
+      'hint must preserve manuscript text and focus'
+    )
+    session.close()
+    vim.wait(10, function()
+      return false
+    end)
+  end
   print('Lilt reading: named buffers, save/resume, switching and native protections passed')
 end
 local ok, err = xpcall(run, debug.traceback)

@@ -27,13 +27,14 @@ local function context(reference, text, result, target)
   local rs, re = expand(reference, target.ref_start, target.ref_end)
   local ts, te = expand(text, target.text_start, target.text_end)
   -- Project context through the existing alignment, including replacements
-  -- with unequal UTF-8 byte lengths. No second diff is calculated.
+  -- with unequal UTF-8 byte lengths. Count combining codepoints separately,
+  -- matching compare.line rather than Neovim's composed-character indexing.
   local function project(value, base, other, other_base, first, last)
     local prefix = vim.fn.strchars(value:sub(base + 1, first))
     local length = vim.fn.strchars(value:sub(first + 1, last))
     local tail = other:sub(other_base + 1)
-    return other_base + vim.fn.byteidx(tail, prefix),
-      other_base + vim.fn.byteidx(tail, prefix + length)
+    return other_base + vim.fn.byteidxcomp(tail, prefix),
+      other_base + vim.fn.byteidxcomp(tail, prefix + length)
   end
   for _ = 1, 2 do
     for _, span in ipairs(result.spans) do
@@ -154,8 +155,8 @@ local function request(s)
           if span.kind == 'replace' then
             local index = vim.fn.strchars(text:sub(span.text_start + 1, cursor[2]))
             local tail = reference:sub(span.ref_start + 1, span.ref_end)
-            target.ref_start = span.ref_start + vim.fn.byteidx(tail, index)
-            target.ref_end = span.ref_start + vim.fn.byteidx(tail, index + 1)
+            target.ref_start = span.ref_start + vim.fn.byteidxcomp(tail, index)
+            target.ref_end = span.ref_start + vim.fn.byteidxcomp(tail, index + 1)
           end
         end
         break

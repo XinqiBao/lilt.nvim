@@ -88,6 +88,14 @@ def input_keys(text):
     return screen()
 
 
+def choose(label):
+    for row, line in enumerate(nvim.current.buffer[:], 1):
+        if label in line:
+            nvim.current.window.cursor = (row, 0)
+            return input_keys("<CR>")
+    raise AssertionError("Missing picker action: " + label + "\n" + "\n".join(nvim.current.buffer[:]))
+
+
 def group_at(row, col, group):
     group = nvim.exec_lua("return vim.fn.synIDattr(vim.fn.synIDtrans(vim.fn.hlID(...)), 'name')", group)
     return any(item.get("hi_name") == group for item in highlights.get(grid[row, col][1], []))
@@ -323,7 +331,7 @@ def library_tests():
               "picker floats in the center of the editor")
         nvim.command("Lilt")
         check(nvim.current.window == picker and len(floats()) == 1, "reopening focuses the same picker")
-        input_keys("l")
+        choose("Add local work")
         rows = input_keys(str(source) + "<CR>")
         check(any("Opening" in row and "—" in row for row in rows), "import proceeds to ordered unit selection")
         input_keys("l")
@@ -436,20 +444,42 @@ def online_tests():
             require('lilt').setup({library=home})
         """, str(home), catalog, fixture)
         try:
-            input_keys(":Lilt<CR>jl")
+            input_keys(":Lilt<CR>")
+            rows = choose("Discover online")
+            loading_size = nvim.api.win_get_config(nvim.current.window.handle)
+            check(any("Loading catalog" in row for row in rows), "catalog loading stays visible")
             rows = pause(130)
+            loaded_size = nvim.api.win_get_config(nvim.current.window.handle)
+            check((loading_size["width"], loading_size["height"]) == (loaded_size["width"], loaded_size["height"]),
+                  "catalog completion keeps the float dimensions")
             check(any("Test Letters" in row for row in rows), "online entry browses works without a query")
-            rows = input_keys("ggl")
+            rows = input_keys("s")
             check(any("Title or author:" in row for row in rows), "search uses the native input prompt")
             input_keys("writer<CR>")
             rows = pause(130)
             check(any("Test Letters" in row for row in rows), "search returns to the online picker")
             check(nvim.exec_lua("return _G.lilt_test_requests[2]:find('search=writer',1,true) ~= nil"),
-                  "native query reaches the catalog")
-            input_keys("7Gl")
+                  "query reaches the catalog")
+            previous = (nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"])
+            requests = nvim.exec_lua("return #_G.lilt_test_requests")
+            input_keys("s")
+            input_keys("<C-u>discard me<Esc>")
+            check(nvim.exec_lua("return #_G.lilt_test_requests") == requests, "cancelled search sends no request")
+            check(nvim.current.window.cursor == previous[0] and nvim.funcs.winsaveview()["topline"] == previous[1],
+                  "cancelled search restores selection and scroll")
+            choose("Test Letters")
+            input_keys("h")
+            check(nvim.exec_lua("return #_G.lilt_test_requests") == requests, "details back retains loaded results")
+            check("Test Letters" in nvim.current.buffer[nvim.current.window.cursor[0] - 1], "details back restores work selection")
+            choose("Test Letters")
             rows = screen()
             check(any("gutenberg.org/ebooks/11" in row for row in rows), "selection exposes canonical provenance")
-            input_keys("ggl")
+            detail_size = nvim.api.win_get_config(nvim.current.window.handle)
+            rows = input_keys("ggl")
+            pending_size = nvim.api.win_get_config(nvim.current.window.handle)
+            check(any("Downloading" in row for row in rows), "acquisition progress stays visible")
+            check((detail_size["width"], detail_size["height"]) == (pending_size["width"], pending_size["height"]),
+                  "acquisition keeps the detail float dimensions")
             rows = pause(130)
             check(any("CHAPTER I." in row for row in rows), "download goes straight to unit selection")
             rows = input_keys("jl")
@@ -463,7 +493,8 @@ def online_tests():
             input_keys("jl")
             check(nvim.current.buffer[:] == ["A letter."], "local library resumes the acquired manuscript")
             nvim.command("LiltClose")
-            input_keys(":Lilt<CR>2jl")  # discover, then close while request is pending
+            input_keys(":Lilt<CR>")
+            choose("Discover online")  # close while request is pending
             input_keys("hq")
             pause(130)
             check(not floats(), "leaving online discovery cancels delayed UI work")

@@ -42,9 +42,9 @@ and bounds each subprocess to 60 seconds. It accepts `--nvim /path/to/nvim`.
 Work/library suites validate real temporary directories, failed-copy cleanup,
 and saved progress. Reading checks cover named buffers and unsaved protections;
 Picker checks cover XDG configuration, multiple example works/units, back
-navigation, temporary manuscripts, and cleanup. The UI suite drives the float
-and native input prompt, exercises terminal resizing, and resumes in a second
-process.
+navigation, temporary manuscripts, and cleanup. The UI suite
+drives native search and path prompts, exercises terminal
+resizing, and resumes in a second process.
 Tests use temporary files and an embedded Neovim; no display server is needed.
 The UI notification loop also has a deadline and reports the screen on assertion
 failures. Positive hint checks poll for the visible float; absence checks wait

@@ -1,157 +1,167 @@
-local api = vim.api
+-- Online navigation stays separate from the local library and reading flow.
 local online = require('lilt.online')
 local M = {}
 
-function M.open(s, root, catalog, units, home)
-  catalog = catalog or online.default_catalog
+function M.open(s, root, catalog, units, refresh)
+  local results
   local function details(book)
-    local page = { title = 'Gutenberg #' .. book.id, items = {} }
-    local function info(text)
-      -- Give long titles/authors room beyond the clipped catalog row.
-      local row = ''
-      for word in text:gmatch('%S+') do
-        if row ~= '' and vim.fn.strdisplaywidth(row .. ' ' .. word) > 64 then
-          page.items[#page.items + 1] = { label = row }
-          row = ''
-        end
-        row = row == '' and word or row .. ' ' .. word
-      end
-      if row ~= '' then
-        page.items[#page.items + 1] = { label = row }
-      end
+    local items = {
+      { label = book.title, hl = 'Title', wrap = true },
+      { label = 'Author: ' .. (book.author ~= '' and book.author or 'Unknown'), wrap = true },
+      {
+        label = 'Language: '
+          .. (#book.languages > 0 and table.concat(book.languages, ', ') or 'Unknown'),
+      },
+      { label = 'Source: Project Gutenberg #' .. book.id },
+      { label = online.url(book) },
+    }
+    if #book.subjects > 0 then
+      items[#items + 1] =
+        { label = 'Subjects: ' .. table.concat(book.subjects, '; '), wrap = true, max_lines = 2 }
     end
+    items[#items + 1] = { label = '' }
+    local page = { title = 'Work details', items = items }
     local ok, existing = pcall(online.existing, root, book)
-    if not ok then
-      info(tostring(existing))
-    elseif existing then
-      page.items[#page.items + 1] = {
+    local function open_copy(reading)
+      return {
         label = 'Open library copy',
         select = function()
-          units(existing, false)
+          units(reading, false)
         end,
       }
+    end
+    if not ok then
+      items[#items + 1] = { label = tostring(existing), hl = 'DiagnosticError', wrap = true }
+    elseif existing then
+      items[#items + 1] = { label = 'Available offline in your library' }
+      items[#items + 1] = open_copy(existing)
     elseif book.supported then
-      page.items[#page.items + 1] = {
+      items[#items + 1] =
+        { label = 'Available: UTF-8 plain text · public domain in the USA', wrap = true }
+      items[#items + 1] =
+        { label = 'Check copyright in your country before downloading.', wrap = true }
+      local acquire
+      acquire = {
         label = 'Acquire and read',
         select = function()
-          s:pending(page, function(callback)
+          s:request(page, function(callback)
             return online.acquire(root, book, callback)
           end, function(reading)
-            -- Refresh the library page so backing out immediately shows the copy.
-            home(true)
-            page.items[1] = {
-              label = 'Open library copy',
-              select = function()
+            refresh()
+            acquire.label, acquire.select =
+              'Open library copy', function()
                 units(reading, false)
-              end,
-            }
+              end
             units(reading, false)
-          end, 'Downloading and preparing…')
+          end, 'Downloading and preparing… · Esc cancels')
         end,
       }
+      items[#items + 1] = acquire
     else
-      info('Unavailable: requires public-domain UTF-8 plain text.')
+      items[#items + 1] =
+        { label = 'Unavailable: requires public-domain UTF-8 plain text.', wrap = true }
     end
-    info(book.title)
-    info('Author: ' .. (book.author ~= '' and book.author or 'Unknown'))
-    info('Languages: ' .. table.concat(book.languages, ', '))
-    info(online.url(book))
-    if book.supported then
-      info('Public domain in the USA; check your local law.')
-    end
-    for _, subject in ipairs(book.subjects) do
-      info('Subject: ' .. subject)
-    end
+    -- An explicit return keeps metadata-only pages usable by menu navigation.
+    items[#items + 1] = {
+      label = 'Back to results',
+      select = function()
+        s:back()
+      end,
+    }
     s:push(page)
   end
 
-  local catalog_page
-  catalog_page = function(query, title)
-    local page = { title = title, items = { { label = 'Loading catalog…' } } }
-    s:push(page)
-    s:pending(page, function(callback)
-      return online.catalog(catalog, query, callback)
-    end, function(result)
-      local function search()
-        s.prompt = true
-        local ok, err = pcall(
-          vim.ui.input,
-          { prompt = 'Title or author: ', default = query.search or '' },
-          function(value)
-            if s.closed or not api.nvim_win_is_valid(s.win) then
-              return
-            end
-            api.nvim_set_current_win(s.win)
-            s.prompt = false
-            if value ~= nil then
-              value = vim.trim(value)
-              catalog_page(
-                value == '' and {} or { search = value },
-                value == '' and 'Popular' or value
-              )
-            end
-          end
+  results = function(query, title, initial)
+    local page = { title = 'Discover · ' .. title, items = {}, height = 20 }
+    local function search()
+      s:search(query.search or '', function(value)
+        results(
+          value == '' and {} or { search = value },
+          value == '' and 'Popular' or ('Search: ' .. value)
         )
-        if not ok then
-          s.prompt = false
-          error(err, 0)
-        end
-      end
-      local items = {
-        { label = 'Search title or author…', select = search },
-        {
-          label = 'Browse popular',
-          select = function()
-            catalog_page({}, 'Popular')
-          end,
-        },
-        {
-          label = 'Browse newest',
-          select = function()
-            catalog_page({ sort = 'descending' }, 'Newest')
-          end,
-        },
-        {
-          label = 'Browse poetry',
-          select = function()
-            catalog_page({ topic = 'poetry' }, 'Poetry')
-          end,
-        },
-        {
-          label = 'Browse short stories',
-          select = function()
-            catalog_page({ topic = 'short stories' }, 'Short stories')
-          end,
-        },
-        { label = result.count .. ' results · page ' .. (query.page or 1) },
-      }
+      end)
+    end
+    page.search = search
+    local context = { label = title .. ' · page ' .. (query.page or 1), hl = 'Title', wrap = true }
+    page.items = {
+      { label = 'Search title or author…', select = search },
+      { label = 'Order', hl = 'Title' },
+      {
+        label = 'Popular · most downloaded',
+        select = function()
+          results({}, 'Popular')
+        end,
+      },
+      {
+        label = 'Newest · latest catalog IDs',
+        select = function()
+          results({ sort = 'descending' }, 'Newest')
+        end,
+      },
+      { label = 'Topics · popular works', hl = 'Title' },
+      {
+        label = 'Poetry',
+        select = function()
+          results({ topic = 'poetry' }, 'Poetry')
+        end,
+      },
+      {
+        label = 'Short stories',
+        select = function()
+          results({ topic = 'short stories' }, 'Short stories')
+        end,
+      },
+      { label = '' },
+      context,
+    }
+    if initial then
+      s:push(page)
+    else
+      s:replace(page)
+    end
+    s:request(page, function(callback)
+      return online.catalog(catalog or online.default_catalog, query, callback)
+    end, function(result)
+      page.selected = nil
+      context.label = title .. ' · ' .. result.count .. ' works · page ' .. (query.page or 1)
       for _, book in ipairs(result.books) do
-        items[#items + 1] = {
+        local item = {
           label = book.title .. (book.author ~= '' and (' — ' .. book.author) or ''),
           select = function()
             details(book)
           end,
         }
+        page.items[#page.items + 1] = item
+        page.selected = page.selected or item
       end
       if #result.books == 0 then
-        items[#items + 1] = { label = 'No works found. Try another title or author.' }
+        page.items[#page.items + 1] =
+          { label = 'No works found. Try another title or author.', wrap = true }
       end
-      if result.more then
-        items[#items + 1] = {
-          label = 'More results…',
+      if (query.page or 1) > 1 then
+        page.items[#page.items + 1] = {
+          label = 'Previous page',
           select = function()
-            local next_query = vim.deepcopy(query)
-            next_query.page = (query.page or 1) + 1
-            catalog_page(next_query, title)
+            local previous = vim.deepcopy(query)
+            previous.page = query.page - 1
+            results(previous, title)
           end,
         }
       end
-      page.items = items
+      if result.more then
+        page.items[#page.items + 1] = {
+          label = 'Next page',
+          select = function()
+            local next_query = vim.deepcopy(query)
+            next_query.page = (query.page or 1) + 1
+            results(next_query, title)
+          end,
+        }
+      end
       s:render(true)
-    end)
+    end, 'Loading catalog… · Esc cancels')
   end
-
-  catalog_page({}, 'Popular')
+  results({}, 'Popular', true)
 end
 
 return M

@@ -12,11 +12,22 @@ validates that text. JSON uses Neovim's built-in parser without vendored code.
 
 `library.lua` installs local copies through hidden staging and derives manuscript
 paths and saved progress. `init.lua` holds configuration and command entry
-points. `picker.lua` coordinates shared work/unit navigation for library works
-and examples. `picker/discover.lua` owns catalog and acquisition navigation;
-`picker/ui.lua` owns the scratch float, page stack, and request lifetime.
-The picker owns no reading resources. Native `vim.ui.input` supplies the local
-directory prompt; there is no custom path editor or global UI override.
+points. `picker.lua` coordinates local work/unit navigation and retains only
+example buffer handles. `picker/discover.lua` owns online navigation; it uses
+`online.lua` without involving reading views. `picker/ui.lua` owns the scratch
+float, selection, page stack, and request lifetime.
+
+Menu rows distinguish informational text from actions. Movement skips headings;
+native scrolling can still inspect metadata on short terminals. Detail text is
+bounded and wraps with the window. Duplicate local titles show directory names
+only when needed to distinguish them. Unit percentages report saved rows.
+
+Native `vim.ui.input` supplies title/author search and the local directory
+prompt, preserving path completion; there is no global UI override. Queries,
+presets and pagination replace the Discover page. Previous/Next are explicit
+page actions. Work details add one level; acquired units use the shared local
+flow. Returning from details restores the loaded result selection and viewport
+without a request.
 
 `online.lua` requests catalog pages from Gutendex and UTF-8 plain text from
 Gutenberg's listed PGLAF mirror. It prepares an ordinary work, then delegates
@@ -28,7 +39,7 @@ local works and orphan manuscripts block acquisition.
 The picker owns each asynchronous request's cancellation function. Back, leaving
 the picker, and editor exit cancel it; callbacks also check page/picker lifetime.
 Requests use argument-vector curl, HTTPS-only redirects, time/size limits and
-owned temporary files. Results remain on the page stack for back navigation;
+owned temporary files. Only the current catalog page remains on the page stack;
 there is no background polling, persistent catalog cache, or remote reading state.
 
 `gutenberg.lua` requires unambiguous distribution markers and preserves all body

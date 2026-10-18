@@ -18,6 +18,21 @@ end
 local function lines()
   return api.nvim_buf_get_lines(0, 0, -1, false)
 end
+local function find(label)
+  for i, line in ipairs(lines()) do
+    if line:find(label, 1, true) then
+      return i
+    end
+  end
+  error('missing picker item: ' .. label .. '\n' .. table.concat(lines(), '\n'))
+end
+local function choose(label)
+  api.nvim_win_set_cursor(0, { find(label), 0 })
+  keys('l')
+end
+local function selected(label)
+  return lines()[api.nvim_win_get_cursor(0)[1]]:find(label, 1, true)
+end
 local function fixture(name, title, count)
   local directory = example_root .. '/' .. name
   vim.fn.mkdir(directory, 'p')
@@ -78,7 +93,7 @@ local function run()
   assert(#works == 2 and #works[2].units == 24, 'multiple example works and units discovered')
   picker.open(home, example_root)
   assert(
-    vim.deep_equal(lines(), { '  Add local work…', '  Discover online…', '  Examples' }),
+    find('Discover online') < find('Add local work') and find('Add local work') < find('Examples'),
     'empty library actions'
   )
   local win, buf = api.nvim_get_current_win(), api.nvim_get_current_buf()
@@ -88,7 +103,7 @@ local function run()
     'repeated open must reuse picker'
   )
   keys('Gll')
-  assert(#lines() == 2, 'first example has two ordered units')
+  assert(find('Unit 2'), 'first example has ordered units')
   local width = api.nvim_win_get_width(0)
   for _, line in ipairs(lines()) do
     assert(vim.fn.strdisplaywidth(line) <= width, 'long Unicode titles must fit')
@@ -128,9 +143,9 @@ local function run()
   lilt.close()
   picker.open(home, example_root)
   keys('GljlG')
-  assert(api.nvim_win_get_cursor(0)[1] == 24, 'G navigates a long chapter list')
+  assert(selected('Unit 24'), 'G navigates a long chapter list')
   keys('ggh')
-  assert(#lines() == 2 and api.nvim_win_get_cursor(0)[1] == 2, 'back restores work selection')
+  assert(selected('B letters'), 'back restores work selection')
   keys('<Esc>q')
   assert(api.nvim_get_current_win() == origin, 'back/close restores original focus')
   no_picker()
@@ -153,15 +168,15 @@ local function run()
     callback(nil)
   end
   picker.open(home, example_root)
-  keys('l')
-  assert(lines()[1] == '  Add local work…', 'canceling import must return to library')
+  choose('Add local work')
+  assert(find('Add local work'), 'canceling import must return to library')
   keys('q')
   vim.ui.input = function(_, callback)
     callback(root .. '/missing-work')
   end
   picker.open(home, example_root)
-  keys('l')
-  assert(lines()[1] == '  Add local work…', 'failed import must return to library')
+  choose('Add local work')
+  assert(find('Add local work'), 'failed import must return to library')
   keys('q')
   vim.ui.input = input
   vim.fn.writefile({ 'not a directory' }, root .. '/invalid-library')
@@ -170,10 +185,20 @@ local function run()
   assert(api.nvim_get_current_buf() == first_unit, 'unusable library must not block examples')
   lilt.close()
   no_picker()
-  for _ = 1, 4 do
+  for _, dismiss in ipairs({
+    function(target_win)
+      api.nvim_win_close(target_win, true)
+    end,
+    function(target_win)
+      api.nvim_win_set_buf(target_win, api.nvim_win_get_buf(origin))
+    end,
+    function()
+      api.nvim_buf_delete(0, { force = true })
+    end,
+  }) do
     picker.open(home, example_root)
     local floating = api.nvim_get_current_win()
-    api.nvim_win_close(floating, true)
+    dismiss(floating)
     api.nvim_exec_autocmds('VimResized', {})
     vim.wait(10, function()
       return false
@@ -196,13 +221,15 @@ local function run()
   picker.open(home, example_root)
   keys('l')
   assert(
-    lines()[1]:match('%?$') and #lines() == 24,
+    table.concat(lines(), '\n'):find('?', 1, true) and find('Unit 24'),
     'one progress error must not hide reading units'
   )
   width = api.nvim_win_get_width(0)
-  assert(lines()[2]:match('100%%$'), 'saved rows must show their numeric progress')
+  assert(lines()[find('Unit 2')]:match('100%%$'), 'saved rows must show their numeric progress')
   for _, line in ipairs(lines()) do
-    assert(vim.fn.strdisplaywidth(line) == width, 'saved progress must share the right edge')
+    if line:match('[%%?—]$') then
+      assert(vim.fn.strdisplaywidth(line) == width, 'saved progress must share the right edge')
+    end
   end
   keys('jl')
   assert(
@@ -211,6 +238,16 @@ local function run()
     'other units must remain readable'
   )
   lilt.close()
+  no_picker()
+  fixture('third', works[1].title, 1)
+  picker.open(home, example_root)
+  choose('Examples')
+  assert(find('[first]') and find('[third]'), 'clipped duplicate titles keep visible identifiers')
+  assert(
+    not table.concat(lines(), '\n'):find('[second]', 1, true),
+    'unique titles do not need identifiers'
+  )
+  keys('hh')
   no_picker()
   print('Lilt picker: XDG, hierarchy, multiple examples, buffer reuse and cleanup passed')
 end

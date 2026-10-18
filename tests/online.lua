@@ -341,64 +341,87 @@ local function run()
   lilt.open()
   choose('Discover online')
   assert(
-    lines()[1]:find('Search title or author', 1, true),
-    'browsing starts with real popular results: ' .. vim.inspect(lines()) .. vim.inspect(messages)
+    table.concat(lines(), '\n'):find('Test Letters', 1, true),
+    'browsing starts with popular results'
   )
-  choose('More results')
-  assert(lines()[7]:find('Another page', 1, true), 'navigate additional results')
+  choose('Next page')
+  assert(table.concat(lines(), '\n'):find('Another page', 1, true), 'navigate additional results')
   assert(
     requests[#requests] == online.default_catalog .. '/books/?page=2',
     'never follow foreign pagination URL'
   )
+  choose('Previous page')
+  assert(
+    table.concat(lines(), '\n'):find('Test Letters', 1, true),
+    'previous page returns to the same query'
+  )
+  choose('Newest')
+  assert(
+    requests[#requests]:find('sort=descending', 1, true),
+    'newest means descending catalog IDs'
+  )
+  choose('Poetry')
+  assert(requests[#requests]:find('topic=poetry', 1, true), 'poetry is a topic preset')
+  choose('Short stories')
+  assert(
+    requests[#requests]:find('topic=short%20stories', 1, true),
+    'short stories is a topic preset'
+  )
   keys('h')
   assert(
-    lines()[7]:find('Test Letters', 1, true),
-    'back preserves previous results without requesting again'
+    table.concat(lines(), '\n'):find('Discover online', 1, true),
+    'query and page changes do not add back navigation depth'
   )
-  vim.ui.input = function(_, cb)
-    cb('no such book')
+  choose('Discover online')
+  vim.ui.input = function(_, callback)
+    callback('no such book')
   end
-  keys('ggl')
+  keys('s')
   assert(table.concat(lines(), '\n'):find('No works found', 1, true), 'empty search')
-  keys('h')
-  vim.ui.input = function(_, cb)
-    cb(nil)
+  vim.ui.input = function(_, callback)
+    callback(nil)
   end
-  keys('ggl')
-  assert(lines()[7]:find('Test Letters', 1, true), 'search cancellation preserves browsing')
-  vim.ui.input = function(_, cb)
-    local scratch = api.nvim_create_buf(false, true)
-    local prompt = api.nvim_open_win(scratch, true, {
-      relative = 'editor',
-      row = 1,
-      col = 1,
-      width = 20,
-      height = 1,
-      style = 'minimal',
-    })
-    api.nvim_win_close(prompt, true)
-    api.nvim_buf_delete(scratch, { force = true })
-    cb(nil)
-  end
-  keys('ggl')
+  keys('s')
   assert(
-    lines()[7]:find('Test Letters', 1, true),
-    'floating input override preserves picker lifetime'
+    table.concat(lines(), '\n'):find('No works found', 1, true),
+    'search cancellation preserves browsing'
   )
+  vim.ui.input = function(_, callback)
+    callback('')
+  end
+  keys('s')
+  assert(
+    table.concat(lines(), '\n'):find('Test Letters', 1, true),
+    'empty query returns to popular works'
+  )
+  local result_requests = #requests
   choose('second work')
-  assert(lines()[1]:find('Unavailable', 1, true), 'unsupported works explain the limitation')
+  assert(
+    table.concat(lines(), '\n'):find('Unavailable', 1, true),
+    'unsupported works explain the limitation'
+  )
   keys('h')
+  assert(
+    lines()[api.nvim_win_get_cursor(0)[1]]:find('second work', 1, true)
+      and #requests == result_requests,
+    'details back restores result selection without a request'
+  )
   choose('Test Letters')
   assert(
     table.concat(lines(), '\n'):find('https://www.gutenberg.org/ebooks/11', 1, true),
     'inspect source before download'
   )
   mode = 'network-error'
+  local before_failure = #messages
   choose('Acquire and read')
-  assert(lines()[1]:find('retry', 1, true), 'download failure offers retry')
+  assert(#messages == before_failure, 'request error appears once inside the picker')
+  assert(table.concat(lines(), '\n'):find('retry', 1, true), 'download failure offers retry')
   mode = 'ok'
   keys('l')
-  assert(lines()[2]:find('CHAPTER I.', 1, true), 'acquisition proceeds directly to reading units')
+  assert(
+    table.concat(lines(), '\n'):find('CHAPTER I.', 1, true),
+    'acquisition proceeds directly to reading units'
+  )
   local installed = work.validate(home .. '/references/gutenberg-11')
   assert(
     installed.source.id == '11' and installed.source.provider == 'Project Gutenberg',
@@ -420,7 +443,7 @@ local function run()
   lilt.close()
   lilt.open()
   keys('l')
-  assert(lines()[2]:match('%d+%%$'), 'saved progress available')
+  assert(table.concat(lines(), '\n'):find('%%'), 'saved progress available')
   keys('jl')
   assert(
     api.nvim_get_current_buf() == manuscript and lines()[1] == 'A saved line.',
@@ -471,7 +494,7 @@ local function run()
 
   lilt.open()
   choose('Discover online')
-  choose('More results')
+  choose('Next page')
   choose('Another page')
   held = true
   choose('Acquire and read')
@@ -489,7 +512,7 @@ local function run()
     'cancelled acquisition must not install'
   )
   held = false
-  keys('hhhq')
+  keys('hq')
 
   for _, dismiss in ipairs({
     function()
@@ -501,7 +524,7 @@ local function run()
   }) do
     lilt.open()
     choose('Discover online')
-    choose('More results')
+    choose('Next page')
     choose('Another page')
     held = true
     choose('Acquire and read')
@@ -527,15 +550,15 @@ local function run()
   mode = 'network-error'
   lilt.open()
   choose('Discover online')
-  assert(lines()[1]:find('retry', 1, true), 'recoverable network error page')
+  assert(table.concat(lines(), '\n'):find('retry', 1, true), 'recoverable network error page')
   mode = 'ok'
   keys('l')
-  assert(lines()[7]:find('Test Letters', 1, true), 'retry succeeds')
-  keys('hhq')
+  assert(table.concat(lines(), '\n'):find('Test Letters', 1, true), 'retry succeeds')
+  keys('hq')
   held = true
   lilt.open()
   choose('Discover online')
-  assert(lines()[1]:find('Loading catalog', 1, true), 'nonblocking progress')
+  assert(table.concat(lines(), '\n'):find('Loading catalog', 1, true), 'nonblocking progress')
   job = jobs[#jobs]
   keys('hq')
   job.finish()

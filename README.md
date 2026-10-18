@@ -50,11 +50,16 @@ including blank paragraph rows.
 Your usual motions, operators, search, and undo work on what you have typed;
 comparison never changes it.
 
-To build your collection online, choose **Discover online…**. Browse popular
-works immediately, switch to newest works, poetry, or short stories, or choose
-**Search title or author…**. **More results…** opens the next page; back returns
-to the previous results. Select a work to inspect its title, authors, languages,
-subjects, and source, then choose **Acquire and read** and a reading unit.
+To build your collection, choose **Discover online…**. **Popular** orders by
+Gutenberg downloads; **Newest** orders by the latest catalog IDs. **Poetry** and
+**Short stories** browse popular works in those topics. Choose **Search title or
+author…** (or press `s`) to enter a query; Enter searches and Escape cancels.
+An empty query returns to Popular.
+
+**Next page** and **Previous page** keep the current query. Changing a query,
+preset, or page replaces the results; back returns to the library. Selecting a
+work shows its identity, source, and availability. Back from details restores
+your result selection and scrolling. Choose **Acquire and read**, then a unit.
 Downloads run asynchronously; back or close cancels, and failures offer retry.
 
 Acquired works join your local library and remain available offline. No account
@@ -68,11 +73,14 @@ directory. Lilt validates and copies it into the library’s `references/`, then
 offers its chapters. The source directory can be moved or deleted afterwards. Existing work
 names are never overwritten. See [Preparing a Lilt work](doc/works.md) for the
 small JSON manifest, text preparation, validation, attribution, and sharing.
+The path prompt uses native directory completion with Tab.
 
 The picker is a centered float: `j/k` move, `Enter` or `l` selects, and `h`,
-`Esc`, or `q` goes back (or closes at the library page). Native `gg/G` works too.
-Selecting a work shows its ordered reading units and saved progress. Long titles
-are clipped to fit; the picker resizes with the terminal.
+`Esc`, or `q` goes back (or closes at the library page). `gg/G` selects the
+first/last action. Selecting a work shows its ordered units and saved progress.
+
+Titles are clipped to fit and the picker resizes with the terminal. `j/k` skip
+headings and metadata.
 
 The library defaults to `${XDG_DATA_HOME:-$HOME/.local/share}/lilt/` on Linux and
 macOS; an unset or relative `XDG_DATA_HOME` uses the fallback. Loading or browsing

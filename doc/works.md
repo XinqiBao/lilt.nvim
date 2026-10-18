@@ -34,12 +34,33 @@ The manifest accepts exactly these fields:
 - `source`: optional object with `provider`, `id`, and `url` strings. All three
   must be nonempty single-line strings; `url` must be an HTTP(S) URL. This is
   portable attribution, not a download or synchronization instruction.
+- `toc`: optional nonempty navigation tree, described below.
 - `units`: required nonempty array, in reading order. Each object has a required
   `title` and `path`. Titles follow the same rule as the work title.
 - `path`: unique, relative reference-file path using `/`. No empty components,
   `.`, `..`, backslashes, colons, control characters, or absolute paths. Every
   component must exist within the work; symlinks are unsupported. The manifest
   itself cannot be a reading unit.
+
+An optional `toc` preserves navigation independently of reading order:
+
+```json
+"toc": [
+  {
+    "title": "Part I",
+    "children": [
+      { "title": "The first letter", "path": "opening.txt" },
+      { "title": "The reply", "path": "letters/02.txt" }
+    ]
+  }
+]
+```
+
+Each entry has a `title` and a `path`, nonempty `children`, or both. Paths must
+name entries in `units`; multiple directory entries may share a unit. Nesting is
+limited to 64 levels. The Picker displays the tree on one page, followed by any
+units absent from it. Manuscripts and saved progress still belong to unit paths.
+Works without `toc` use the ordinary unit list.
 
 JSON comments, trailing commas, and unknown fields are rejected. Text files must
 be UTF-8 without NUL bytes. A UTF-8 BOM and CRLF line endings are accepted. Empty

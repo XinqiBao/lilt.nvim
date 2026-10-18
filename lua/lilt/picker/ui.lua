@@ -151,7 +151,8 @@ function M.new(on_close)
     end
     local items = vim.list_extend(vim.list_slice(page.items), page.status or {})
     for _, item in ipairs(items) do
-      local indent = item.select and '    ' or '  '
+      local depth = math.min(item.depth or 0, math.max(0, math.floor((width - 24) / 2)))
+      local indent = (item.select and '    ' or '  ') .. string.rep('  ', depth)
       if item.key then
         self.shortcuts[#self.shortcuts + 1] = item.key
         vim.keymap.set('n', item.key, function()

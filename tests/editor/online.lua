@@ -437,7 +437,7 @@ local function run()
     )
   end
   local path = home .. '/manuscripts/gutenberg-11/002.txt'
-  keys('jl')
+  choose('The letter — 第一封信')
   assert(api.nvim_buf_get_name(0) == path, 'ordinary durable manuscript')
   keys('iA saved line.<Esc>')
   vim.cmd.write()
@@ -448,7 +448,7 @@ local function run()
   lilt.open()
   keys('l')
   assert(table.concat(lines(), '\n'):find('%%'), 'saved progress available')
-  keys('jl')
+  choose('The letter — 第一封信')
   assert(
     api.nvim_get_current_buf() == manuscript and lines()[1] == 'A saved line.',
     'resume acquired work'

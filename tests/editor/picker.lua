@@ -176,6 +176,46 @@ local function run()
   assert(api.nvim_get_current_win() == origin, 'back/close restores original focus')
   no_picker()
 
+  -- Navigation is local metadata; aliases retain the same real manuscript.
+  fixture('structured', 'C structured', 3)
+  local structured = example_root .. '/structured/lilt.json'
+  local data = vim.json.decode(table.concat(vim.fn.readfile(structured), '\n'))
+  data.toc = {
+    {
+      title = 'Volume',
+      children = {
+        {
+          title = 'First chapter',
+          path = '1.txt',
+          children = {
+            { title = 'Second chapter', path = '2.txt' },
+          },
+        },
+        { title = 'First chapter alias', path = '1.txt' },
+      },
+    },
+  }
+  vim.fn.writefile({ vim.json.encode(data) }, structured)
+  picker.open(home, example_root)
+  example_units('C structured')
+  local structured_buf = api.nvim_get_current_buf()
+  api.nvim_win_set_cursor(0, { find('Volume'), 0 })
+  keys('<CR>')
+  assert(api.nvim_get_current_buf() == structured_buf, 'group labels do not activate')
+  assert(find('Other reading units') < find('Unit 3'), 'unlisted units remain accessible')
+  choose('First chapter')
+  local authored = api.nvim_get_current_buf()
+  keys('iSaved in the real buffer<Esc>')
+  lilt.close()
+  picker.open(home, example_root)
+  example_units('C structured')
+  choose('First chapter alias')
+  assert(
+    api.nvim_get_current_buf() == authored and lines()[1] == 'Saved in the real buffer',
+    'aliases share unsaved writing and undo'
+  )
+  lilt.close()
+
   -- Selection passively previews references, without navigation or manuscripts.
   local reference = { 'Beginning — 文学 🐇', '', 'Third physical row.' }
   for i = 4, 60 do

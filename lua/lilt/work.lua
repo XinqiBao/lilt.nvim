@@ -110,7 +110,7 @@ function M.load(directory)
   if not ok then
     fail(manifest .. ': invalid JSON: ' .. tostring(data))
   end
-  fields(data, { title = true, author = true, source = true, units = true }, manifest)
+  fields(data, { title = true, author = true, source = true, units = true, toc = true }, manifest)
   title(data.title, manifest .. ': title')
   if data.author ~= nil then
     title(data.author, manifest .. ': author')
@@ -135,15 +135,43 @@ function M.load(directory)
     if seen[unit.path] or unit.path == 'lilt.json' then
       fail(manifest .. ': duplicate or reserved unit path: ' .. unit.path)
     end
-    seen[unit.path] = true
     units[#units + 1] = { title = unit.title, path = unit.path, reference = path }
+    seen[unit.path] = units[#units]
   end
+  local function navigation(nodes, depth)
+    if type(nodes) ~= 'table' or not vim.islist(nodes) or #nodes == 0 then
+      fail(manifest .. ': toc must be a nonempty array')
+    end
+    if depth > 64 then
+      fail(manifest .. ': toc nesting exceeds 64 levels')
+    end
+    local result = {}
+    for _, node in ipairs(nodes) do
+      fields(node, { title = true, path = true, children = true }, manifest .. ': toc entry')
+      title(node.title, manifest .. ': toc title')
+      if node.path ~= nil and (type(node.path) ~= 'string' or not seen[node.path]) then
+        fail(manifest .. ': toc path must name a reading unit')
+      end
+      if node.path == nil and node.children == nil then
+        fail(manifest .. ': toc entry needs a path or children')
+      end
+      result[#result + 1] = {
+        title = node.title,
+        path = node.path,
+        unit = node.path and seen[node.path] or nil,
+        children = node.children ~= nil and navigation(node.children, depth + 1) or nil,
+      }
+    end
+    return result
+  end
+  local toc = data.toc ~= nil and navigation(data.toc, 1) or nil
   return {
     root = root,
     title = data.title,
     author = data.author,
     source = data.source,
     units = units,
+    toc = toc,
   }
 end
 

@@ -46,6 +46,11 @@ initially focus an action; online work details start at the title. Use a/o to
 acquire/open directly. Action shortcuts appear beside their labels.
 Escape inside the search editor cancels only that input.
 
+Works with a table of contents show its hierarchy on one page. Group headings
+are informational; linked entries open ordinary units. Long chapters group their
+numbered reading parts. Units absent from the directory remain accessible under
+Other reading units. Directory aliases share the same manuscript and progress.
+
 Selecting a unit automatically shows its opening reference text in a passive,
 read-only preview: on the right in wide terminals, below in narrower ones, or
 hidden on very small terminals. Focus stays on the list; Enter starts reading.

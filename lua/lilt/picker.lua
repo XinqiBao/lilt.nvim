@@ -39,44 +39,79 @@ local function browse(root, example_root, catalog, installed)
           or 'Reading units · saved progress',
       },
     }
-    for _, unit in ipairs(reading.units) do
-      local progress, progress_error
-      if not temporary then
-        local ok, value = pcall(library.progress, root, reading, unit)
-        if ok then
-          progress = value
-        else
-          progress_error = value
-        end
-      end
-      local function read()
-        if progress_error then
-          vim.notify(tostring(progress_error), vim.log.levels.WARN)
-        end
-        local reference = work.read_unit(reading, unit)
-        local buf
-        if temporary then
-          buf = examples[unit.reference]
-          if not buf or not api.nvim_buf_is_valid(buf) then
-            buf = manuscript.open()
-            examples[unit.reference] = buf
+    for _, warning in ipairs(reading.import_warnings or {}) do
+      items[#items + 1] = { label = warning, hl = 'DiagnosticWarn', wrap = true }
+    end
+    local actions, listed = {}, {}
+    local function action(unit, label, depth)
+      if not actions[unit] then
+        local progress, progress_error
+        if not temporary then
+          local ok, value = pcall(library.progress, root, reading, unit)
+          if ok then
+            progress = value
+          else
+            progress_error = value
           end
-        else
-          buf = manuscript.open(library.manuscript(root, reading, unit))
         end
-        s:close()
-        session.open('ghost', { manuscript = buf, reference = reference })
+        local function read()
+          if progress_error then
+            vim.notify(tostring(progress_error), vim.log.levels.WARN)
+          end
+          local reference = work.read_unit(reading, unit)
+          local buf
+          if temporary then
+            buf = examples[unit.reference]
+            if not buf or not api.nvim_buf_is_valid(buf) then
+              buf = manuscript.open()
+              examples[unit.reference] = buf
+            end
+          else
+            buf = manuscript.open(library.manuscript(root, reading, unit))
+          end
+          s:close()
+          session.open('ghost', { manuscript = buf, reference = reference })
+        end
+        actions[unit] = {
+          label = unit.title,
+          suffix = not temporary
+              and (progress_error and '?' or progress and (progress .. '%') or '—')
+            or nil,
+          select = read,
+          preview = function()
+            return work.read_unit(reading, unit)
+          end,
+        }
       end
-      items[#items + 1] = {
-        label = unit.title,
-        suffix = not temporary
-            and (progress_error and '?' or progress and (progress .. '%') or '—')
-          or nil,
-        select = read,
-        preview = function()
-          return work.read_unit(reading, unit)
-        end,
-      }
+      local item = vim.tbl_extend('force', actions[unit], { label = label, depth = depth })
+      items[#items + 1] = item
+      listed[unit] = true
+    end
+    local function navigation(nodes, depth)
+      for _, node in ipairs(nodes) do
+        if node.unit then
+          action(node.unit, node.title, depth)
+        else
+          items[#items + 1] = { label = node.title, depth = depth, hl = 'Title' }
+        end
+        if node.children then
+          navigation(node.children, depth + 1)
+        end
+      end
+    end
+    if reading.toc then
+      navigation(reading.toc, 0)
+    end
+    local remaining = false
+    for _, unit in ipairs(reading.units) do
+      if not listed[unit] then
+        if reading.toc and not remaining then
+          items[#items + 1] = { label = '' }
+          items[#items + 1] = { label = 'Other reading units', hl = 'Title' }
+        end
+        remaining = true
+        action(unit, unit.title, 0)
+      end
     end
     s:push({
       title = reading.title,

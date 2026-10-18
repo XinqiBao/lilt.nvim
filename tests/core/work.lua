@@ -46,6 +46,37 @@ local function run()
   }) do
     rejects({ title = 'Work', source = source, units = data.units }, 'source')
   end
+  data.toc = {
+    {
+      title = 'Volume',
+      children = {
+        { title = 'A separate label', path = 'text.txt' },
+        {
+          title = 'An alias',
+          path = 'text.txt',
+          children = {
+            { title = 'Next', path = 'chapters/02.txt' },
+          },
+        },
+      },
+    },
+  }
+  manifest(data)
+  loaded = work.load(root)
+  assert(loaded.toc[1].children[1].unit == loaded.units[2], 'TOC resolves existing unit objects')
+  assert(loaded.toc[1].children[2].children[1].unit == loaded.units[1], 'nested linked parent')
+  for _, toc in ipairs({
+    false,
+    {},
+    { { title = 'Empty group' } },
+    { { title = 'Bad', path = '../outside' } },
+    { { title = 'Bad', path = false } },
+    { { title = 'Bad', children = false } },
+    { { title = 'Bad', path = 'text.txt', extra = true } },
+  }) do
+    rejects({ title = 'Work', units = data.units, toc = toc }, 'toc')
+  end
+  data.toc = nil
   data.source = nil
   rejects({ title = 'Work', units = { data.units[1], data.units[1] } }, 'duplicate')
   for _, path in ipairs({

@@ -6,6 +6,8 @@ lines are disposable derived state. Lilt never intercepts typing or repairs text
 
 `work.lua` parses self-contained JSON works, discovers immediate work
 directories, validates selected reference text, and counts physical rows.
+An optional `toc` refers to those units through a separate local navigation tree.
+Aliases share the unit object; grouping has no manuscript or progress of its own.
 Discovery reads manifests and checks file metadata only. Installation validates
 all reference bodies in the staged copy; opening a unit rechecks its path and
 validates that text. JSON uses Neovim's built-in parser without vendored code.
@@ -26,7 +28,9 @@ New pages reset the shared window's scroll. Returning, cancelling search, and
 resizing retain the cursor item and its wrapped-line offset (clamped when text
 reflows). Detail text is bounded and wraps with the window. Duplicate local
 titles show directory names only when needed to distinguish them. Unit
-percentages report saved rows.
+percentages report saved rows. Source directory trees appear on one page with
+indented children; narrow terminals cap indentation. Unlisted units remain
+accessible after the tree.
 Action-local shortcut keys are displayed with their labels and active only on
 that page; busy pages disable actions. q/Escape exits from any menu, while
 h/Backspace goes back. Escape in the search editor cancels only the input.

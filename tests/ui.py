@@ -406,6 +406,33 @@ def library_tests():
             runtime.chmod(0o755)
             for path in runtime.rglob("*"):
                 path.chmod(0o755 if path.is_dir() else 0o644)
+        # A source tree changes navigation, not manuscript identity.
+        installed_manifest = home / "references" / "letters" / "lilt.json"
+        structured = json.loads(installed_manifest.read_text(encoding="utf-8"))
+        structured["toc"] = [{"title": "Volume", "children": [
+            {"title": "First chapter", "path": "opening.txt", "children": [
+                {"title": "Second chapter", "path": "reply.txt"},
+            ]},
+            {"title": "First alias", "path": "opening.txt"},
+        ]}]
+        installed_manifest.write_text(json.dumps(structured), encoding="utf-8")
+        nvim.command("Lilt")
+        choose("Letters")
+        contents = nvim.current.buffer[:]
+        parent = next(line for line in contents if "First chapter" in line)
+        child = next(line for line in contents if "Second chapter" in line)
+        check(len(child) - len(child.lstrip()) > len(parent) - len(parent.lstrip()),
+              "nested directory entries retain a visible hierarchy")
+        group_row = next(i for i, line in enumerate(contents, 1) if "Volume" in line)
+        nvim.current.window.cursor = (group_row, 0)
+        menu = nvim.current.buffer.number
+        input_keys("<CR>")
+        check(nvim.current.buffer.number == menu and not nvim.current.window.options["cursorline"],
+              "directory groups remain informational")
+        choose("First alias")
+        check(nvim.current.buffer.name == str(manuscript) and nvim.current.buffer[:] == ["First"],
+              "directory aliases resume the same saved manuscript")
+        nvim.command("LiltClose")
         open_example()
         check(nvim.current.buffer.name == "", "example is reachable through the unified picker")
         nvim.command("LiltClose")
@@ -588,7 +615,7 @@ def online_tests():
             end, 10)""")
             rows = screen()
             check(ready and any("The letter" in row for row in rows), "download goes straight to unit selection")
-            rows = input_keys("jl")
+            rows = choose("The letter — 第一封信")
             check(nvim.current.buffer.name == str(home / "manuscripts/gutenberg-11/002.txt"),
                   "acquired units use ordinary named manuscripts")
             check(any("Café" in row for row in rows), "prepared Unicode content appears in Ghost")

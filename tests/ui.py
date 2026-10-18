@@ -422,16 +422,17 @@ def library_tests():
         parent = next(line for line in contents if "First chapter" in line)
         child = next(line for line in contents if "Second chapter" in line)
         check(len(child) - len(child.lstrip()) > len(parent) - len(parent.lstrip()),
-              "nested directory entries retain a visible hierarchy")
+              "nested navigation entries retain a visible hierarchy")
         group_row = next(i for i, line in enumerate(contents, 1) if "Volume" in line)
         nvim.current.window.cursor = (group_row, 0)
         menu = nvim.current.buffer.number
         input_keys("<CR>")
         check(nvim.current.buffer.number == menu and not nvim.current.window.options["cursorline"],
-              "directory groups remain informational")
+              "navigation groups remain informational")
         choose("First alias")
-        check(nvim.current.buffer.name == str(manuscript) and nvim.current.buffer[:] == ["First"],
-              "directory aliases resume the same saved manuscript")
+        check(Path(nvim.current.buffer.name).resolve() == manuscript.resolve()
+              and nvim.current.buffer[:] == ["First"],
+              "navigation aliases resume the same saved manuscript")
         nvim.command("LiltClose")
         open_example()
         check(nvim.current.buffer.name == "", "example is reachable through the unified picker")

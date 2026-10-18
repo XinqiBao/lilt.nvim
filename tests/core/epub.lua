@@ -195,6 +195,26 @@ local function run()
     chapter.children[1].unit and chapter.children[2].unit,
     'technical parts resolve to ordinary units'
   )
+  local long_alias = reading.toc[1].children[3]
+  assert(
+    long_alias.unit == chapter.children[1].unit and not long_alias.children,
+    'aliases open the first reading part without duplicating the part list'
+  )
+  err, units, reading = converted(samples .. '/coalesced.epub', false)
+  assert(not err, tostring(err))
+  group, chapter = reading.toc[1], reading.toc[1].children[2]
+  assert(
+    group.unit == chapter.children[1].unit and #group.children == 3,
+    'adjacent heading-only targets share text without expanding parts at each level'
+  )
+  assert(
+    group.children[3].title == chapter.title and group.children[3].unit == group.unit,
+    'repeated source labels and links remain distinct navigation entries'
+  )
+  assert(
+    table.concat(work.read_unit(reading, group.unit), '\n'):find('Collection opening', 1, true),
+    'coalescing navigation never discards the earlier printed heading'
+  )
   err, units, reading = converted(samples .. '/no-toc.epub', false)
   assert(
     not err and not reading.toc and #units > 0,

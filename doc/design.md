@@ -93,8 +93,10 @@ linked parents, aliases and different source labels survive in an optional local
 enter at the enclosing block, never cut text apart. Units remain ordered by
 spine, nonoverlapping, and independently accessible when absent from the TOC.
 Long sections divide near 300 rows at paragraph breaks, avoiding tiny tails;
-TOC chapters group their numbered reading parts. The Picker displays one indented
-list, caps indentation on narrow terminals, and appends unlisted reading units.
+TOC chapters group their numbered reading parts. Coalesced heading-only targets
+share a unit; the target nearest the body owns its part list once, while other
+entries open the first part and retain their source children. The Picker displays
+one indented list, caps indentation on narrow terminals, and appends unlisted units.
 
 There is no chapter-name matching, locale keyword list or plain-text fallback.
 Caption spans mirrored in a heading's navigation label are excluded from that

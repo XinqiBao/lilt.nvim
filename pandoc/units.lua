@@ -115,6 +115,7 @@ _G.Writer = function(doc)
   index(toc)
 
   local units, blocks, anchors, locations, has_body = {}, {}, {}, {}, false
+  local primary
   local title = clean(pandoc.utils.stringify(doc.meta['lilt-title'] or doc.meta.title or ''))
   if title == '' then
     title = 'Reading'
@@ -155,7 +156,7 @@ _G.Writer = function(doc)
         first = first + 1
       end
     end
-    local location = { first = #units + 1, count = #parts }
+    local location = { first = #units + 1, count = #parts, primary = primary }
     if #parts > 0 then
       for id in pairs(anchors) do
         locations[id] = location
@@ -164,19 +165,23 @@ _G.Writer = function(doc)
     for i, part in ipairs(parts) do
       units[#units + 1] = { title = #parts > 1 and (title .. ' · ' .. i) or title, lines = part }
     end
-    blocks, anchors, has_body = {}, {}, false
+    blocks, anchors, has_body, primary = {}, {}, false, nil
   end
   local function boundary(ids)
-    local chosen
+    local chosen, target_id
     for id in pairs(ids) do
       local target = targets[id]
       if target and (not chosen or target.order < chosen.order) then
         chosen = target
+        target_id = id
       end
     end
     if chosen then
       flush()
       title = chosen.title
+      -- Heading-only starts can share one text unit. The target nearest its
+      -- body owns the reading parts; earlier starts remain simple aliases.
+      primary = target_id
     end
     for id in pairs(ids) do
       if targets[id] then
@@ -235,15 +240,20 @@ _G.Writer = function(doc)
   if #units == 0 then
     error('Lilt: EPUB has no readable text')
   end
+  local expanded = {}
   local function mapped(nodes)
     local result = {}
     for _, node in ipairs(nodes) do
       local children = mapped(node.children)
       local location = locations[node.target]
       local target
-      if location and location.count == 1 then
+      if
+        location
+        and (location.count == 1 or location.primary ~= node.target or expanded[location])
+      then
         target = location.first
       elseif location then
+        expanded[location] = true
         local parts = {}
         for i = 1, location.count do
           parts[#parts + 1] =

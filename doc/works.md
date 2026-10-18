@@ -112,11 +112,13 @@ Unlisted text stays available under **Other reading units**. A target inside a
 paragraph or table opens the unit containing that intact block.
 
 The linear spine determines body order; navigation aliases never duplicate text.
-Long sections get numbered reading parts beneath their source chapter. Source
-labels can differ from printed headings. When a label reproduces a heading with
-a marked illustration caption, that caption is excluded from the label and kept
-in the reference. EPUB identifiers and styling attributes are excluded from
-rendered text. Prose wraps at 72 columns; explicit verse/preformatted breaks remain.
+Long sections get numbered reading parts beneath their source chapter. Entries
+sharing an opening unit list its parts once; aliases open the first part. Repeated
+source labels and links are retained. Labels can differ from printed headings.
+When a label reproduces a heading with a marked illustration caption, that
+caption is excluded from the label and kept in the reference. EPUB identifiers
+and styling attributes are excluded from rendered text. Prose wraps at 72 columns;
+explicit verse/preformatted breaks remain.
 Images are omitted. CSS-only layout and imperfect source editing can still limit
 the result. Nonlinear resources are excluded; unsupported spine resource types
 fail conversion explicitly.

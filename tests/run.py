@@ -39,7 +39,7 @@ def main():
         fixture = Path(directory) / "source.epub"
         write_epub(fixture)
         env["LILT_TEST_EPUB"] = str(fixture)
-        for mode in ("nav", "broken-nav", "unusable-nav", "no-toc", "long", "caption-label", "unlabelled"):
+        for mode in ("nav", "broken-nav", "unusable-nav", "no-toc", "long", "caption-label", "unlabelled", "coalesced"):
             write_navigation_epub(Path(directory) / (mode + ".epub"), mode)
         commands = [
             [args.nvim, "--version"],

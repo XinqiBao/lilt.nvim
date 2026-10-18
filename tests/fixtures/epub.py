@@ -51,10 +51,17 @@ def write_navigation_epub(path, mode="nav"):
     }
     files = {name: (source / filename).read_text(encoding="utf-8")
              for name, filename in names.items()}
-    if mode == "long":
+    if mode in ("long", "coalesced"):
         files["EPUB/one dir/chapter.xhtml"] = files["EPUB/one dir/chapter.xhtml"].replace(
             '<section id="middle">',
             ('<p>' + 'A long paragraph of prose. ' * 20 + '</p>') * 60 + '<section id="middle">')
+    if mode == "coalesced":
+        files["EPUB/one dir/chapter.xhtml"] = files["EPUB/one dir/chapter.xhtml"].replace(
+            '<h1 id="start">', '<h1 id="collection">Collection opening</h1><h1 id="start">')
+        files["EPUB/nav.xhtml"] = files["EPUB/nav.xhtml"].replace(
+            '<span>Collected letters</span>',
+            '<a href="one%20dir/chapter.xhtml#collection">Collected letters</a>').replace(
+                'Alias of the first letter', 'First letter')
     elif mode == "unlabelled":
         files["EPUB/nav.xhtml"] = files["EPUB/nav.xhtml"].replace(
             '<span>Collected letters</span>', '')

@@ -309,6 +309,21 @@ local function run()
     'original and license retained verbatim'
   )
   local original = table.concat(work.read(installed.units[2].reference), '\n')
+  assert(
+    original:find('"Café, 文学, and a rabbit 🐇,"', 1, true),
+    'new English reading units use keyboard-friendly quotes'
+  )
+  for i, languages in ipairs({ { 'fr' }, { 'en', 'fr' }, {} }) do
+    local other = vim.tbl_extend('force', book, { languages = languages })
+    local language_error, reading = call(function(cb)
+      acquisition.acquire(root .. '/original-punctuation-' .. i, other, cb)
+    end)
+    assert(not language_error, tostring(language_error))
+    assert(
+      table.concat(work.read(reading.units[2].reference), '\n'):find('“Café', 1, true),
+      'non-English, multilingual, and unknown-language works retain source punctuation'
+    )
+  end
   local path = home .. '/manuscripts/gutenberg-11/002.txt'
   keys('jl')
   assert(api.nvim_buf_get_name(0) == path, 'ordinary durable manuscript')
@@ -327,6 +342,9 @@ local function run()
     'resume acquired work'
   )
   lilt.close()
+  -- Model a copy acquired before quote simplification, with saved writing.
+  original = '“An earlier reading copy.”'
+  vim.fn.writefile({ original }, installed.units[2].reference)
   local count = #requests
   err, installed = call(function(cb)
     acquisition.acquire(home, book, cb)

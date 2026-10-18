@@ -67,7 +67,15 @@ local function wrap(line)
   return rows
 end
 
-function M.prepare(lines, title, preserve_lines)
+function M.prepare(lines, title, options)
+  options = options or {}
+  if options.plain_quotes then
+    -- Literal UTF-8 replacements: a Lua character class would match bytes,
+    -- not complete quotation marks. Leave other punctuation and letters alone.
+    lines = vim.tbl_map(function(line)
+      return (line:gsub('“', '"'):gsub('”', '"'):gsub('‘', "'"):gsub('’', "'"))
+    end, lines)
+  end
   local first, last
   for i, line in ipairs(lines) do
     if line:find('[%z\1-\8\11-\31\127]') then
@@ -140,7 +148,7 @@ function M.prepare(lines, title, preserve_lines)
       part = part + 1
       unit_title = unit_title:gsub(' · %d+$', '') .. ' · ' .. part
     end
-    for _, row in ipairs(preserve_lines and { lines[i] } or wrap(lines[i])) do
+    for _, row in ipairs(options.preserve_lines and { lines[i] } or wrap(lines[i])) do
       rows[#rows + 1] = row
       if not blank(row) then
         nonblank = nonblank + 1

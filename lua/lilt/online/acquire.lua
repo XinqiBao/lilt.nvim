@@ -98,8 +98,11 @@ function M.acquire(root, book, callback)
           preserve_lines = true
         end
       end
-      local prepared =
-        require('lilt.online.gutenberg').prepare(work.read(path), book.title, preserve_lines)
+      local plain_quotes = #book.languages == 1 and book.languages[1] == 'en'
+      local prepared = require('lilt.online.gutenberg').prepare(work.read(path), book.title, {
+        preserve_lines = preserve_lines,
+        plain_quotes = plain_quotes,
+      })
       local directory = staging .. '/' .. M.name(book)
       checked(vim.fn.mkdir(directory, 'p') == 1, 'cannot create acquisition staging directory')
       local manifest = {
@@ -127,6 +130,9 @@ function M.acquire(root, book, callback)
         '',
         'SOURCE.txt is the unmodified download, including credits and the Gutenberg license.',
         'Reading units omit the distribution header/footer and blank padding at unit edges.',
+        plain_quotes
+            and 'English curly quotation marks and apostrophes are converted to straight quotes.'
+          or 'Source punctuation is preserved.',
         preserve_lines
             and 'Source line breaks and indentation are preserved (cataloged poetry/drama).'
           or 'Source layout is retained; unindented prose lines over 80 columns wrap at 72.',

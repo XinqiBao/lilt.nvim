@@ -51,7 +51,7 @@ local function run()
     vim.deep_equal(words(original_body), words(prepared_body)),
     'preparation must preserve words and punctuation in order, including word boundaries'
   )
-  local verse = prep.prepare(source, 'Poetry', true)
+  local verse = prep.prepare(source, 'Poetry', { preserve_lines = true })
   local long_line = table.concat(source, '\n'):match('(The snow arrived[^\n]+)')
   assert(
     vim.fn.strwidth(long_line) > 80 and vim.tbl_contains(verse[2].lines, long_line),
@@ -59,6 +59,24 @@ local function run()
   )
   local start_marker = '*** START OF THE PROJECT GUTENBERG EBOOK TEST ***'
   local end_marker = '*** END OF THE PROJECT GUTENBERG EBOOK TEST ***'
+  local quoted = {
+    start_marker,
+    '    “Café,” she said. ‘Don’t’ change — dashes – or …; «文学», ʼ, and café́.',
+    '',
+    string.rep('A long verse line. ', 8) .. '“Still here.”',
+    end_marker,
+  }
+  local original = vim.deepcopy(quoted)
+  local plain = prep.prepare(quoted, 'Quotes', { plain_quotes = true, preserve_lines = true })
+  assert(
+    vim.deep_equal(plain[1].lines, {
+      [[    "Café," she said. 'Don't' change — dashes – or …; «文学», ʼ, and café́.]],
+      '',
+      string.rep('A long verse line. ', 8) .. '"Still here."',
+    }),
+    'quote simplification must preserve other Unicode, punctuation, spacing, and verse rows'
+  )
+  assert(vim.deep_equal(quoted, original), 'preparation must not mutate the source lines')
   -- Moby Dick's unindented, blank-separated contents used to become dozens
   -- of tiny fake chapters. Even wrapped entries must remain in the front matter.
   local contents = {

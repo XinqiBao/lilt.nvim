@@ -152,11 +152,18 @@ and license in `SOURCE.txt` with a shared work, and review those terms when
 sharing prepared units. Lilt is an independent client, not an endorsed Project
 Gutenberg or Gutendex product.
 
-Source editions vary: Lilt preserves text and indentation, wraps long unindented
-lines, and uses recognizable headings and paragraph breaks for units. Poetry/drama identified by
-catalog subjects keeps even long lines intact. These layout heuristics can miss
-chapter boundaries or wrap long verse embedded in prose. Plain-text
-illustration labels and emphasis marks remain; images and EPUB/HTML conversion
+New acquisitions cataloged solely as English convert curly double quotes
+(`“ ”`) to `"` and curly single quotes/apostrophes (`‘ ’`) to `'` for keyboard
+input. Other punctuation, spelling, and accents are retained. Non-English,
+multilingual, and unknown-language works keep their source punctuation.
+`SOURCE.txt` always retains the original bytes; `README.txt` records preparation.
+Existing acquisitions and local imports are not converted.
+
+Source editions vary: Lilt preserves indentation, wraps long unindented lines,
+and uses recognizable headings and paragraph breaks for units. Poetry/drama
+identified by catalog subjects keeps even long lines intact. These layout
+heuristics can miss chapter boundaries or wrap long verse embedded in prose.
+Plain-text illustration labels and emphasis marks remain; images and EPUB/HTML conversion
 are unsupported. Missing text boundaries or invalid encoding fail safely.
 Requests have a 45-second timeout and a 12 MiB size limit. Gutendex is a separate,
 best-effort service; unavailable catalog entries or mirror files can be retried

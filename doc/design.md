@@ -70,11 +70,15 @@ owned temporary files. Only the current catalog page remains on the page stack;
 there is no background polling, persistent catalog cache, or remote reading state.
 
 `online/gutenberg.lua` prepares source text without network or installation
-side effects. It requires unambiguous distribution markers and preserves all body
-text, including front matter, contents, notes, and illustration labels. Credits
-and the license survive in the verbatim original. Preparation preserves layout
-and wraps only long unindented lines without tabular spacing, except in works
-cataloged as poetry/drama. Recognizable section headings and isolated capitals
+side effects. It requires unambiguous distribution markers and retains the body,
+including front matter, contents, notes, and illustration labels. English-only
+acquisitions simplify curly quotation marks and apostrophes to straight quotes;
+other punctuation and letters are retained. Unknown, mixed, or other catalog
+languages keep source punctuation. This applies only to new acquisitions, never
+existing references, local imports, manuscript text, or comparison. The verbatim
+original retains its punctuation, credits, and license. Preparation preserves
+layout and wraps only long unindented lines without tabular spacing, except in
+works cataloged as poetry/drama. Recognizable section headings and isolated capitals
 provide unit titles; extra blank padding before headings avoids treating
 blank-separated contents entries as chapters. Compact or unrecognized layouts
 fall back to paragraph-based parts. After chapter/act structure begins, embedded

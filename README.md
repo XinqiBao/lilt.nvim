@@ -2,11 +2,15 @@
 
 **Read at your own rhythm.**
 
-Read literature by retyping it in Neovim. Lilt shows the passage alongside your
-writing, with quiet feedback as you go. Your manuscript stays an ordinary buffer:
-edit, undo, and save as usual.
+Read literature by retyping it in Neovim. No timers, scores, or streaks.
+Just you, the words, and the pleasure of typing.
 
-![Choose a work, preview its text, type in Ghost, and browse in Split](assets/demo.gif)
+A poem, a page, or a few lines is enough. Pick it up again whenever you like.
+
+![Retype William Blake's The Tyger in Ghost, correct a typo, and browse the reference in side-by-side Split](assets/demo.gif)
+
+Lilt keeps the passage in view and offers quiet feedback as you go. Your writing
+stays an ordinary buffer: edit, undo, and save as usual.
 
 ## Features
 

@@ -128,6 +128,41 @@ automation cannot establish that preference.
 For bug reports, include Neovim version, dimensions, exact text/keys, expected and
 actual behavior, and whether writing, undo history, or unrelated state changed.
 
+## Releases
+
+Git tags identify plugin versions; no build or separate version file is needed.
+Use annotated `vMAJOR.MINOR.PATCH` tags, starting with `v0.1.0`. Before 1.0,
+increment the patch for compatible fixes and the minor for new behavior or
+breaking public interfaces. Describe breaking changes in the release notes.
+Existing manuscripts and reference associations must remain safe across upgrades.
+
+Release from a clean `main` at the commit being tagged. Run the verification
+entry point, check the reading flow above, and confirm that all four hosted
+Neovim/OS checks passed for that commit. When changing EPUB conversion, also
+exercise the supported minimum Pandoc:
+
+```sh
+mise exec aqua:jgm/pandoc@3.1.1 -- .venv/bin/python tests/run.py --suite epub --suite online
+```
+
+Write concise release notes covering user-visible behavior, requirements, and
+material limitations. The first release should explain the reading experience;
+later releases should describe changes since the previous tag. GitHub Releases
+are the release history; there is no duplicate changelog to maintain.
+
+For example, after verifying the first release commit:
+
+```sh
+git tag -a v0.1.0 -m "Release v0.1.0"
+git push origin v0.1.0
+gh release create v0.1.0 --verify-tag --draft \
+  --title "v0.1.0" --notes-file /path/to/release-notes.md
+```
+
+Review the draft on GitHub before publishing it. Users can then pin the tag in
+their plugin manager. Keep published tags fixed; ship corrections in a new
+version. No packaged binary or release workflow is required for this Lua plugin.
+
 ## Presentation assets
 
 PNG, GIF, JPEG, and WebP images use Git LFS via [.gitattributes](.gitattributes).

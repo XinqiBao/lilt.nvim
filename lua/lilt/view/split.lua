@@ -34,8 +34,12 @@ function M.enter(s)
   -- Native splits inherit window options. Remove our presentation first so
   -- the new window snapshots editor state, rather than Lilt's own settings.
   s.restore(s.user_win)
-  vim.cmd(wide and 'aboveleft vsplit' or 'aboveleft split')
-  s.reference_win = api.nvim_get_current_win()
+  -- The API returns the allocated window even when a WinNew autocmd reports an
+  -- error; an Ex split can throw before we receive that window's identity.
+  s.reference_win = api.nvim_open_win(0, true, {
+    win = s.user_win,
+    split = wide and 'left' or 'above',
+  })
   local presentation = { wrap = true, linebreak = true, statusline = ' Lilt · Reference ' }
   s.present(s.reference_win, s.quiet)
   s.present(s.reference_win, presentation)

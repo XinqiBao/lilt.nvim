@@ -92,6 +92,44 @@ local function run()
   failure(false)
   failure(true)
 
+  -- A user WinNew error must not leave an unowned reference window behind.
+  -- The native API still returns its handle, so the view can finish and close.
+  for _, ghost_first in ipairs({ false, true }) do
+    if ghost_first then
+      open()
+    end
+    local created = 0
+    local autocmd = api.nvim_create_autocmd('WinNew', {
+      callback = function()
+        created = created + 1
+        if created == (ghost_first and 1 or 2) then
+          error('reference window initialization failure')
+        end
+      end,
+    })
+    local ok, err = pcall(open, 'split')
+    api.nvim_del_autocmd(autocmd)
+    assert(ok, tostring(err))
+    assert(
+      api.nvim_get_current_buf() == manuscript and #api.nvim_tabpage_list_wins(0) == 2,
+      'a window autocmd error must leave a usable owned Split'
+    )
+    lilt.close()
+    assert(
+      #api.nvim_list_tabpages() == 1 and api.nvim_get_current_win() == origin,
+      'Split cleanup must release every owned window and tab'
+    )
+    no_resources(manuscript)
+    restored(origin)
+    assert(
+      api.nvim_buf_get_lines(manuscript, 0, -1, false)[1] == 'retained writing',
+      'a window autocmd error must retain writing'
+    )
+    open('split')
+    assert(api.nvim_get_current_buf() == manuscript, 'Split must remain resumable')
+    lilt.close()
+  end
+
   -- Reference can become the final editor window; it must show the retained
   -- manuscript with the editor's original options, regardless of entry view.
   for _, ghost_first in ipairs({ false, true }) do

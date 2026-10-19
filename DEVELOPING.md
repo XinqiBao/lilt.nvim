@@ -177,16 +177,16 @@ disabled. Fetch assets only when working on presentation.
 
 Presentation media and their recording source live in [assets/](assets/).
 [demo.tape](assets/demo.tape) generates the single [demo.gif](assets/demo.gif)
-from a real Neovim terminal. It shows `:Lilt` → Examples → Alice → its unit,
-a local unit preview, progressive Ghost typing, a typo and delayed hint, native
-correction with `r`, physical line breaks, Split, independent reference search,
-and a return to Ghost.
-At this width Split stacks its panes; wider windows open them side by side.
+from a real Neovim terminal. It opens Examples → The Tyger offscreen, then shows
+the unit preview, two rows of Ghost typing, a typo and delayed hint, native
+correction with `r`, side-by-side Split, independent reference search, and a
+return to Ghost. Short verse makes both panes readable without a wide canvas;
+Split still chooses its orientation normally.
 
 The capture uses temporary XDG directories, `--clean -i NONE`, the default dark
-colorscheme, and DejaVu Sans Mono. It adjusts only display options and never
-uses the owner's library. The checked-in GIF is about 35 seconds at 1480 × 550,
-recorded with Neovim 0.12.5 and VHS 0.12.1.
+colorscheme, and DejaVu Sans Mono. It adjusts only display options, including
+hiding end-of-buffer tildes, and never uses the owner's library. The checked-in
+GIF is about 18 seconds at 1200 × 680, recorded with Neovim 0.12.5 and VHS 0.12.1.
 
 Recording is optional, outside the test environment and CI. Install
 [VHS](https://github.com/charmbracelet/vhs), its ttyd and FFmpeg dependencies, and

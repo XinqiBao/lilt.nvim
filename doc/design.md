@@ -22,13 +22,23 @@ scratch float, selection, page stack, search editor, and request lifetime.
 Menu rows distinguish informational text from actions. Native line movement
 reaches every row, including headings, metadata, and blank separators; gg/G
 reach the first/last line. Only actions activate and receive cursor-line
-highlighting. Menus initially prefer an action; online work details start at
+highlighting. Menus initially prefer an action; information pages start at
 the title so identity and availability can be inspected before acquisition.
 New pages reset the shared window's scroll. Returning, cancelling search, and
 resizing retain the cursor item and its wrapped-line offset (clamped when text
-reflows). Detail text is bounded and wraps with the window. Duplicate local
-titles show directory names only when needed to distinguish them. Unit
+reflows). Work-information and online bibliographic fields wrap completely,
+including unspaced UTF-8 and URLs; ordinary menu labels remain bounded. Duplicate
+local titles show directory names only when needed to distinguish them. Unit
 percentages report saved rows.
+
+`picker/information.lua` formats shared bibliographic/source facts as inert page
+items. Online details label current catalog metadata and retain their acquisition
+actions. Local unit pages expose Work information with i, using only the saved
+manifest, followed by local directory and recorded preparation settings. Back
+restores the selected unit and viewport. Optional SOURCE.json is exposed by file
+location without parsing arbitrary provider fields, network requests or schema
+expansion. Viewing information never changes references, metadata or manuscripts.
+
 Action-local shortcut keys are displayed with their labels and active only on
 that page. Pending acquisition disables actions; pending catalog requests keep
 search, ordering and topics available so a new query can replace the request.

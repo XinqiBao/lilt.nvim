@@ -41,6 +41,29 @@ local function wrap(text, width, limit)
   return lines
 end
 
+-- Information fields must remain readable even without word boundaries (URLs,
+-- CJK titles). Split at UTF-8 boundaries, preferring spaces when they fit.
+local function full_wrap(text, width)
+  local lines = {}
+  while text ~= '' do
+    local bytes = 0
+    for char in text:gmatch('[%z\1-\127\194-\244][\128-\191]*') do
+      if bytes > 0 and vim.fn.strdisplaywidth(text:sub(1, bytes) .. char) > width then
+        break
+      end
+      bytes = bytes + #char
+    end
+    local part = text:sub(1, bytes)
+    local space = bytes < #text and part:match('^.*()%s')
+    if space and space > 1 then
+      lines[#lines + 1], text = part:sub(1, space - 1), text:sub(space + 1)
+    else
+      lines[#lines + 1], text = part, text:sub(bytes + 1)
+    end
+  end
+  return lines
+end
+
 function M.attempt(callback)
   local ok, err = pcall(callback)
   if not ok then
@@ -195,7 +218,13 @@ function M.new(on_close)
         local hint = item.key:match('%w') and ('[' .. item.key .. ']') or item.key
         indent = indent .. hint .. ' '
       end
-      if item.wrap then
+      if item.wrap == 'full' then
+        for _, text in
+          ipairs(full_wrap(item.label, math.max(1, width - vim.fn.strdisplaywidth(indent))))
+        do
+          row(indent .. text, item)
+        end
+      elseif item.wrap then
         for _, text in ipairs(wrap(item.label, math.max(1, width - 4), item.max_lines or 4)) do
           row(clip(indent .. text, width), item)
         end

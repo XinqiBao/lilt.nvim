@@ -37,13 +37,14 @@ q, Escape        Quit the Picker from any menu.
 d / a / e        Discover online / add local work / examples, from the library.
 s                Edit a catalog search while in Discover.
 [ / ]            Previous / next result page, when available.
-a / o            Acquire / open the local copy, from work details.
+a / o            Add to library / open the local copy, from online work details.
+i                Work information, from a reading-unit page.
 r                Retry a failed request.
 
 Only actions receive a cursor-line highlight and respond to Enter/l/Right.
 Headings and metadata are informational; activating them does nothing. Menus
-initially focus an action; online work details start at the title. Use a/o to
-acquire/open directly. Action shortcuts appear beside their labels.
+initially focus an action; information pages start at the title. Use a/o to
+add/open directly. Action shortcuts appear beside their labels.
 Escape inside the search or directory-name editor cancels only that input.
 
 Works with a table of contents show its hierarchy on one page. Group headings
@@ -56,16 +57,32 @@ read-only preview: on the right in wide terminals, below in narrower ones, or
 hidden on very small terminals. Focus stays on the list; Enter starts reading.
 There is no preview mode, scrolling, or extra navigation step. Previewing creates
 no manuscript and does not change progress. Remote texts are only downloaded
-through Acquire and read.
+through Add to library.
+
+Work information shows saved title, authors, translators, languages, subjects,
+bookshelves and source identity/URL where recorded. Local directory and actual
+preparation settings appear separately. Missing fields are omitted. Long fields
+wrap completely and can be read with ordinary scrolling, including narrow
+terminals. h/BS/Left or Back to reading units restores your selection and scroll;
+q/Escape closes the entire Picker. Viewing information creates no manuscript.
+
+Local information reads saved lilt.json metadata offline, without refreshing or
+changing the work. Online details describe the current catalog and may differ
+from an installed copy. When retained, the local page lists SOURCE.json's path
+for the fuller acquisition catalog snapshot and the source archive path. No
+snapshot age is inferred; older/imported works may lack these files.
 
 Your works come first. Secondary actions are Discover online, Add local work,
 and Examples. Add local work expects a directory containing lilt.json and UTF-8
-reference files. The native path prompt offers directory completion with Tab.
+reference files. The floating path input offers directory completion with Tab
+and Shift-Tab. Enter accepts a completion; a second Enter opens the directory.
+Paths may include ~ and spaces. Invalid paths remain editable with feedback;
+Escape/CTRL-C cancels only the input and restores the library selection.
 New works then offer an editable directory name, initially the official title.
 The input previews normalized spelling; Enter accepts and Escape cancels. ASCII
 capitals become lowercase, separators become hyphens, and source IDs are appended
 when available. Collisions leave the name editable. Official titles and authors
-remain in the library list; the unit page also shows the actual directory.
+remain in the library list; Work information shows the actual directory.
 Repeated source entries open their existing copy, regardless of its directory.
 See doc/works.md in the plugin checkout for the manifest format and validation.
 

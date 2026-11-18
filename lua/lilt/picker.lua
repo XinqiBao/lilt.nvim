@@ -4,6 +4,7 @@ local library = require('lilt.library')
 local manuscript = require('lilt.manuscript')
 local session = require('lilt.session')
 local ui = require('lilt.picker.ui')
+local information = require('lilt.picker.information')
 local M = {}
 local active
 -- Buffer handles only. Authored text and undo stay in ordinary buffers.
@@ -31,21 +32,64 @@ local function browse(root, example_root, catalog)
   active = s
 
   local function units(reading, temporary)
+    local function info()
+      local items = information.items(reading.manifest, 'Saved local metadata · lilt.json')
+      items[#items + 1] = { label = 'Local copy and preparation', hl = 'Title' }
+      if not temporary then
+        items[#items + 1] = { label = 'Directory: ' .. reading.name, wrap = 'full' }
+      end
+      if reading.manifest.preparation then
+        local preparation = reading.manifest.preparation
+        if preparation.wrap_columns then
+          items[#items + 1] = {
+            label = 'Prose wrap columns: ' .. preparation.wrap_columns,
+            wrap = 'full',
+          }
+        end
+        if preparation.plain_quotes ~= nil then
+          items[#items + 1] = {
+            label = 'Plain quotes: ' .. (preparation.plain_quotes and 'yes' or 'no'),
+            wrap = 'full',
+          }
+        end
+      end
+      if reading.source and reading.source.file then
+        items[#items + 1] = {
+          label = 'Source file: ' .. reading.root .. '/' .. reading.source.file,
+          wrap = 'full',
+        }
+      end
+      local snapshot = reading.root .. '/SOURCE.json'
+      local stat = vim.uv.fs_stat(snapshot)
+      if stat and stat.type == 'file' then
+        items[#items + 1] = { label = 'Saved catalog file: ' .. snapshot, wrap = 'full' }
+      end
+      items[#items + 1] = {
+        label = temporary and 'Writing: temporary, for this Neovim process'
+          or 'Writing: saved with :write; progress counts saved rows',
+        wrap = 'full',
+      }
+      items[#items + 1] = {
+        label = 'Back to reading units',
+        select = function()
+          s:back()
+        end,
+      }
+      s:push({ title = 'Work information', items = items, selected = items[1] })
+    end
     local items = {
       { label = reading.title, hl = 'Title', wrap = true },
       { label = reading.author or '', wrap = true },
+      { key = 'i', label = 'Work information', select = info },
       {
         label = temporary and 'Reading units · temporary writing'
           or 'Reading units · saved progress',
       },
     }
-    if not temporary then
-      table.insert(items, 3, { label = 'Directory: ' .. reading.name, wrap = true })
-    end
     for _, warning in ipairs(reading.import_warnings or {}) do
       items[#items + 1] = { label = warning, hl = 'DiagnosticWarn', wrap = true }
     end
-    local actions, listed = {}, {}
+    local actions, listed, first_unit = {}, {}, nil
     local function action(unit, label, depth)
       if not actions[unit] then
         local progress, progress_error
@@ -87,6 +131,7 @@ local function browse(root, example_root, catalog)
         }
       end
       local item = vim.tbl_extend('force', actions[unit], { label = label, depth = depth })
+      first_unit = first_unit or item
       items[#items + 1] = item
       listed[unit] = true
     end
@@ -121,6 +166,7 @@ local function browse(root, example_root, catalog)
       items = items,
       preview = true,
       height = 20,
+      selected = first_unit,
     })
   end
 

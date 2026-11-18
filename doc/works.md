@@ -185,8 +185,9 @@ Add a prepared directory through `:Lilt` → **Add local work…**, then enter i
 path. The next input offers the full source title as an editable directory name
 and previews the normalized result. Enter accepts; Escape cancels without
 installing anything. Names must be unique; collisions leave the input editable.
-The Picker keeps the official title and authors, with the directory shown on the
-reading-unit page. The original input is not added to book metadata.
+The Picker keeps the official title and authors. Press `i` from the reading-unit
+page for Work information, including the actual directory and recorded text
+preparation. The original input is not added to book metadata.
 
 Directory spelling follows these rules:
 
@@ -263,6 +264,13 @@ updated or overwritten. Each copy records its source in `lilt.json` and
 including source fields that Lilt does not model. The manifest retains author and
 translator names, languages, subjects, bookshelves and actual preparation settings.
 These are acquisition snapshots, not live metadata synchronization.
+
+Work information uses the saved manifest offline. It shows recorded bibliographic
+and source fields, followed by local directory/preparation facts, omitting absent
+fields. Online work details use the current catalog; they do not describe or
+refresh an installed edition. The information page lists the path to SOURCE.json
+when retained, for access to the fuller raw catalog snapshot. Missing or older
+snapshots do not block reading, and the page does not infer their age.
 
 Only works cataloged as public domain in the USA with EPUB are supported.
 Public-domain status varies by country; check your local law before downloading

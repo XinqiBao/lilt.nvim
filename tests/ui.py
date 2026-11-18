@@ -551,6 +551,66 @@ def library_tests():
         input_keys("")
 
 
+def information_tests():
+    global width, height
+    with tempfile.TemporaryDirectory(prefix="lilt-information-ui-") as directory:
+        home = Path(directory) / "library"
+        work = home / "references" / "saved-edition"
+        work.mkdir(parents=True)
+        title = "天地玄黃宇宙洪荒" * 12 + " e\u0301 🐇"
+        source_url = "https://example.invalid/" + "unspaced-source-path-" * 15
+        subjects = ["Subject " + str(i) + " — " + "文學" * 14 for i in range(6)]
+        metadata = {
+            "title": title, "authors": ["A. Writer"], "translators": ["A. Translator"],
+            "languages": ["en", "fr"], "subjects": subjects, "bookshelves": ["Letters", "Classics"],
+            "source": {"provider": "test-source", "id": "42", "url": source_url},
+            "preparation": {"wrap_columns": 72, "plain_quotes": True},
+            "units": [{"title": "Unit " + str(i), "path": str(i) + ".txt"} for i in range(1, 25)],
+        }
+        for unit in metadata["units"]:
+            (work / unit["path"]).write_text("Reference\n", encoding="utf-8")
+        manifest = work / "lilt.json"
+        manifest.write_text(json.dumps(metadata, ensure_ascii=False), encoding="utf-8")
+        before = manifest.read_bytes()
+        nvim.exec_lua("require('lilt').setup({library=...})", str(home))
+        input_keys(":Lilt<CR>lG")
+        selected = (nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"])
+        rows = input_keys("i")
+        check(any("Work information" in row for row in rows) and len(floats()) == 1,
+              "information replaces the passive preview and opens from a unit shortcut")
+        input_keys("h")
+        check((nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"]) == selected,
+              "information back restores a scrolled unit and its viewport")
+        input_keys("i")
+        width, height = 24, 8
+        nvim.ui_try_resize(width, height)
+        rows = input_keys("gg")
+        content = nvim.current.buffer[:]
+        seen = set()
+        for index, line in enumerate(content):
+            if index:
+                rows = input_keys("j")
+            if any(line.strip() in row for row in rows):
+                seen.add(index)
+        check(len(seen) == len(content), "native narrow scrolling exposes every information row without clipping")
+        compact = "".join("".join(line.split()) for line in content)
+        for value in [title, source_url, *subjects]:
+            check("".join(value.split()) in compact, "long CJK title, source URL and every subject remain complete")
+        check("A.Translator" in compact and "Languages:en;fr" in compact and "Bookshelves:Letters;Classics" in compact,
+              "shared bibliographic fields survive narrow wrapping")
+        check("Savedcatalogfile:" not in compact, "missing raw snapshot needs no placeholder or error")
+        width, height = 90, 22
+        nvim.ui_try_resize(width, height)
+        input_keys("")
+        choose("Back to reading units")
+        check("Unit 24" in nvim.current.buffer[nvim.current.window.cursor[0] - 1],
+              "resizing information retains its original reading-unit selection")
+        check(not (home / "manuscripts").exists() and manifest.read_bytes() == before,
+              "information neither starts writing nor changes saved metadata")
+        input_keys("iq")
+        check(not floats(), "quitting information releases the picker and preview")
+
+
 def catalog_feedback_tests():
     global width, height
     release = threading.Event()
@@ -720,6 +780,7 @@ def online_tests():
         book = {
             "id": 11, "title": "Test Letters", "authors": [{"name": "A. Writer"}],
             "subjects": ["Letters -- Fiction"], "languages": ["en"], "copyright": False,
+            "translators": [{"name": "A. Translator"}], "bookshelves": ["Letters"],
             "media_type": "Text", "formats": {"application/epub+zip": "https://www.gutenberg.org/ebooks/11.epub.noimages"},
         }
         other_book = dict(book, id=12, title="Other Letters", copyright=True)
@@ -842,6 +903,11 @@ def online_tests():
             choose("Test Letters")
             rows = screen()
             check(any("gutenberg.org/ebooks/11" in row for row in rows), "selection exposes canonical provenance")
+            metadata_text = "\n".join(nvim.current.buffer[:])
+            check("Current online catalog metadata" in metadata_text
+                  and "Translators: A. Translator" in metadata_text and "Bookshelves: Letters" in metadata_text,
+                  "online details share bibliographic formatting with explicit catalog provenance")
+            check("[a] Add to library" in metadata_text, "online addition keeps its explicit a action")
             width, height = 40, 10
             nvim.ui_try_resize(width, height)
             rows = input_keys("G")
@@ -854,10 +920,10 @@ def online_tests():
             check(nvim.exec_lua("return #_G.lilt_test_requests") == requests
                   and nvim.current.buffer.number == menu_buf,
                   "activating online metadata neither acquires nor leaves the details")
-            rows = input_keys("<Down>")
+            rows = input_keys("<Down><Down>")
             check(any("Author: A. Writer" in row for row in rows) and not nvim.current.window.options["cursorline"],
                   "arrow movement can inspect online metadata")
-            input_keys("<Up>")
+            input_keys("<Up><Up>")
             check(nvim.current.window.cursor[0] == 1, "up arrow reaches the online title")
             width, height = 90, 22
             nvim.ui_try_resize(width, height)
@@ -1044,6 +1110,7 @@ def run():
     check(nvim.api.buf_get_lines(buf, 0, -1, False) == authored, "close retains actual writing")
     check(not floats() and len(nvim.buffers) == 2, "close leaves no hint or reference buffers")
     library_tests()
+    information_tests()
     catalog_feedback_tests()
     online_tests()
     print(f"Lilt UI: {checks} assertions passed on {nvim.exec_lua('return tostring(vim.version())')}")

@@ -34,6 +34,10 @@ local function body(url)
     return fixture
   end
   local results = { entry(11), entry(12, 'A second work') }
+  if mode == 'changed-metadata' then
+    results[1].title = 'Catalog title changed'
+    results[1].translators = { { name = 'New catalog translator' } }
+  end
   if mode == 'plain-only' then
     results[1].formats = { ['text/plain'] = 'https://example.invalid/text.txt' }
   end
@@ -488,6 +492,44 @@ local function run()
     'resume acquired work'
   )
   lilt.close()
+  mode = 'changed-metadata'
+  local saved_metadata = read_binary(installed.root .. '/lilt.json')
+  lilt.open()
+  keys('d')
+  wait_for(function()
+    return table.concat(lines(), '\n'):find('Catalog title changed', 1, true) ~= nil
+  end, 'changed catalog metadata did not load')
+  choose('Catalog title changed')
+  local live_details = table.concat(lines(), '\n')
+  assert(
+    live_details:find('Current online catalog metadata', 1, true)
+      and live_details:find('New catalog translator', 1, true),
+    'online information describes the current catalog'
+  )
+  assert(
+    live_details:find('Library copy keeps its saved metadata', 1, true),
+    'existing-copy context'
+  )
+  keys('o')
+  local info_request_count = #requests
+  keys('i')
+  local saved_details = table.concat(lines(), '\n')
+  assert(
+    saved_details:find('Saved local metadata', 1, true)
+      and saved_details:find('Test Letters', 1, true)
+      and not saved_details:find('New catalog translator', 1, true),
+    'local information uses the acquisition manifest, not current online metadata'
+  )
+  assert(
+    #requests == info_request_count and saved_details:find('Saved catalog file:', 1, true),
+    'acquired information is offline and retains access to the fuller snapshot'
+  )
+  assert(
+    read_binary(installed.root .. '/lilt.json') == saved_metadata,
+    'viewing local information leaves the acquisition snapshot unchanged'
+  )
+  keys('q')
+  mode = 'ok'
   -- Model a copy acquired before quote simplification, with saved writing.
   original = '“An earlier reading copy.”'
   vim.fn.writefile({ original }, installed.units[2].reference)
@@ -549,7 +591,7 @@ local function run()
   choose('Next page')
   choose('Another page')
   held = true
-  choose('Acquire and read')
+  choose('Add to library')
   keys('<CR>')
   local pending_requests = #requests
   keys('lll')
@@ -580,7 +622,7 @@ local function run()
     choose('Next page')
     choose('Another page')
     held = true
-    choose('Acquire and read')
+    choose('Add to library')
     keys('<CR>')
     job = jobs[#jobs]
     local notifications = #messages

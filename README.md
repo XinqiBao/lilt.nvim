@@ -47,12 +47,17 @@ Run `:Lilt` and choose a work and unit. **Examples** offers an offline first try
 Retype the passage following its physical line breaks, including blank rows.
 
 To build a personal library, choose **Discover online…**, browse or search for a
-work, then choose **Acquire and read**. For your own texts, choose **Add local
+work, then choose **Add to library**. For your own texts, choose **Add local
 work…** and enter a [prepared work directory](doc/works.md). The path prompt
 supports native directory completion with Tab.
 Adding a new work offers its official title as an editable directory name and
 previews the normalized spelling. Source IDs prevent version collisions; the
 library list keeps official titles and authors.
+
+From a work's reading units, press `i` for **Work information**: saved book and
+source details, directory, and recorded text preparation. This page works
+offline; online details describe the current catalog, which can differ from
+your saved copy. `h` / Backspace returns to the same reading unit.
 
 The Picker uses native line motions. Enter / `l` selects an action, `h` /
 Backspace goes back, and `q` / Esc quits. Shortcuts appear beside their actions.

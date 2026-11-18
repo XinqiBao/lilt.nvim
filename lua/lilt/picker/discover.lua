@@ -1,25 +1,14 @@
 -- Online navigation stays separate from the local library and reading flow.
 local catalog_api = require('lilt.online.catalog')
 local acquisition = require('lilt.online.acquire')
+local information = require('lilt.picker.information')
 local M = {}
 
 function M.open(s, root, catalog, units, refresh)
   local results
   local function details(book)
-    local items = {
-      { label = book.title, hl = 'Title', wrap = true },
-      { label = 'Author: ' .. (book.author ~= '' and book.author or 'Unknown'), wrap = true },
-      {
-        label = 'Language: '
-          .. (#book.languages > 0 and table.concat(book.languages, ', ') or 'Unknown'),
-      },
-      { label = 'Source: Project Gutenberg #' .. book.id },
-      { label = acquisition.url(book) },
-    }
-    if #book.subjects > 0 then
-      items[#items + 1] =
-        { label = 'Subjects: ' .. table.concat(book.subjects, '; '), wrap = true, max_lines = 2 }
-    end
+    local metadata = vim.tbl_extend('force', book, { source = acquisition.source(book) })
+    local items = information.items(metadata, 'Current online catalog metadata')
     items[#items + 1] = { label = '' }
     -- Inspect a new work from its identity; a/o still reaches the primary action.
     local page = { title = 'Work details', items = items, selected = items[1] }
@@ -37,6 +26,10 @@ function M.open(s, root, catalog, units, refresh)
       items[#items + 1] = { label = tostring(existing), hl = 'DiagnosticError', wrap = true }
     elseif existing then
       items[#items + 1] = { label = 'Available offline in your library' }
+      items[#items + 1] = {
+        label = 'Library copy keeps its saved metadata; use i from its reading units.',
+        wrap = 'full',
+      }
       items[#items + 1] = open_copy(existing)
     elseif book.supported then
       items[#items + 1] = { label = 'Available: EPUB · public domain in the USA', wrap = true }
@@ -45,7 +38,7 @@ function M.open(s, root, catalog, units, refresh)
       local acquire
       acquire = {
         key = 'a',
-        label = 'Acquire and read',
+        label = 'Add to library',
         select = function()
           require('lilt.picker.name').prompt(
             s,

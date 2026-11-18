@@ -176,6 +176,79 @@ local function run()
   assert(api.nvim_get_current_win() == origin, 'back/close restores original focus')
   no_picker()
 
+  -- Information is offline metadata, independent of reading and raw snapshots.
+  fixture('information', 'D information', 24)
+  local info_root = example_root .. '/information'
+  local info_manifest = info_root .. '/lilt.json'
+  local metadata = vim.json.decode(table.concat(vim.fn.readfile(info_manifest), '\n'))
+  metadata.authors = { 'First Writer', 'Second Writer' }
+  metadata.translators = { 'A Translator' }
+  metadata.languages = { 'en', 'fr' }
+  metadata.subjects = { 'First subject', 'Last subject' }
+  metadata.bookshelves = { 'Letters' }
+  metadata.source = { provider = 'test-source', id = '11', url = 'https://example.invalid/book' }
+  metadata.preparation = { wrap_columns = 72, plain_quotes = false }
+  vim.fn.writefile({ vim.json.encode(metadata) }, info_manifest)
+  vim.fn.writefile({ 'not parsed by information display' }, info_root .. '/SOURCE.json')
+  local info_home = root .. '/information-library'
+  local installed = require('lilt.library').add(info_home, info_root, 'saved-information')
+  local saved_manifest = vim.fn.readfile(installed.root .. '/lilt.json')
+  picker.open(info_home, example_root)
+  choose('D information')
+  keys('G')
+  local position, view = api.nvim_win_get_cursor(0), vim.fn.winsaveview()
+  local system = vim.system
+  vim.system = function()
+    error('information must not launch a process')
+  end
+  keys('i')
+  assert(selected('D information'), 'information starts at the official title')
+  assert(find('Saved local metadata'), 'local metadata has explicit provenance')
+  assert(find('Authors: First Writer; Second Writer'), 'all author names retained')
+  assert(find('Translators: A Translator') and find('Languages: en; fr'), 'edition metadata')
+  assert(
+    find('Subjects: First subject; Last subject') and find('Bookshelves: Letters'),
+    'classification'
+  )
+  assert(find('test-source:11') and find(metadata.source.url), 'portable source identity')
+  assert(find('Directory: saved-information'), 'local directory is separate from title')
+  assert(
+    find('Prose wrap columns: 72') and find('Plain quotes: no'),
+    'actual preparation, including false'
+  )
+  assert(find('Saved catalog file:'), 'retained raw snapshot remains locatable without parsing')
+  keys('G<CR>')
+  assert(
+    vim.deep_equal(api.nvim_win_get_cursor(0), position),
+    'information back restores selected unit'
+  )
+  assert(vim.fn.winsaveview().topline == view.topline, 'information back restores list viewport')
+  keys('ih')
+  assert(selected('Unit 24'), 'h returns directly to the same unit')
+  vim.system = system
+  assert(
+    vim.deep_equal(vim.fn.readfile(installed.root .. '/lilt.json'), saved_manifest),
+    'information never rewrites metadata'
+  )
+  assert(vim.fn.isdirectory(info_home .. '/manuscripts') == 0, 'information creates no manuscript')
+  keys('q')
+  picker.open(home, example_root)
+  example_units('A poem')
+  keys('i')
+  local sparse = table.concat(lines(), '\n')
+  assert(
+    not sparse:find('Source') and not sparse:find('Languages') and not sparse:find('Plain quotes'),
+    'missing facts are omitted'
+  )
+  assert(
+    not sparse:find('Unknown') and not sparse:find('Directory:'),
+    'examples invent no metadata or installed directory'
+  )
+  keys('q')
+  no_picker()
+  vim.fn.delete(info_home, 'rf')
+  vim.fn.delete(info_root, 'rf')
+
   -- Navigation is local metadata; aliases retain the same real manuscript.
   fixture('structured', 'C structured', 3)
   local structured = example_root .. '/structured/lilt.json'
@@ -436,7 +509,12 @@ local function run()
   )
   api.nvim_buf_set_lines(0, 0, -1, false, { 'My New_Letters' })
   keys('<CR>')
-  assert(find('Directory: my-new-letters'), 'normalized local directory appears in work details')
+  keys('i')
+  assert(
+    find('Directory: my-new-letters'),
+    'normalized local directory appears in work information'
+  )
+  keys('h')
   local local_work = work.validate(naming_home .. '/references/my-new-letters')
   assert(
     local_work.title == works[2].title and not local_work.manifest.short_title,

@@ -292,7 +292,7 @@ def library_tests():
     global width, height
     with tempfile.TemporaryDirectory(prefix="lilt-library-") as directory:
         root = Path(directory)
-        source = root / "source" / "letters"
+        source = root / "source" / "letters #100% [draft] 文学"
         source.mkdir(parents=True)
         (source / "opening.txt").write_text("First line.\n\nLast line.\n", encoding="utf-8")
         (source / "reply.txt").write_text("Reply.\n", encoding="utf-8")
@@ -313,9 +313,90 @@ def library_tests():
               "picker floats in the center of the editor")
         nvim.command("Lilt")
         check(nvim.current.window == picker and len(floats()) == 1, "reopening focuses the same picker")
+        origin = next(win for win in nvim.windows if win != picker)
+        menu_buf = nvim.current.buffer.number
         choose("Add local work")
-        rows = input_keys(str(source) + "<CR>")
+        rows = screen()
+        check(any("Local work directory" in row for row in rows)
+              and nvim.current.window == picker and len(floats()) == 1
+              and nvim.eval("mode()") == "i",
+              "local path uses the existing focused Picker float")
+        path_buf = nvim.current.buffer.number
+        rows = input_keys("<CR>")
+        check(any("Enter a local work directory" in row for row in rows), "empty path stays editable with feedback")
+        rows = input_keys(str(root / "missing") + "<CR>")
+        check(any("ENOENT" in row for row in rows) and nvim.current.buffer.number == path_buf,
+              "missing path preserves input and shows the failure reason")
+        rows = input_keys("<BS>")
+        check(not any("ENOENT" in row for row in rows), "editing clears an obsolete path error")
+        input_keys("<Esc>")
+        check(nvim.current.buffer.number == menu_buf and not nvim.api.buf_is_valid(path_buf)
+              and "Add local work" in nvim.current.buffer[nvim.current.window.cursor[0] - 1]
+              and nvim.eval("mode()") == "n", "Escape restores the same menu and selection")
+        choose("Add local work")
+        input_keys("discard<C-c>")
+        check(nvim.current.buffer.number == menu_buf, "Ctrl-C cancels only path input")
+        input_keys("h")
+        check(not floats() and nvim.current.window == origin, "back after cancel restores editor focus")
+
+        input_keys(":Lilt<CR>a")
+        path_buf = nvim.current.buffer.number
+        nvim.current.window = origin
+        input_keys("")
+        check(not floats() and not nvim.api.buf_is_valid(path_buf)
+              and nvim.eval("mode()") == "n", "leaving path input releases Picker resources and Insert mode")
+        input_keys(":Lilt<CR>a")
+        path_buf = nvim.current.buffer.number
+        nvim.api.win_close(nvim.current.window.handle, True)
+        input_keys("")
+        check(not floats() and not nvim.api.buf_is_valid(path_buf), "closing the path float releases its buffer")
+
+        input_keys(":Lilt<CR>a")
+        previous_cwd = nvim.funcs.getcwd()
+        nvim.command("lcd " + nvim.funcs.fnameescape(str(root)))
+        other = root / "source" / "letters other"
+        other.mkdir()
+        input_keys("./source/le<Tab>")
+        first_completion = nvim.current.buffer[0]
+        input_keys("<Tab>")
+        check(nvim.current.buffer[0] != first_completion, "Tab cycles native directory candidates")
+        input_keys("<S-Tab>")
+        check(nvim.current.buffer[0] == first_completion, "Shift-Tab cycles candidates backward")
+        input_keys("<C-e><C-u>./source/letters other<CR>")
+        rows = screen()
+        check(any("regular manifest file" in row for row in rows),
+              "relative directory validation exposes a missing manifest")
+        input_keys("<Esc>")
+        nvim.command("lcd " + nvim.funcs.fnameescape(previous_cwd))
+        other.rmdir()
+        input_keys("a")
+        old_home = nvim.exec_lua("return vim.env.HOME")
+        nvim.exec_lua("vim.env.HOME = ...", str(root))
+        try:
+            rows = input_keys("~/source/le<Tab>")
+            check(nvim.eval("pumvisible()") == 1 and any("letters #100%" in row for row in rows),
+                  "Tab displays directory completion including spaces and Unicode")
+            input_keys("<CR>")
+            check(nvim.current.buffer[:] == ["~/source/" + source.name + "/"]
+                  and nvim.eval("pumvisible()") == 0,
+                  "Enter accepts a completion without submitting the path")
+            input_keys("<Esc>")
+            check(not (home / "references").exists(), "canceling completed path installs nothing")
+            input_keys("a~/source/le<S-Tab><CR>")
+            width, height = 24, 8
+            nvim.ui_try_resize(width, height)
+            input_keys("")
+            check(nvim.current.buffer[:] == ["~/source/" + source.name + "/"]
+                  and nvim.eval("mode()") == "i", "Shift-Tab and resize retain the complete editable path")
+            width, height = 90, 22
+            nvim.ui_try_resize(width, height)
+            # A glob expansion would select this sibling instead of [draft].
+            (source.parent / "letters #100% d 文学").mkdir()
+            rows = input_keys("<CR>")
+        finally:
+            nvim.exec_lua("vim.env.HOME = ...", old_home)
         check(any("Library directory name" in row for row in rows), "local import offers a directory name")
+        check(nvim.eval("mode()") == "i", "path submission hands Insert focus to naming")
         check(nvim.current.buffer[0] == "Letters", "directory name starts with the official title")
         rows = input_keys("<C-u>…<CR>")
         check(any("needs a letter or number" in row for row in rows), "invalid name keeps a visible error after input events")

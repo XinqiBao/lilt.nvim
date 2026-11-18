@@ -18,8 +18,9 @@ winter-letters/
 
 ```json
 {
+  "version": 1,
   "title": "Winter Letters",
-  "author": "A. Writer",
+  "authors": ["A. Writer"],
   "units": [
     { "path": "opening.txt", "title": "The first letter" },
     { "path": "letters/02.txt", "title": "The reply" }
@@ -29,11 +30,21 @@ winter-letters/
 
 The manifest accepts exactly these fields:
 
-- `title`: required nonempty single-line string.
-- `author`: optional nonempty single-line string.
+- `version`: optional format version; when present, must be `1`. Lilt writes it
+  in generated works.
+- `title`: required nonempty single-line string, preserving the full source title.
+- `authors`, `translators`, `languages`, `subjects`, `bookshelves`: optional arrays
+  of nonempty single-line strings. Use source-provided names and language codes;
+  do not infer missing bibliographic details. Empty arrays are allowed.
 - `source`: optional object with `provider`, `id`, and `url` strings. All three
   must be nonempty single-line strings; `url` must be an HTTP(S) URL. This is
-  portable attribution, not a download or synchronization instruction.
+  portable attribution, not a download or synchronization instruction. `provider`
+  is a lowercase machine identifier such as `gutenberg`, starting with a letter
+  and containing only ASCII letters, digits and hyphens. Optional `file` names
+  an existing relative source file, with the same path rules as reference files.
+- `preparation`: optional record of applied text processing. `wrap_columns` is
+  an optional positive integer; `plain_quotes` is an optional boolean. Editing
+  this record does not reconvert references.
 - `toc`: optional nonempty navigation tree, described below.
 - `units`: required nonempty array, in reading order. Each object has a required
   `title` and `path`. Titles follow the same rule as the work title.
@@ -68,6 +79,9 @@ reference files are allowed, though usually not useful. Include source and
 attribution and license information in a separate README when appropriate;
 `source` alone does not establish licensing or public-domain status. Online
 acquisition records provenance and keeps the original distribution in `SOURCE.epub`.
+Generated and installed manifests use two-space indentation, sorted object keys,
+literal UTF-8 and a final newline. Array order is preserved. Personal directory
+names, saved progress and last-opened state do not belong in this manifest.
 
 ## Text preparation
 
@@ -86,7 +100,7 @@ without network access:
 ```lua
 require("lilt.import.epub").prepare("/path/book.epub", "/path/new-work", {
   title = "Book title",
-  author = "Author", -- optional
+  authors = { "Author" }, -- optional; other bibliographic arrays are accepted too
   plain_quotes = true, -- optional; default preserves source punctuation
 }, function(err, work)
   assert(not err, err)
@@ -220,7 +234,10 @@ Acquired works become ordinary library works named `gutenberg-<id>`, available o
 Acquiring one again opens the existing copy; references and manuscripts are never
 updated or overwritten. Each copy records its source in `lilt.json` and
 `README.txt`, and retains the original download, credits, and license in
-`SOURCE.epub`.
+`SOURCE.epub`. `SOURCE.json` preserves the raw catalog entry and its catalog URL,
+including source fields that Lilt does not model. The manifest retains author and
+translator names, languages, subjects, bookshelves and actual preparation settings.
+These are acquisition snapshots, not live metadata synchronization.
 
 Only works cataloged as public domain in the USA with EPUB are supported.
 Public-domain status varies by country; check your local law before downloading

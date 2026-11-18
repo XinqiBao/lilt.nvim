@@ -24,6 +24,16 @@ local function strings(value)
   return result
 end
 
+local function people(value)
+  local names = {}
+  for _, person in ipairs(type(value) == 'table' and value or {}) do
+    if type(person) == 'table' and clean(person.name) ~= '' then
+      names[#names + 1] = clean(person.name)
+    end
+  end
+  return names
+end
+
 local function encode(value)
   return (
     value:gsub('[^%w%-._~]', function(char)
@@ -69,20 +79,20 @@ function M.fetch(base, query, callback)
         then
           fail('invalid book metadata in catalog response')
         end
-        local authors = {}
-        for _, author in ipairs(type(entry.authors) == 'table' and entry.authors or {}) do
-          if type(author) == 'table' and clean(author.name) ~= '' then
-            authors[#authors + 1] = clean(author.name)
-          end
-        end
+        local authors = people(entry.authors)
         local formats = type(entry.formats) == 'table' and entry.formats or {}
         local epub = clean(formats['application/epub+zip']) ~= ''
         books[#books + 1] = {
           id = entry.id,
           title = clean(entry.title),
           author = table.concat(authors, '; '),
+          authors = authors,
+          translators = people(entry.translators),
           languages = strings(entry.languages),
           subjects = strings(entry.subjects),
+          bookshelves = strings(entry.bookshelves),
+          catalog_entry = entry,
+          catalog_url = base .. '/books/' .. entry.id,
           supported = epub and entry.copyright == false and entry.media_type == 'Text',
         }
       end

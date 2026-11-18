@@ -13,7 +13,14 @@ local function run()
   vim.fn.writefile({ 'Second', '', 'row' }, root .. '/chapters/02.txt')
   vim.fn.writefile({ 'First — café' }, root .. '/text.txt')
   local data = {
+    version = 1,
     title = 'A work',
+    authors = { 'A. Writer', 'B. Writer' },
+    translators = { 'C. Translator' },
+    languages = { 'en', 'zh' },
+    subjects = { 'Literature' },
+    bookshelves = { 'Fiction' },
+    preparation = { wrap_columns = 72, plain_quotes = false },
     units = {
       { path = 'chapters/02.txt', title = 'Second first' },
       { path = 'text.txt', title = 'First second' },
@@ -22,6 +29,23 @@ local function run()
   manifest(data)
   local loaded = work.load(root)
   assert(loaded.title == 'A work' and loaded.units[1].path == 'chapters/02.txt', 'manifest order')
+  assert(
+    loaded.author == 'A. Writer; B. Writer' and vim.deep_equal(loaded.manifest, data),
+    'objective metadata retained'
+  )
+  for _, invalid in ipairs({
+    { version = 2 },
+    { authors = 'A. Writer' },
+    { languages = { '' } },
+    { preparation = { wrap_columns = 0 } },
+    { preparation = { plain_quotes = 'yes' } },
+  }) do
+    local ok = pcall(function()
+      manifest(vim.tbl_extend('force', data, invalid))
+      work.load(root)
+    end)
+    assert(not ok, 'invalid metadata accepted')
+  end
   assert(
     vim.deep_equal(work.read(loaded.units[1].reference), { 'Second', '', 'row' }),
     'physical rows'
@@ -32,8 +56,7 @@ local function run()
   rejects({ title = 'Work', units = {} }, 'nonempty array')
   rejects({ title = 'Work', units = vim.NIL }, 'nonempty array')
   rejects({ title = 'Work', typo = true, units = data.units }, 'unknown field')
-  data.source =
-    { provider = 'Project Gutenberg', id = '11', url = 'https://www.gutenberg.org/ebooks/11' }
+  data.source = { provider = 'gutenberg', id = '11', url = 'https://www.gutenberg.org/ebooks/11' }
   manifest(data)
   assert(work.load(root).source.id == '11', 'portable optional provenance')
   for _, source in ipairs({

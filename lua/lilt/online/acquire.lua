@@ -1,6 +1,7 @@
 -- Project Gutenberg acquisition produces ordinary local works.
 local work = require('lilt.work')
 local library = require('lilt.library')
+local json = require('lilt.json')
 local request = require('lilt.online.request')
 local epub = require('lilt.import.epub')
 local M = {}
@@ -39,7 +40,7 @@ function M.existing(root, book)
     local reading = work.load(path)
     if
       not reading.source
-      or reading.source.provider ~= 'Project Gutenberg'
+      or reading.source.provider ~= 'gutenberg'
       or reading.source.id ~= tostring(book.id)
     then
       fail('work name already exists: ' .. name)
@@ -122,8 +123,12 @@ function M.acquire(root, book, callback)
       local plain_quotes = #book.languages == 1 and book.languages[1] == 'en'
       cancel_step = epub.prepare(source, directory, {
         title = book.title,
-        author = book.author ~= '' and book.author or nil,
-        source = { provider = 'Project Gutenberg', id = tostring(book.id), url = M.url(book) },
+        authors = book.authors,
+        translators = book.translators,
+        languages = book.languages,
+        subjects = book.subjects,
+        bookshelves = book.bookshelves,
+        source = { provider = 'gutenberg', id = tostring(book.id), url = M.url(book) },
         plain_quotes = plain_quotes,
         filter = filter,
       }, function(prepare_error, prepared)
@@ -133,6 +138,12 @@ function M.acquire(root, book, callback)
         end
         local ok, result = pcall(function()
           checked(vim.uv.fs_rename(source, directory .. '/SOURCE.epub'))
+          prepared.manifest.source.file = 'SOURCE.epub'
+          json.write(directory .. '/lilt.json', prepared.manifest)
+          json.write(directory .. '/SOURCE.json', {
+            catalog_url = book.catalog_url,
+            entry = book.catalog_entry,
+          })
           checked(vim.fn.writefile({
             book.title,
             book.author,

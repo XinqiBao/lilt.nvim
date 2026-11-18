@@ -297,7 +297,7 @@ def library_tests():
         (source / "opening.txt").write_text("First line.\n\nLast line.\n", encoding="utf-8")
         (source / "reply.txt").write_text("Reply.\n", encoding="utf-8")
         (source / "lilt.json").write_text(json.dumps({
-            "title": "Letters", "author": "A writer with a long biographical name " * 5, "units": [
+            "title": "Letters", "authors": ["A writer with a long biographical name " * 5], "units": [
                 {"title": "Opening", "path": "opening.txt"},
                 {"title": "Reply", "path": "reply.txt"},
             ]}), encoding="utf-8")

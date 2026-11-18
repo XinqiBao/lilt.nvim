@@ -1,7 +1,13 @@
 {
+  "authors": [
+    "William Blake"
+  ],
   "title": "The Tyger",
-  "author": "William Blake",
   "units": [
-    { "path": "tyger.txt", "title": "The Tyger" }
-  ]
+    {
+      "path": "tyger.txt",
+      "title": "The Tyger"
+    }
+  ],
+  "version": 1
 }

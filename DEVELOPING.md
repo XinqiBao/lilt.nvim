@@ -48,7 +48,7 @@ Selene excludes upstream code, while conversion tests exercise it end to end.
 
 | Location | Responsibility |
 | --- | --- |
-| `tests/core/` | Comparison contracts, work validation, library files, local EPUB conversion |
+| `tests/core/` | JSON, comparison contracts, work validation, library files, local EPUB conversion |
 | `tests/editor/` | Manuscripts, session lifecycle/cache, Picker navigation, online acquisition |
 | `tests/ui.py` | Attached redraw grids, highlights, floats, native prompts, resize/focus, process restart |
 | `tests/fixtures/` | Shared literary source text |

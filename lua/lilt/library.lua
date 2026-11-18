@@ -67,6 +67,9 @@ function M.add(root, directory)
   local ok, result = pcall(function()
     copy(source.root, staging)
     local installed = work.validate(staging)
+    -- A readable source manifest may be read-only; format our owned copy.
+    checked(uv.fs_unlink(staging .. '/lilt.json'))
+    require('lilt.json').write(staging .. '/lilt.json', installed.manifest)
     available()
     checked(uv.fs_rename(staging, destination))
     installed.root, installed.name = destination, name

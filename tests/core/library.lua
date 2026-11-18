@@ -24,6 +24,16 @@ local function run()
   assert(added.name == 'a-work' and #added.units == 2, 'installed work metadata')
   assert(vim.fn.readfile(added.root .. '/README.md')[1] == 'Source attribution', 'copy attribution')
   assert(not pcall(library.add, home, source), 'duplicate must not overwrite')
+  assert(vim.uv.fs_chmod(source .. '/lilt.json', 292)) -- 0444
+  local readonly = library.add(root .. '/readonly-library', source)
+  assert(
+    readonly.title == 'A Work' and #vim.fn.readfile(readonly.root .. '/lilt.json') > 1,
+    'read-only source manifests can be installed and formatted'
+  )
+  assert(
+    vim.uv.fs_stat(source .. '/lilt.json').mode % 512 == 292,
+    'source manifest permissions are unchanged'
+  )
   -- Observe actual opens: discovery must not read even installed reference bodies.
   local original_open = io.open
   -- selene: allow(incorrect_standard_library_use)

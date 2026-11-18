@@ -240,7 +240,7 @@ local function run()
   assert(result:find('already exists', 1, true), 'existing output must never be overwritten')
   result = nil
   local invalid = root .. '/invalid-metadata'
-  epub.prepare(source, invalid, { title = 'Letters', author = '' }, function(error)
+  epub.prepare(source, invalid, { title = 'Letters', authors = { '' } }, function(error)
     result = error
   end)
   assert(

@@ -110,18 +110,66 @@ function M.load(directory)
   if not ok then
     fail(manifest .. ': invalid JSON: ' .. tostring(data))
   end
-  fields(data, { title = true, author = true, source = true, units = true, toc = true }, manifest)
+  fields(data, {
+    version = true,
+    title = true,
+    authors = true,
+    translators = true,
+    languages = true,
+    subjects = true,
+    bookshelves = true,
+    source = true,
+    preparation = true,
+    units = true,
+    toc = true,
+  }, manifest)
+  if data.version ~= nil and data.version ~= 1 then
+    fail(manifest .. ': unsupported version')
+  end
   title(data.title, manifest .. ': title')
-  if data.author ~= nil then
-    title(data.author, manifest .. ': author')
+  for _, key in ipairs({ 'authors', 'translators', 'languages', 'subjects', 'bookshelves' }) do
+    if data[key] ~= nil then
+      if type(data[key]) ~= 'table' or not vim.islist(data[key]) then
+        fail(manifest .. ': ' .. key .. ' must be an array')
+      end
+      for _, value in ipairs(data[key]) do
+        title(value, manifest .. ': ' .. key)
+      end
+    end
   end
   if data.source ~= nil then
-    fields(data.source, { provider = true, id = true, url = true }, manifest .. ': source')
+    fields(
+      data.source,
+      { provider = true, id = true, url = true, file = true },
+      manifest .. ': source'
+    )
     for _, key in ipairs({ 'provider', 'id', 'url' }) do
       title(data.source[key], manifest .. ': source ' .. key)
     end
     if not data.source.url:match('^https?://%S+$') then
       fail(manifest .. ': source url must be an HTTP(S) URL')
+    end
+    if not data.source.provider:match('^[a-z][a-z0-9%-]*$') then
+      fail(manifest .. ': source provider must be a lowercase identifier')
+    end
+    if data.source.file ~= nil then
+      reference_path(root, data.source.file)
+    end
+  end
+  if data.preparation ~= nil then
+    fields(
+      data.preparation,
+      { wrap_columns = true, plain_quotes = true },
+      manifest .. ': preparation'
+    )
+    local columns = data.preparation.wrap_columns
+    if columns ~= nil and (type(columns) ~= 'number' or columns < 1 or columns % 1 ~= 0) then
+      fail(manifest .. ': preparation wrap_columns must be a positive integer')
+    end
+    if
+      data.preparation.plain_quotes ~= nil and type(data.preparation.plain_quotes) ~= 'boolean'
+    then
+      fail(manifest .. ': preparation plain_quotes must be a boolean')
     end
   end
   if type(data.units) ~= 'table' or not vim.islist(data.units) or #data.units == 0 then
@@ -168,8 +216,9 @@ function M.load(directory)
   return {
     root = root,
     title = data.title,
-    author = data.author,
+    author = data.authors and table.concat(data.authors, '; ') or nil,
     source = data.source,
+    manifest = data,
     units = units,
     toc = toc,
   }

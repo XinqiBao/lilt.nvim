@@ -107,9 +107,15 @@ function M.prepare(path, directory, options, callback)
           end
           created = true
           local manifest = {
+            version = 1,
             title = options.title,
-            author = options.author,
+            authors = options.authors,
+            translators = options.translators,
+            languages = options.languages,
+            subjects = options.subjects,
+            bookshelves = options.bookshelves,
             source = options.source,
+            preparation = { wrap_columns = 72, plain_quotes = options.plain_quotes == true },
             units = {},
           }
           for i, unit in ipairs(units) do
@@ -136,9 +142,7 @@ function M.prepare(path, directory, options, callback)
             return mapped
           end
           manifest.toc = converted.toc and navigation(converted.toc) or nil
-          if vim.fn.writefile({ vim.json.encode(manifest) }, directory .. '/lilt.json') ~= 0 then
-            error('Lilt: cannot write manifest', 0)
-          end
+          require('lilt.json').write(directory .. '/lilt.json', manifest)
           local reading = work.validate(directory)
           reading.import_warnings = converted.warnings
           return reading

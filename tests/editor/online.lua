@@ -176,6 +176,10 @@ local function run()
   assert(not err and #page.books == 2 and page.more, 'popular catalog')
   local book = page.books[1]
   assert(book.supported and not page.books[2].supported, 'copyright/format availability')
+  assert(
+    vim.deep_equal(book.authors, { 'A. Writer' }) and book.catalog_entry.title == book.title,
+    'catalog metadata and raw entry retained'
+  )
   mode = 'plain-only'
   err, page = call(function(cb)
     catalog.fetch(catalog.default_url, {}, cb)
@@ -413,12 +417,34 @@ local function run()
   )
   local installed = work.validate(home .. '/references/gutenberg-11')
   assert(
-    installed.source.id == '11' and installed.source.provider == 'Project Gutenberg',
+    installed.source.id == '11' and installed.source.provider == 'gutenberg',
     'portable provenance'
   )
   assert(
     read_binary(installed.root .. '/SOURCE.epub') == fixture,
     'original and license retained verbatim'
+  )
+  local metadata = installed.manifest
+  local snapshot = vim.json.decode(read_binary(installed.root .. '/SOURCE.json'))
+  assert(
+    metadata.title == book.title
+      and metadata.authors[1] == 'A. Writer'
+      and metadata.languages[1] == 'en',
+    'acquired bibliographic metadata'
+  )
+  assert(
+    metadata.source.file == 'SOURCE.epub'
+      and metadata.preparation.plain_quotes
+      and metadata.preparation.wrap_columns == 72,
+    'actual source and preparation settings'
+  )
+  assert(
+    snapshot.entry.id == 11 and snapshot.catalog_url == catalog.default_url .. '/books/11',
+    'original catalog record provenance'
+  )
+  assert(
+    read_binary(installed.root .. '/lilt.json'):find('\n  "', 1, true),
+    'acquired manifest is readable JSON'
   )
   local original = table.concat(work.read(installed.units[2].reference), '\n')
   assert(

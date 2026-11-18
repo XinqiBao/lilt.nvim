@@ -57,6 +57,12 @@ page actions. Work details add one level; acquired units use the shared local
 flow. Returning from details restores the loaded result selection and viewport
 without a request.
 
+`json.lua` writes deterministic, indented UTF-8 JSON using native scalar encoding;
+Neovim 0.11 does not support native encoder indentation. Conversion and installation
+format manifests without changing array order or reference bodies. Acquisition
+also retains the complete catalog record in `SOURCE.json`; modeled metadata and
+preparation settings are snapshots, never instructions to refresh a reading copy.
+
 `online/catalog.lua` queries Gutendex and validates catalog metadata.
 `online/acquire.lua` downloads image-free EPUB from Gutenberg's listed PGLAF
 mirror, prepares an ordinary work, and delegates validation and publication to

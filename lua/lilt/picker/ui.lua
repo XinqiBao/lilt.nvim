@@ -6,6 +6,10 @@ local preview = require('lilt.picker.preview')
 local M = {}
 local namespace = api.nvim_create_namespace('lilt.picker')
 
+local function blocked(page)
+  return page.busy and page.blocking ~= false
+end
+
 local function clip(text, width)
   local part = text
   if vim.fn.strdisplaywidth(part) > width then
@@ -96,7 +100,7 @@ function M.new(on_close)
   end
 
   local function actionable(row)
-    return s.rows[row] and s.rows[row].select and not s:page().busy
+    return s.rows[row] and s.rows[row].select and not blocked(s:page())
   end
 
   -- Keep a position within an item when wrapped metadata reflows on resize.
@@ -172,7 +176,7 @@ function M.new(on_close)
       if item.key then
         self.shortcuts[#self.shortcuts + 1] = item.key
         vim.keymap.set('n', item.key, function()
-          if not page.busy then
+          if not blocked(page) then
             M.attempt(item.select)
           end
         end, { buffer = self.buf, silent = true })
@@ -436,7 +440,7 @@ function M.new(on_close)
     M.attempt(function()
       local page = s:page()
       local item = s.rows[api.nvim_win_get_cursor(s.win)[1]]
-      if item and item.select and not page.busy then
+      if item and item.select and not blocked(page) then
         item.select()
       end
     end)

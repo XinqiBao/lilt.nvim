@@ -8,7 +8,9 @@ import sys
 import tempfile
 import threading
 import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 import pynvim
 
 from fixtures.epub import write_epub
@@ -549,6 +551,166 @@ def library_tests():
         input_keys("")
 
 
+def catalog_feedback_tests():
+    global width, height
+    release = threading.Event()
+    received = []
+    fail_error = True
+    book = {"id": 11, "title": "Local catalog work", "authors": [], "formats": {}}
+
+    class CatalogHandler(BaseHTTPRequestHandler):
+        def log_message(self, *_):
+            pass
+
+        def do_GET(self):
+            query = parse_qs(urlsplit(self.path).query)
+            received.append(query)
+            search = query.get("search", [""])[0]
+            if search in ("", "slow", "timeout"):
+                release.wait(5)
+            if search == "error" and fail_error:
+                self.send_response(503)
+                self.end_headers()
+                return
+            later = int(query.get("page", ["1"])[0]) > 1
+            books = [] if search == "empty" else [dict(book, title=(
+                "Second catalog page" if later else book["title"]))]
+            body = json.dumps({"count": 2 if books else 0, "results": books,
+                               "next": "/books/?page=2" if books and not later else None}).encode()
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            try:
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError):
+                pass  # Cancelled requests may already have disconnected.
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), CatalogHandler)
+    worker = threading.Thread(target=server.serve_forever, daemon=True)
+    worker.start()
+    with tempfile.TemporaryDirectory(prefix="lilt-catalog-ui-") as directory:
+        nvim.exec_lua("""
+            local home, base = ...
+            _G.lilt_catalog_system = vim.system
+            _G.lilt_catalog_jobs = {}
+            -- Route real curl to this fixture without weakening production HTTPS
+            -- or spending 45 seconds exercising its timeout path.
+            vim.system = function(args, opts, callback)
+                assert(args[1] == 'curl')
+                local job = {}
+                table.insert(_G.lilt_catalog_jobs, job)
+                args = vim.deepcopy(args)
+                for i, arg in ipairs(args) do
+                    if arg == '--url' then job.url = args[i + 1] end
+                end
+                for i, arg in ipairs(args) do
+                    if arg == '--url' then
+                        args[i + 1] = base .. job.url:match('/books/.*')
+                    elseif arg == '--output' then
+                        job.path = args[i + 1]
+                    elseif arg == '--proto' or arg == '--proto-redir' then
+                        assert(args[i + 1] == '=https')
+                        args[i + 1] = '=http'
+                    elseif arg == '--max-time' then
+                        assert(args[i + 1] == '45')
+                        args[i + 1] = job.url:find('search=timeout', 1, true) and '0.3' or '5'
+                    end
+                end
+                vim.list_extend(args, {'--noproxy', '*'})
+                local process = _G.lilt_catalog_system(args, opts, function(result)
+                    job.exited = true
+                    callback(result)
+                end)
+                return {kill=function(_, signal) job.killed=true; process:kill(signal) end}
+            end
+            require('lilt').setup({library=home})
+        """, directory, f"http://127.0.0.1:{server.server_port}")
+
+        def settled(text):
+            ready = nvim.exec_lua("""local target = ...; return vim.wait(2000, function()
+                return table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), '\\n'):find(target, 1, true)
+            end, 5)""", text)
+            check(ready, "catalog reaches " + text)
+            return screen()
+
+        try:
+            width, height = 52, 10
+            nvim.ui_try_resize(width, height)
+            input_keys(":Lilt<CR>")
+            rows = choose("Discover online")
+            check(any("Loading catalog" in row for row in rows), "short window shows pending catalog feedback")
+            input_keys("s")
+            check(nvim.eval("mode()") == "i", "Search is available while initial Popular request is pending")
+            rows = input_keys("<Esc>")
+            check(any("Loading catalog" in row for row in rows)
+                  and nvim.exec_lua("return #_G.lilt_catalog_jobs") == 1,
+                  "cancelling search input preserves the pending catalog request")
+            input_keys("s")
+            input_keys("empty<CR>")
+            rows = settled("No works found")
+            check(any("No works found" in row for row in rows), "empty results are visible without scrolling")
+            check("No works found" in nvim.current.buffer[nvim.current.window.cursor[0] - 1],
+                  "empty results select their explanation")
+            check(nvim.exec_lua("return _G.lilt_catalog_jobs[1].killed"), "search submission cancels initial browsing")
+            release.set()
+            pause(50)
+            check("No works found" in "\n".join(nvim.current.buffer[:]), "late Popular completion preserves empty search")
+
+            input_keys("s<C-u>error<CR>")
+            rows = settled("Request failed")
+            check(any("retry" in row for row in rows) and not any("No works found" in row for row in rows),
+                  "HTTP failures offer retry and never claim zero matches")
+            check("503" in "\n".join(nvim.current.buffer[:]), "HTTP failure retains its transport cause")
+            before_retry = len(received)
+            fail_error = False
+            input_keys("r")
+            settled("Local catalog work")
+            check(len(received) == before_retry + 1 and received[-1].get("search") == ["error"],
+                  "retry repeats the failed query and recovers when the service returns")
+
+            release.clear()
+            input_keys("s<C-u>timeout<CR>")
+            rows = settled("Request failed")
+            check("timed out" in "\n".join(nvim.current.buffer[:]) and not any("No works found" in row for row in rows),
+                  "real curl timeout ends loading with an error")
+            input_keys("s<C-u>found<CR>")
+            rows = settled("Local catalog work")
+            check(any("Local catalog work" in row for row in rows), "new query recovers after timeout")
+            input_keys("]")
+            rows = settled("Second catalog page")
+            check(any("Second catalog page" in row for row in rows) and received[-1].get("page") == ["2"],
+                  "paging preserves the search")
+            input_keys("[")
+            settled("Local catalog work")
+
+            input_keys("s<C-u>slow<CR>")
+            input_keys("s<C-u>empty<CR>")
+            settled("No works found")
+            check(nvim.exec_lua("return _G.lilt_catalog_jobs[#_G.lilt_catalog_jobs-1].killed"),
+                  "new search cancels a pending search")
+            input_keys("s<C-u>slow<CR>h")
+            check("Discover online" in "\n".join(nvim.current.buffer[:]), "back leaves a pending search")
+            choose("Discover online")
+            input_keys("q")
+            release.set()
+            check(not floats(), "close releases the pending catalog window")
+            check(nvim.exec_lua("""return vim.wait(2000, function()
+                for _, job in ipairs(_G.lilt_catalog_jobs) do
+                    if not job.exited or vim.uv.fs_stat(job.path) then return false end
+                end
+                return true
+            end, 5)"""), "cancellation reaps curl and removes its response files")
+        finally:
+            release.set()
+            input_keys("<Esc>")
+            nvim.exec_lua("vim.system=_G.lilt_catalog_system; _G.lilt_catalog_system=nil; _G.lilt_catalog_jobs=nil")
+            server.shutdown()
+            server.server_close()
+            worker.join(timeout=2)
+            width, height = 90, 22
+            nvim.ui_try_resize(width, height)
+
+
 def online_tests():
     global width, height
     with tempfile.TemporaryDirectory(prefix="lilt-online-ui-") as directory:
@@ -882,6 +1044,7 @@ def run():
     check(nvim.api.buf_get_lines(buf, 0, -1, False) == authored, "close retains actual writing")
     check(not floats() and len(nvim.buffers) == 2, "close leaves no hint or reference buffers")
     library_tests()
+    catalog_feedback_tests()
     online_tests()
     print(f"Lilt UI: {checks} assertions passed on {nvim.exec_lua('return tostring(vim.version())')}")
 

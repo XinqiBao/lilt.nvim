@@ -50,6 +50,9 @@ To build a personal library, choose **Discover online…**, browse or search for
 work, then choose **Acquire and read**. For your own texts, choose **Add local
 work…** and enter a [prepared work directory](doc/works.md). The path prompt
 supports native directory completion with Tab.
+Adding a new work offers its official title as an editable directory name and
+previews the normalized spelling. Source IDs prevent version collisions; the
+library list keeps official titles and authors.
 
 The Picker uses native line motions. Enter / `l` selects an action, `h` /
 Backspace goes back, and `q` / Esc quits. Shortcuts appear beside their actions.

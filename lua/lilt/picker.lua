@@ -17,7 +17,7 @@ local function discover(directory)
   return works, errors
 end
 
-local function browse(root, example_root, catalog, installed)
+local function browse(root, example_root, catalog, pending)
   if active then
     if active.win and api.nvim_win_is_valid(active.win) then
       api.nvim_set_current_win(active.win)
@@ -39,6 +39,9 @@ local function browse(root, example_root, catalog, installed)
           or 'Reading units · saved progress',
       },
     }
+    if not temporary then
+      table.insert(items, 3, { label = 'Directory: ' .. reading.name, wrap = true })
+    end
     for _, warning in ipairs(reading.import_warnings or {}) do
       items[#items + 1] = { label = warning, hl = 'DiagnosticWarn', wrap = true }
     end
@@ -128,7 +131,8 @@ local function browse(root, example_root, catalog, installed)
     end
     for _, reading in ipairs(works) do
       items[#items + 1] = {
-        label = reading.title,
+        label = reading.title
+          .. (reading.author and reading.author ~= '' and (' — ' .. reading.author) or ''),
         suffix = titles[reading.title] > 1 and ('[' .. reading.name .. ']') or nil,
         select = function()
           units(reading, temporary)
@@ -172,7 +176,7 @@ local function browse(root, example_root, catalog, installed)
               ui.attempt(function()
                 local reading
                 if directory and directory ~= '' then
-                  local ok, value = pcall(library.add, root, vim.fn.expand(directory))
+                  local ok, value = pcall(work.load, vim.fn.expand(directory))
                   if ok then
                     reading = value
                   else
@@ -211,8 +215,17 @@ local function browse(root, example_root, catalog, installed)
   end
   local ok, err = pcall(function()
     home()
-    if installed then
-      units(installed, false)
+    if pending then
+      local installed = library.find_source(root, pending.source)
+      if installed then
+        units(installed, false)
+      else
+        require('lilt.picker.name').prompt(s, root, pending.title, pending.source, function(name)
+          local reading = library.add(root, pending.root, name)
+          home(true)
+          units(reading, false)
+        end)
+      end
     end
   end)
   if not ok then

@@ -11,6 +11,7 @@ from fixtures.epub import write_epub, write_navigation_epub
 
 SUITES = {
     "json": "core/json.lua",
+    "name": "core/name.lua",
     "compare": "core/compare.lua",
     "work": "core/work.lua",
     "epub": "core/epub.lua",

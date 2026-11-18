@@ -122,15 +122,31 @@ function M.new(on_close)
     local width = side and math.floor(total * 0.44) or total
     if self.input then
       self.preview:close()
+      local value = api.nvim_buf_get_lines(self.input.buf, 0, 1, false)[1] or ''
+      if self.input.error and self.input.error.value ~= value then
+        self.input.error = nil
+      end
       api.nvim_win_set_config(self.win, {
         relative = 'editor',
         width = width,
         height = 1,
         row = math.max(0, math.floor((vim.o.lines - vim.o.cmdheight - 3) / 2)),
         col = math.max(0, math.floor((vim.o.columns - width - 2) / 2)),
-        title = clip(' Search title or author ', width),
-        footer = clip(' Enter search · Esc cancel ', width),
+        title = clip(' ' .. self.input.options.title .. ' ', width),
+        footer = clip(
+          ' ' .. (self.input.error and self.input.error.message or self.input.options.footer) .. ' ',
+          width
+        ),
       })
+      if self.input.options.preview then
+        api.nvim_buf_clear_namespace(self.input.buf, namespace, 0, -1)
+        api.nvim_buf_set_extmark(self.input.buf, namespace, 0, 0, {
+          virt_lines = {
+            { { clip('→ ' .. self.input.options.preview(value), width), 'Comment' } },
+          },
+        })
+        api.nvim_win_set_config(self.win, { height = 2 })
+      end
       return
     end
     for _, key in ipairs(self.shortcuts or {}) do
@@ -348,29 +364,38 @@ function M.new(on_close)
     end)
   end
 
-  -- A single ordinary editable line in the existing float. Keep path input on
+  -- An ordinary editable line in the existing float. Keep path input on
   -- vim.ui.input: Neovim's directory completion is more useful there.
-  function s:search(default, callback)
+  function s:prompt(options, callback)
     save()
     local buf = api.nvim_create_buf(false, true)
-    self.input = { buf = buf }
-    -- Queries stay on one line regardless of the user's prose formatting.
+    self.input = { buf = buf, options = options }
+    -- Input stays on one line regardless of the user's prose formatting.
     vim.bo[buf].textwidth = 0
     vim.bo[buf].wrapmargin = 0
     vim.bo[buf].formatoptions = ''
-    api.nvim_buf_set_lines(buf, 0, -1, false, { default })
+    api.nvim_buf_set_lines(buf, 0, -1, false, { options.default })
     api.nvim_win_set_buf(self.win, buf)
     self:render()
     vim.wo[self.win].cursorline = false
     local function finish(submit)
       local value = api.nvim_buf_get_lines(buf, 0, 1, false)[1]
+      if submit and options.validate then
+        local ok, result = pcall(options.validate, value)
+        if not ok then
+          self.input.error = { value = value, message = tostring(result):gsub('^.-Lilt: ', '') }
+          self:render()
+          return
+        end
+        value = result
+      end
       vim.cmd.stopinsert()
       self.input = nil
       api.nvim_win_set_buf(self.win, self.buf)
       api.nvim_buf_delete(buf, { force = true })
       self:render(true)
       if submit then
-        callback(vim.trim(value))
+        callback(value)
       end
     end
     for _, mode in ipairs({ 'n', 'i' }) do
@@ -385,8 +410,26 @@ function M.new(on_close)
         end, { buffer = buf })
       end
     end
-    api.nvim_win_set_cursor(self.win, { 1, #default })
+    api.nvim_create_autocmd({ 'TextChanged', 'TextChangedI' }, {
+      group = self.group,
+      buffer = buf,
+      callback = function()
+        if not self.closed and self.input and self.input.buf == buf then
+          self:render()
+        end
+      end,
+    })
+    api.nvim_win_set_cursor(self.win, { 1, #options.default })
     vim.cmd.startinsert({ bang = true })
+  end
+
+  function s:search(default, callback)
+    self:prompt(
+      { title = 'Search title or author', default = default, footer = 'Enter search · Esc cancel' },
+      function(value)
+        callback(vim.trim(value))
+      end
+    )
   end
 
   local function activate()

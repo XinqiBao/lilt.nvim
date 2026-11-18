@@ -1,6 +1,6 @@
 -- Project Gutenberg acquisition produces ordinary local works.
-local work = require('lilt.work')
 local library = require('lilt.library')
+local names = require('lilt.name')
 local json = require('lilt.json')
 local request = require('lilt.online.request')
 local epub = require('lilt.import.epub')
@@ -9,19 +9,18 @@ local mirror = 'https://gutenberg.pglaf.org/cache/epub/'
 local filter = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':h:h:h:h')
   .. '/pandoc/gutenberg.lua'
 
-local function fail(message)
-  error('Lilt: ' .. message, 0)
-end
-
 local function checked(value, err)
   if not value then
-    fail(tostring(err))
+    error('Lilt: ' .. tostring(err), 0)
   end
   return value
 end
 
-function M.name(book)
-  return 'gutenberg-' .. book.id
+function M.source(book)
+  return { provider = 'gutenberg', id = tostring(book.id), url = M.url(book) }
+end
+function M.name(book, value)
+  return names.work(value or book.title, M.source(book))
 end
 function M.url(book)
   return 'https://www.gutenberg.org/ebooks/' .. book.id
@@ -30,31 +29,18 @@ end
 -- Never refresh a reference beneath an existing manuscript, even if the source
 -- edition has changed. Only a matching portable provenance record permits reuse.
 function M.existing(root, book)
-  local name = M.name(book)
-  local path = root .. '/references/' .. name
-  local stat = vim.uv.fs_lstat(path)
-  if stat then
-    if stat.type ~= 'directory' then
-      fail('work name already exists: ' .. name)
-    end
-    local reading = work.load(path)
-    if
-      not reading.source
-      or reading.source.provider ~= 'gutenberg'
-      or reading.source.id ~= tostring(book.id)
-    then
-      fail('work name already exists: ' .. name)
-    end
-    reading.name = name
-    return reading
-  end
-  if vim.uv.fs_lstat(root .. '/manuscripts/' .. name) then
-    fail('manuscript name already exists: ' .. name)
-  end
+  return library.find_source(root, M.source(book))
 end
 
-function M.acquire(root, book, callback)
-  local existing_ok, existing = pcall(M.existing, root, book)
+function M.acquire(root, book, callback, name)
+  local existing_ok, existing = pcall(function()
+    local installed = M.existing(root, book)
+    if not installed then
+      name = name or M.name(book)
+      library.available(root, name, M.source(book))
+    end
+    return installed
+  end)
   if not existing_ok or existing then
     local cancelled = false
     vim.schedule(function()
@@ -108,7 +94,7 @@ function M.acquire(root, book, callback)
         return
       end
       local source = staging .. '/SOURCE.epub'
-      local directory = staging .. '/' .. M.name(book)
+      local directory = staging .. '/' .. name
       -- The request deletes its download when this callback returns. Keep an
       -- acquisition-owned input until conversion finishes; the converter only
       -- receives local paths and metadata, never a URL or library root.
@@ -128,7 +114,7 @@ function M.acquire(root, book, callback)
         languages = book.languages,
         subjects = book.subjects,
         bookshelves = book.bookshelves,
-        source = { provider = 'gutenberg', id = tostring(book.id), url = M.url(book) },
+        source = M.source(book),
         plain_quotes = plain_quotes,
         filter = filter,
       }, function(prepare_error, prepared)

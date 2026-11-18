@@ -44,7 +44,7 @@ Only actions receive a cursor-line highlight and respond to Enter/l/Right.
 Headings and metadata are informational; activating them does nothing. Menus
 initially focus an action; online work details start at the title. Use a/o to
 acquire/open directly. Action shortcuts appear beside their labels.
-Escape inside the search editor cancels only that input.
+Escape inside the search or directory-name editor cancels only that input.
 
 Works with a table of contents show its hierarchy on one page. Group headings
 are informational; linked entries open ordinary units. Long chapters group their
@@ -61,6 +61,12 @@ through Acquire and read.
 Your works come first. Secondary actions are Discover online, Add local work,
 and Examples. Add local work expects a directory containing lilt.json and UTF-8
 reference files. The native path prompt offers directory completion with Tab.
+New works then offer an editable directory name, initially the official title.
+The input previews normalized spelling; Enter accepts and Escape cancels. ASCII
+capitals become lowercase, separators become hyphens, and source IDs are appended
+when available. Collisions leave the name editable. Official titles and authors
+remain in the library list; the unit page also shows the actual directory.
+Repeated source entries open their existing copy, regardless of its directory.
 See doc/works.md in the plugin checkout for the manifest format and validation.
 
 Discover starts with Popular (Gutenberg download order). Newest uses descending

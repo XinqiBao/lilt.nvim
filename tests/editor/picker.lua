@@ -406,6 +406,48 @@ local function run()
   choose('Add local work')
   assert(find('Add local work'), 'failed import must return to library')
   keys('q')
+  vim.ui.input = function(_, callback)
+    callback(example_root .. '/second')
+  end
+  local naming_home = root .. '/naming-library'
+  picker.open(naming_home, example_root)
+  choose('Add local work')
+  local prompt = api.nvim_get_current_buf()
+  assert(lines()[1] == works[2].title, 'local naming starts with the official title')
+  keys('<Esc>')
+  assert(
+    find('Add local work') and vim.fn.isdirectory(naming_home .. '/references') == 0,
+    'canceling directory input installs nothing'
+  )
+  choose('Add local work')
+  api.nvim_buf_set_lines(0, 0, -1, false, { '…' })
+  keys('<CR>')
+  assert(
+    api.nvim_get_current_buf() ~= prompt and lines()[1] == '…',
+    'invalid name stays editable'
+  )
+  vim.fn.mkdir(naming_home .. '/manuscripts/my-letters', 'p')
+  api.nvim_buf_set_lines(0, 0, -1, false, { 'My Letters' })
+  local input_buf = api.nvim_get_current_buf()
+  keys('<CR>')
+  assert(
+    api.nvim_get_current_buf() == input_buf and lines()[1] == 'My Letters',
+    'orphan manuscript collision preserves input'
+  )
+  api.nvim_buf_set_lines(0, 0, -1, false, { 'My New_Letters' })
+  keys('<CR>')
+  assert(find('Directory: my-new-letters'), 'normalized local directory appears in work details')
+  local local_work = work.validate(naming_home .. '/references/my-new-letters')
+  assert(
+    local_work.title == works[2].title and not local_work.manifest.short_title,
+    'directory input is not book metadata'
+  )
+  choose('Unit 24')
+  assert(
+    api.nvim_buf_get_name(0) == naming_home .. '/manuscripts/my-new-letters/24.txt',
+    'custom directory determines manuscript association'
+  )
+  lilt.close()
   vim.ui.input = input
   vim.fn.writefile({ 'not a directory' }, root .. '/invalid-library')
   picker.open(root .. '/invalid-library', example_root)

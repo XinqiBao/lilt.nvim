@@ -271,7 +271,7 @@ local function run()
       acquisition.acquire(home, book, cb)
     end)
     assert(
-      err and not vim.uv.fs_stat(home .. '/references/gutenberg-11'),
+      err and not vim.uv.fs_stat(home .. '/references/test-letters-gutenberg-11'),
       'failed acquisition published a work'
     )
     no_staging()
@@ -306,7 +306,7 @@ local function run()
     conversion.killed
       and not delivered
       and not vim.uv.fs_stat(conversion.source)
-      and not vim.uv.fs_stat(root .. '/cancel-converter/references/gutenberg-11'),
+      and not vim.uv.fs_stat(root .. '/cancel-converter/references/test-letters-gutenberg-11'),
     'cancelling preparation must clean staging and never publish or deliver'
   )
   mode = 'ok'
@@ -401,9 +401,17 @@ local function run()
     table.concat(lines(), '\n'):find('https://www.gutenberg.org/ebooks/11', 1, true),
     'inspect source before download'
   )
+  local before_naming = #requests
+  keys('a<Esc>')
+  assert(
+    #requests == before_naming and not vim.uv.fs_stat(home .. '/references'),
+    'canceling a name does not download or install'
+  )
   mode = 'network-error'
   local before_failure = #messages
   keys('a')
+  api.nvim_buf_set_lines(0, 0, -1, false, { 'My Letters' })
+  keys('<CR>')
   assert(#messages == before_failure, 'request error appears once inside the picker')
   assert(table.concat(lines(), '\n'):find('retry', 1, true), 'download failure offers retry')
   mode = 'ok'
@@ -415,7 +423,7 @@ local function run()
     table.concat(lines(), '\n'):find('The letter — 第一封信', 1, true),
     'acquisition proceeds directly to reading units'
   )
-  local installed = work.validate(home .. '/references/gutenberg-11')
+  local installed = work.validate(home .. '/references/my-letters-gutenberg-11')
   assert(
     installed.source.id == '11' and installed.source.provider == 'gutenberg',
     'portable provenance'
@@ -462,7 +470,7 @@ local function run()
       'non-English, multilingual, and unknown-language works retain source punctuation'
     )
   end
-  local path = home .. '/manuscripts/gutenberg-11/002.txt'
+  local path = home .. '/manuscripts/my-letters-gutenberg-11/002.txt'
   choose('The letter — 第一封信')
   assert(api.nvim_buf_get_name(0) == path, 'ordinary durable manuscript')
   keys('iA saved line.<Esc>')
@@ -488,11 +496,15 @@ local function run()
     return 0
   end
   err, installed = call(function(cb)
-    acquisition.acquire(home, book, cb)
+    acquisition.acquire(
+      home,
+      vim.tbl_extend('force', book, { title = 'Catalog title changed' }),
+      cb
+    )
   end)
   vim.fn.executable = executable
   assert(
-    not err and installed.name == 'gutenberg-11' and #requests == count,
+    not err and installed.name == 'my-letters-gutenberg-11' and #requests == count,
     'duplicates reuse stable copy without a download'
   )
   assert(
@@ -501,7 +513,7 @@ local function run()
   )
   assert(vim.fn.readfile(path)[1] == 'A saved line.', 'acquisition cannot overwrite manuscripts')
   local collision = root .. '/collision'
-  vim.fn.mkdir(collision .. '/manuscripts/gutenberg-11', 'p')
+  vim.fn.mkdir(collision .. '/manuscripts/test-letters-gutenberg-11', 'p')
   err = call(function(cb)
     acquisition.acquire(collision, book, cb)
   end)
@@ -511,20 +523,23 @@ local function run()
     work.validate(collision .. '/references/tyger').title,
     'existing local work remains compatible'
   )
-  vim.fn.mkdir(root .. '/local/gutenberg-11', 'p')
-  vim.fn.writefile({ 'Local reference' }, root .. '/local/gutenberg-11/text.txt')
+  vim.fn.mkdir(root .. '/local/test-letters-gutenberg-11', 'p')
+  vim.fn.writefile({ 'Local reference' }, root .. '/local/test-letters-gutenberg-11/text.txt')
   local local_manifest = {
     title = 'Unrelated local work',
     units = { { title = 'Text', path = 'text.txt' } },
   }
-  vim.fn.writefile({ vim.json.encode(local_manifest) }, root .. '/local/gutenberg-11/lilt.json')
-  require('lilt.library').add(root .. '/local-library', root .. '/local/gutenberg-11')
+  vim.fn.writefile(
+    { vim.json.encode(local_manifest) },
+    root .. '/local/test-letters-gutenberg-11/lilt.json'
+  )
+  require('lilt.library').add(root .. '/local-library', root .. '/local/test-letters-gutenberg-11')
   err = call(function(cb)
     acquisition.acquire(root .. '/local-library', book, cb)
   end)
   assert(err and #requests == count, 'same-name local work cannot be mistaken for a duplicate')
   assert(
-    vim.fn.readfile(root .. '/local-library/references/gutenberg-11/text.txt')[1]
+    vim.fn.readfile(root .. '/local-library/references/test-letters-gutenberg-11/text.txt')[1]
       == 'Local reference',
     'local reference unchanged'
   )
@@ -535,6 +550,7 @@ local function run()
   choose('Another page')
   held = true
   choose('Acquire and read')
+  keys('<CR>')
   local pending_requests = #requests
   keys('lll')
   assert(#requests == pending_requests, 'repeated selection cannot start concurrent downloads')
@@ -545,7 +561,7 @@ local function run()
     return false
   end)
   assert(
-    job.killed and not vim.uv.fs_stat(home .. '/references/gutenberg-13'),
+    job.killed and not vim.uv.fs_stat(home .. '/references/another-page-gutenberg-13'),
     'cancelled acquisition must not install'
   )
   held = false
@@ -565,6 +581,7 @@ local function run()
     choose('Another page')
     held = true
     choose('Acquire and read')
+    keys('<CR>')
     job = jobs[#jobs]
     local notifications = #messages
     job.finish() -- Success is queued before the user dismisses the picker.
@@ -573,7 +590,7 @@ local function run()
       return false
     end)
     assert(
-      job.killed and not vim.uv.fs_stat(home .. '/references/gutenberg-13'),
+      job.killed and not vim.uv.fs_stat(home .. '/references/another-page-gutenberg-13'),
       'native dismissal must cancel even an already queued acquisition completion'
     )
     assert(
@@ -589,7 +606,7 @@ local function run()
     keys(']')
     choose('Another page')
     held = true
-    keys('a')
+    keys('a<CR>')
     job = jobs[#jobs]
     keys(quit)
     job.finish()
@@ -598,7 +615,7 @@ local function run()
     end)
     assert(
       job.killed
-        and not vim.uv.fs_stat(home .. '/references/gutenberg-13')
+        and not vim.uv.fs_stat(home .. '/references/another-page-gutenberg-13')
         and not pcall(api.nvim_get_autocmds, { group = 'LiltPicker' }),
       'quit from acquiring details cancels the download and closes every page'
     )

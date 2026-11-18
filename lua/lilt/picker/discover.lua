@@ -47,17 +47,25 @@ function M.open(s, root, catalog, units, refresh)
         key = 'a',
         label = 'Acquire and read',
         select = function()
-          s:request(page, function(callback)
-            return acquisition.acquire(root, book, callback)
-          end, function(reading)
-            refresh()
-            acquire.key = 'o'
-            acquire.label, acquire.select =
-              'Open library copy', function()
+          require('lilt.picker.name').prompt(
+            s,
+            root,
+            book.title,
+            acquisition.source(book),
+            function(name)
+              s:request(page, function(callback)
+                return acquisition.acquire(root, book, callback, name)
+              end, function(reading)
+                refresh()
+                acquire.key = 'o'
+                acquire.label, acquire.select =
+                  'Open library copy', function()
+                    units(reading, false)
+                  end
                 units(reading, false)
-              end
-            units(reading, false)
-          end, 'Downloading and preparing… · Esc cancels')
+              end, 'Downloading and preparing… · Esc cancels')
+            end
+          )
         end,
       }
       items[#items + 1] = acquire

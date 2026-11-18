@@ -181,9 +181,31 @@ XDG default are described in the [README](../README.md#configuration):
             └── 02.txt
 ```
 
-Each work directory name must be unique, nonhidden, and contain no backslash,
-colon, or control character. Add a prepared directory through `:Lilt` →
-**Add local work…**, then enter its path. Lilt validates and copies the whole
+Add a prepared directory through `:Lilt` → **Add local work…**, then enter its
+path. The next input offers the full source title as an editable directory name
+and previews the normalized result. Enter accepts; Escape cancels without
+installing anything. Names must be unique; collisions leave the input editable.
+The Picker keeps the official title and authors, with the directory shown on the
+reading-unit page. The original input is not added to book metadata.
+
+Directory spelling follows these rules:
+
+- ASCII capitals become lowercase; non-ASCII letters and combining marks remain.
+- Straight/curly apostrophes are removed. Whitespace, underscores, punctuation
+  and emoji become single hyphens, trimmed at both ends.
+- The title portion is limited to 120 UTF-8 bytes at a codepoint boundary.
+- Works with a source append its normalized provider and ID, for example
+  `Little Women` becomes `little-women-gutenberg-37106`. No usable title characters
+  falls back to the source suffix. Unsourced works need a usable name.
+- Reserved portable names such as `con` and `com1` are rejected. No automatic
+  `-2` suffix or semantic title/subtitle splitting is performed.
+
+The source provider and ID identify an installed source entry independently of
+the directory name. Adding that entry again opens the existing copy; multiple
+installed matches are reported as ambiguous. A new spelling does not install a
+second copy. Unsourced works are distinguished by their directory names.
+
+Lilt validates and copies the whole
 work, including attribution files, into `references/`. It does not keep an
 external link. Symlinks and special files anywhere in the copied directory are
 rejected. Existing reference directories or manuscript trees with that work
@@ -200,11 +222,13 @@ hidden `.lilt-*` directory under `references/`; after stopping that import, it
 can be removed. Ordinary failures attempt cleanup and report any cleanup error.
 
 You can also place a valid work directory directly beneath `references/`.
-Discovery reads the filesystem; there is no registry. Share or archive only that
-work directory, never its corresponding `manuscripts/` tree. External Git or sync
-tools can manage the library; Lilt performs no synchronization or Git operations.
-Rename work directories or unit paths only before starting transcription: those
-paths determine manuscript association.
+Discovery reads the filesystem; there is no registry. Share a prepared text by
+sharing its reference work directory. For a personal backup or Git repository,
+retain both `references/` and `manuscripts/` to preserve writing and progress.
+Lilt performs no synchronization or Git operations. Changing metadata never
+renames directories. After transcription begins, a directory rename must move
+both corresponding trees, with their buffers closed. Keep unit paths and
+reference line layout stable: those determine manuscript association and comparison.
 
 Unit progress uses **saved** manuscript rows divided by reference rows, rounded
 down to an integer percentage. Counts scan file bytes in bounded chunks without
@@ -230,7 +254,8 @@ Gutendex serves Project Gutenberg metadata; it does not supply Lilt's downloaded
 texts. Those come from Gutenberg's designated
 [PGLAF mirror](https://www.gutenberg.org/MIRRORS.ALL). Project Gutenberg's
 volunteers provide the digitized literary works and source credits.
-Acquired works become ordinary library works named `gutenberg-<id>`, available offline.
+Acquired works become ordinary library works with your chosen normalized name
+and a `-gutenberg-<id>` suffix, available offline.
 Acquiring one again opens the existing copy; references and manuscripts are never
 updated or overwritten. Each copy records its source in `lilt.json` and
 `README.txt`, and retains the original download, credits, and license in

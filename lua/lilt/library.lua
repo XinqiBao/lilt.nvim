@@ -10,8 +10,47 @@ local function checked(value, err)
 end
 
 local function validate_name(name)
-  if name == '' or name:sub(1, 1) == '.' or name:find('[\\:%c]') then
+  if name == '' or name:sub(1, 1) == '.' or name:find('[/\\:%c]') or #name > 240 then
     error('Lilt: choose a nonhidden work directory with a portable name: ' .. name, 0)
+  end
+end
+
+function M.find_source(root, source)
+  if not source then
+    return nil
+  end
+  local found
+  local readings = work.discover(root .. '/references')
+  for _, reading in ipairs(readings) do
+    if
+      reading.source
+      and reading.source.provider == source.provider
+      and reading.source.id == source.id
+    then
+      if found then
+        error('Lilt: multiple library copies of source ' .. source.provider .. ':' .. source.id, 0)
+      end
+      found = reading
+    end
+  end
+  return found
+end
+
+-- Check before downloading/copying and again immediately before publication.
+function M.available(root, name, source)
+  validate_name(name)
+  for _, path in ipairs({ root .. '/references/' .. name, root .. '/manuscripts/' .. name }) do
+    local stat, err, code = uv.fs_lstat(path)
+    if stat then
+      error('Lilt: work name already exists: ' .. name, 0)
+    end
+    if code ~= 'ENOENT' then
+      error('Lilt: ' .. tostring(err), 0)
+    end
+  end
+  local existing = M.find_source(root, source)
+  if existing then
+    error('Lilt: source already installed as ' .. existing.name, 0)
   end
 end
 
@@ -41,28 +80,16 @@ end
 
 -- Copy all work files (including attribution), then validate the copy before
 -- publishing it. Hidden staging directories never appear as library works.
-function M.add(root, directory)
+function M.add(root, directory, name)
   local source = work.load(directory)
-  local name = vim.fn.fnamemodify(source.root, ':t')
-  validate_name(name)
+  name = name or vim.fn.fnamemodify(source.root, ':t')
+  M.available(root, name, source.source)
   vim.fn.mkdir(root .. '/references', 'p')
   local references = checked(uv.fs_realpath(root .. '/references'))
   if references == source.root or references:sub(1, #source.root + 1) == source.root .. '/' then
     error('Lilt: the library reference tree cannot be inside the source work', 0)
   end
   local destination = references .. '/' .. name
-  local function available()
-    for _, path in ipairs({ destination, root .. '/manuscripts/' .. name }) do
-      local stat, err, code = uv.fs_lstat(path)
-      if stat then
-        error('Lilt: work name already exists: ' .. name, 0)
-      end
-      if code ~= 'ENOENT' then
-        error('Lilt: ' .. tostring(err), 0)
-      end
-    end
-  end
-  available()
   local staging = checked(uv.fs_mkdtemp(references .. '/.lilt-XXXXXX'))
   local ok, result = pcall(function()
     copy(source.root, staging)
@@ -70,7 +97,7 @@ function M.add(root, directory)
     -- A readable source manifest may be read-only; format our owned copy.
     checked(uv.fs_unlink(staging .. '/lilt.json'))
     require('lilt.json').write(staging .. '/lilt.json', installed.manifest)
-    available()
+    M.available(root, name, installed.source)
     checked(uv.fs_rename(staging, destination))
     installed.root, installed.name = destination, name
     for _, unit in ipairs(installed.units) do

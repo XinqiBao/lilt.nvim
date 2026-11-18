@@ -31,7 +31,7 @@ titles show directory names only when needed to distinguish them. Unit
 percentages report saved rows.
 Action-local shortcut keys are displayed with their labels and active only on
 that page; busy pages disable actions. q/Escape exits from any menu, while
-h/Backspace goes back. Escape in the search editor cancels only the input.
+h/Backspace goes back. Escape in a search/name editor cancels only that input.
 
 Unit selection automatically previews a local reference excerpt. The UI owns a
 single passive float through `picker/preview.lua`; it never receives focus or
@@ -49,13 +49,23 @@ Moving onto information replaces the excerpt with a prompt to select a unit.
 It never opens a manuscript or comparison. Online details never download text
 for previews.
 
-Catalog search edits one line in the existing float and preserves the results
-behind it until submission. Native `vim.ui.input` supplies the local directory
+Catalog search and directory naming edit one line in the existing float and
+preserve the results behind it until submission. Native `vim.ui.input` supplies the local directory
 prompt, preserving path completion; there is no global UI override. Queries,
 presets and pagination replace the Discover page. Previous/Next are explicit
 page actions. Work details add one level; acquired units use the shared local
 flow. Returning from details restores the loaded result selection and viewport
 without a request.
+
+`name.lua` converts a user-chosen title into directory spelling; it knows neither
+library files nor UI. `picker/name.lua` supplies editable official-title defaults,
+previews spelling, and checks collisions through `library.available`. Input is a
+directory preference, not bibliographic metadata. Source suffixes distinguish
+editions; `library.find_source` identifies installed entries by provider/ID rather
+than reconstructing paths from mutable titles. Ambiguous source matches fail
+explicitly. Publication rechecks both names and identity. Original titles and
+author arrays remain in `lilt.json`; installed directories never follow metadata
+edits automatically.
 
 `json.lua` writes deterministic, indented UTF-8 JSON using native scalar encoding;
 Neovim 0.11 does not support native encoder indentation. Conversion and installation

@@ -115,6 +115,37 @@ local function run()
   vim.fn.mkdir(home .. '/references/bad:name', 'p')
   works, errors = list(home)
   assert(#works == 1 and #errors == 2, 'invalid works and names must not hide valid works')
+
+  local identity =
+    { provider = 'gutenberg', id = '11', url = 'https://www.gutenberg.org/ebooks/11' }
+  local data = {
+    title = 'Official title',
+    authors = { 'A. Writer' },
+    source = identity,
+    units = { { title = 'Text', path = 'a.txt' } },
+  }
+  vim.fn.writefile({ vim.json.encode(data) }, bad .. '/lilt.json')
+  local named = library.add(home, bad, 'my-book-gutenberg-11')
+  assert(
+    named.title == 'Official title' and named.name == 'my-book-gutenberg-11',
+    'custom directory preserves source title'
+  )
+  assert(#vim.fn.readfile(named.root .. '/lilt.json') > 1, 'installed manifests are formatted')
+  assert(
+    library.find_source(home, identity).name == named.name,
+    'identity does not depend on directory spelling'
+  )
+  assert(
+    not pcall(library.add, home, bad, 'a-different-name'),
+    'duplicate source cannot be copied under another name'
+  )
+  vim.fn.mkdir(home .. '/references/ambiguous-copy', 'p')
+  vim.fn.writefile({ vim.json.encode(data) }, home .. '/references/ambiguous-copy/lilt.json')
+  vim.fn.writefile({ 'Text' }, home .. '/references/ambiguous-copy/a.txt')
+  assert(
+    not pcall(library.find_source, home, identity),
+    'ambiguous source identity must be reported'
+  )
   print('Lilt library: discovery, copy/cleanup, collisions and saved progress passed')
 end
 local ok, err = xpcall(run, debug.traceback)

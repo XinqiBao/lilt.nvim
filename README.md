@@ -48,8 +48,9 @@ Retype the passage following its physical line breaks, including blank rows.
 
 To build a personal library, choose **Discover online…**, browse or search for a
 work, then choose **Acquire and read**. For your own texts, choose **Add local
-work…** and enter a [prepared work directory](doc/works.md). The path prompt
-supports native directory completion with Tab.
+work…** and enter a [prepared work directory](doc/works.md). The floating path
+input supports directory completion with Tab / Shift-Tab; Enter accepts a
+completion, then Enter opens the work. Paths may include `~` and spaces.
 Adding a new work offers its official title as an editable directory name and
 previews the normalized spelling. Source IDs prevent version collisions; the
 library list keeps official titles and authors.

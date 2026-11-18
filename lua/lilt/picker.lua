@@ -17,7 +17,7 @@ local function discover(directory)
   return works, errors
 end
 
-local function browse(root, example_root, catalog, pending)
+local function browse(root, example_root, catalog)
   if active then
     if active.win and api.nvim_win_is_valid(active.win) then
       api.nvim_set_current_win(active.win)
@@ -143,6 +143,19 @@ local function browse(root, example_root, catalog, pending)
   end
 
   local home
+  local function add_local(reading)
+    local installed = library.find_source(root, reading.source)
+    if installed then
+      units(installed, false)
+    else
+      require('lilt.picker.name').prompt(s, root, reading.title, reading.source, function(name)
+        local added = library.add(root, reading.root, name)
+        home(true)
+        units(added, false)
+      end)
+    end
+  end
+
   home = function(refresh)
     local works, errors = discover(root .. '/references')
     local items = { { label = 'Your works', hl = 'Title' } }
@@ -169,24 +182,20 @@ local function browse(root, example_root, catalog, pending)
         key = 'a',
         label = 'Add local work…',
         select = function()
-          s:close()
-          vim.ui.input(
-            { prompt = 'Local work directory: ', completion = 'dir' },
-            function(directory)
-              ui.attempt(function()
-                local reading
-                if directory and directory ~= '' then
-                  local ok, value = pcall(work.load, vim.fn.expand(directory))
-                  if ok then
-                    reading = value
-                  else
-                    vim.notify(tostring(value), vim.log.levels.ERROR)
-                  end
-                end
-                browse(root, example_root, catalog, reading)
-              end)
-            end
-          )
+          s:prompt({
+            title = 'Local work directory',
+            default = '',
+            footer = 'Enter open · Tab complete · Esc cancel',
+            complete = function(value)
+              return vim.fn.getcompletion(value, 'dir')
+            end,
+            validate = function(directory)
+              if directory == '' then
+                error('Lilt: Enter a local work directory', 0)
+              end
+              return work.load(vim.fs.normalize(directory))
+            end,
+          }, add_local)
         end,
       },
       {
@@ -213,21 +222,7 @@ local function browse(root, example_root, catalog, pending)
       s:push({ title = #works == 0 and 'Library (empty)' or 'Library', items = items })
     end
   end
-  local ok, err = pcall(function()
-    home()
-    if pending then
-      local installed = library.find_source(root, pending.source)
-      if installed then
-        units(installed, false)
-      else
-        require('lilt.picker.name').prompt(s, root, pending.title, pending.source, function(name)
-          local reading = library.add(root, pending.root, name)
-          home(true)
-          units(reading, false)
-        end)
-      end
-    end
-  end)
+  local ok, err = pcall(home)
   if not ok then
     s:close()
     error(err, 0)

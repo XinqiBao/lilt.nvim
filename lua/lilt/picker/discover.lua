@@ -76,7 +76,7 @@ function M.open(s, root, catalog, units, refresh)
   end
 
   results = function(query, title, initial)
-    local page = { title = 'Discover · ' .. title, items = {}, height = 20 }
+    local page = { title = 'Discover · ' .. title, items = {}, height = 20, blocking = false }
     local function search()
       s:search(query.search or '', function(value)
         results(
@@ -138,8 +138,9 @@ function M.open(s, root, catalog, units, refresh)
         page.selected = page.selected or item
       end
       if #result.books == 0 then
-        page.items[#page.items + 1] =
-          { label = 'No works found. Try another title or author.', wrap = true }
+        local empty = { label = 'No works found. Try another title or author.', wrap = true }
+        page.items[#page.items + 1] = empty
+        page.selected = empty
       end
       if (query.page or 1) > 1 then
         page.items[#page.items + 1] = {

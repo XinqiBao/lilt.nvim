@@ -6,6 +6,10 @@ local preview = require('lilt.picker.preview')
 local M = {}
 local namespace = api.nvim_create_namespace('lilt.picker')
 
+local function blocked(page)
+  return page.busy and page.blocking ~= false
+end
+
 local function clip(text, width)
   local part = text
   if vim.fn.strdisplaywidth(part) > width then
@@ -119,7 +123,7 @@ function M.new(on_close)
   end
 
   local function actionable(row)
-    return s.rows[row] and s.rows[row].select and not s:page().busy
+    return s.rows[row] and s.rows[row].select and not blocked(s:page())
   end
 
   -- Keep a position within an item when wrapped metadata reflows on resize.
@@ -149,27 +153,39 @@ function M.new(on_close)
       if self.input.error and self.input.error.value ~= value then
         self.input.error = nil
       end
+      local details = {}
+      if self.input.options.preview then
+        details[#details + 1] = {
+          { clip('→ ' .. self.input.options.preview(value), width), 'Comment' },
+        }
+      end
+      if self.input.error then
+        for _, line in ipairs(wrap(self.input.error.message, width, 3)) do
+          details[#details + 1] = { { clip(line, width), 'DiagnosticError' } }
+        end
+      end
+      while #details > room - 1 do
+        table.remove(details)
+      end
+      api.nvim_buf_clear_namespace(self.input.buf, namespace, 0, -1)
+      if #details > 0 then
+        api.nvim_buf_set_extmark(self.input.buf, namespace, 0, 0, { virt_lines = details })
+      end
+      local height = 1 + #details
       api.nvim_win_set_config(self.win, {
         relative = 'editor',
         width = width,
-        height = 1,
-        row = math.max(0, math.floor((vim.o.lines - vim.o.cmdheight - 3) / 2)),
+        height = height,
+        row = math.max(0, math.floor((vim.o.lines - vim.o.cmdheight - height - 2) / 2)),
         col = math.max(0, math.floor((vim.o.columns - width - 2) / 2)),
         title = clip(' ' .. self.input.options.title .. ' ', width),
         footer = clip(
-          ' ' .. (self.input.error and self.input.error.message or self.input.options.footer) .. ' ',
+          ' '
+            .. (self.input.error and #details == 0 and self.input.error.message or self.input.options.footer)
+            .. ' ',
           width
         ),
       })
-      if self.input.options.preview then
-        api.nvim_buf_clear_namespace(self.input.buf, namespace, 0, -1)
-        api.nvim_buf_set_extmark(self.input.buf, namespace, 0, 0, {
-          virt_lines = {
-            { { clip('→ ' .. self.input.options.preview(value), width), 'Comment' } },
-          },
-        })
-        api.nvim_win_set_config(self.win, { height = 2 })
-      end
       return
     end
     for _, key in ipairs(self.shortcuts or {}) do
@@ -195,7 +211,7 @@ function M.new(on_close)
       if item.key then
         self.shortcuts[#self.shortcuts + 1] = item.key
         vim.keymap.set('n', item.key, function()
-          if not page.busy then
+          if not blocked(page) then
             M.attempt(item.select)
           end
         end, { buffer = self.buf, silent = true })
@@ -393,8 +409,8 @@ function M.new(on_close)
     end)
   end
 
-  -- An ordinary editable line in the existing float. Keep path input on
-  -- vim.ui.input: Neovim's directory completion is more useful there.
+  -- Input semantics belong to the caller; presentation and completion stay
+  -- within the picker lifetime rather than replacing the global vim.ui.
   function s:prompt(options, callback)
     save()
     local buf = api.nvim_create_buf(false, true)
@@ -418,13 +434,19 @@ function M.new(on_close)
         end
         value = result
       end
-      vim.cmd.stopinsert()
       self.input = nil
       api.nvim_win_set_buf(self.win, self.buf)
       api.nvim_buf_delete(buf, { force = true })
       self:render(true)
       if submit then
-        callback(value)
+        M.attempt(function()
+          callback(value)
+        end)
+      end
+      -- A submitted path may open the naming editor immediately. Keep Insert
+      -- mode across that handoff; stopinsert would override its startinsert.
+      if not self.input then
+        vim.cmd.stopinsert()
       end
     end
     for _, mode in ipairs({ 'n', 'i' }) do
@@ -438,6 +460,32 @@ function M.new(on_close)
           finish(false)
         end, { buffer = buf })
       end
+    end
+    if options.complete then
+      vim.bo[buf].completeopt = 'menu,menuone'
+      local function keys(value)
+        api.nvim_feedkeys(api.nvim_replace_termcodes(value, true, false, true), 'in', false)
+      end
+      for key, motion in pairs({ ['<Tab>'] = '<C-n>', ['<S-Tab>'] = '<C-p>' }) do
+        vim.keymap.set('i', key, function()
+          if vim.fn.pumvisible() == 1 then
+            keys(motion)
+          else
+            local value = api.nvim_buf_get_lines(buf, 0, 1, false)[1]
+            local column = api.nvim_win_get_cursor(self.win)[2]
+            vim.fn.complete(1, options.complete(value:sub(1, column)))
+          end
+        end, { buffer = buf })
+      end
+      vim.keymap.set('i', '<CR>', function()
+        if vim.fn.pumvisible() == 1 then
+          keys('<C-y>')
+        else
+          M.attempt(function()
+            finish(true)
+          end)
+        end
+      end, { buffer = buf })
     end
     api.nvim_create_autocmd({ 'TextChanged', 'TextChangedI' }, {
       group = self.group,
@@ -465,7 +513,7 @@ function M.new(on_close)
     M.attempt(function()
       local page = s:page()
       local item = s.rows[api.nvim_win_get_cursor(s.win)[1]]
-      if item and item.select and not page.busy then
+      if item and item.select and not blocked(page) then
         item.select()
       end
     end)

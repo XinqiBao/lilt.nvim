@@ -40,8 +40,10 @@ location without parsing arbitrary provider fields, network requests or schema
 expansion. Viewing information never changes references, metadata or manuscripts.
 
 Action-local shortcut keys are displayed with their labels and active only on
-that page; busy pages disable actions. q/Escape exits from any menu, while
-h/Backspace goes back. Escape in a search/name editor cancels only that input.
+that page. Pending acquisition disables actions; pending catalog requests keep
+search, ordering and topics available so a new query can replace the request.
+q/Escape exits from any menu, while h/Backspace goes back. Escape in a
+search/name/path editor cancels only that input.
 
 Unit selection automatically previews a local reference excerpt. The UI owns a
 single passive float through `picker/preview.lua`; it never receives focus or
@@ -59,13 +61,20 @@ Moving onto information replaces the excerpt with a prompt to select a unit.
 It never opens a manuscript or comparison. Online details never download text
 for previews.
 
-Catalog search and directory naming edit one line in the existing float and
-preserve the results behind it until submission. Native `vim.ui.input` supplies the local directory
-prompt, preserving path completion; there is no global UI override. Queries,
+Catalog search, local paths and directory naming edit one line in the existing
+float and preserve the page behind it until submission. Prompt callers own
+validation and completion semantics. Local paths use Neovim's directory
+completion through Tab / Shift-Tab and expand tilde/environment variables
+without interpreting filename glob characters. Enter accepts a visible
+completion before submitting; Escape cancels the input and restores selection.
+Invalid paths stay editable with feedback. There is no global UI override. Queries,
 presets and pagination replace the Discover page. Previous/Next are explicit
 page actions. Work details add one level; acquired units use the shared local
 flow. Returning from details restores the loaded result selection and viewport
 without a request.
+Empty catalog results select their explanation so it remains visible in short
+windows. Request failures show their cause and a retry action; they do not imply
+an empty catalog.
 
 `name.lua` converts a user-chosen title into directory spelling; it knows neither
 library files nor UI. `picker/name.lua` supplies editable official-title defaults,

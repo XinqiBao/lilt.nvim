@@ -74,7 +74,10 @@ snapshot age is inferred; older/imported works may lack these files.
 
 Your works come first. Secondary actions are Discover online, Add local work,
 and Examples. Add local work expects a directory containing lilt.json and UTF-8
-reference files. The native path prompt offers directory completion with Tab.
+reference files. The floating path input offers directory completion with Tab
+and Shift-Tab. Enter accepts a completion; a second Enter opens the directory.
+Paths may include ~ and spaces. Invalid paths remain editable with feedback;
+Escape/CTRL-C cancels only the input and restores the library selection.
 New works then offer an editable directory name, initially the official title.
 The input previews normalized spelling; Enter accepts and Escape cancels. ASCII
 capitals become lowercase, separators become hyphens, and source IDs are appended

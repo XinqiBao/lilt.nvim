@@ -463,28 +463,25 @@ local function run()
     'initialization error must be reported'
   )
 
-  -- Cancellation of the native path prompt returns to the library picker.
-  local input = vim.ui.input
-  vim.ui.input = function(_, callback)
-    callback(nil)
-  end
+  -- Path validation does not install anything or replace the menu underneath.
   picker.open(home, example_root)
   choose('Add local work')
+  local path_buf = api.nvim_get_current_buf()
+  keys('<Esc>')
   assert(find('Add local work'), 'canceling import must return to library')
-  keys('q')
-  vim.ui.input = function(_, callback)
-    callback(root .. '/missing-work')
-  end
-  picker.open(home, example_root)
+  assert(not api.nvim_buf_is_valid(path_buf), 'canceled path buffer is released')
   choose('Add local work')
-  assert(find('Add local work'), 'failed import must return to library')
+  path_buf = api.nvim_get_current_buf()
+  api.nvim_buf_set_lines(0, 0, -1, false, { root .. '/missing-work' })
+  keys('<CR>')
+  assert(api.nvim_get_current_buf() == path_buf, 'failed path stays editable')
+  keys('<Esc>')
   keys('q')
-  vim.ui.input = function(_, callback)
-    callback(example_root .. '/second')
-  end
   local naming_home = root .. '/naming-library'
   picker.open(naming_home, example_root)
   choose('Add local work')
+  api.nvim_buf_set_lines(0, 0, -1, false, { example_root .. '/second' })
+  keys('<CR>')
   local prompt = api.nvim_get_current_buf()
   assert(lines()[1] == works[2].title, 'local naming starts with the official title')
   keys('<Esc>')
@@ -493,6 +490,8 @@ local function run()
     'canceling directory input installs nothing'
   )
   choose('Add local work')
+  api.nvim_buf_set_lines(0, 0, -1, false, { example_root .. '/second' })
+  keys('<CR>')
   api.nvim_buf_set_lines(0, 0, -1, false, { '…' })
   keys('<CR>')
   assert(
@@ -526,7 +525,6 @@ local function run()
     'custom directory determines manuscript association'
   )
   lilt.close()
-  vim.ui.input = input
   vim.fn.writefile({ 'not a directory' }, root .. '/invalid-library')
   picker.open(root .. '/invalid-library', example_root)
   example_units('A poem')

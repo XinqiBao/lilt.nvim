@@ -664,6 +664,43 @@ local function run()
     held = false
   end
 
+  held = true
+  lilt.open()
+  choose('Discover online')
+  job = jobs[#jobs]
+  keys('s')
+  api.nvim_buf_set_lines(0, 0, -1, false, { 'query in progress' })
+  job.finish()
+  vim.wait(20, function()
+    return false
+  end)
+  assert(lines()[1] == 'query in progress', 'catalog completion preserves the search editor')
+  keys('<Esc>')
+  assert(
+    table.concat(lines(), '\n'):find('Test Letters', 1, true),
+    'cancelled input reveals results completed behind the editor'
+  )
+  choose('Newest')
+  local stale = jobs[#jobs]
+  choose('Poetry')
+  job = jobs[#jobs]
+  stale.finish()
+  vim.wait(20, function()
+    return false
+  end)
+  assert(
+    stale.killed
+      and table.concat(lines(), '\n'):find('Loading catalog', 1, true)
+      and not table.concat(lines(), '\n'):find('Test Letters', 1, true),
+    'late results cannot replace a newer pending catalog query'
+  )
+  job.finish()
+  wait_for(function()
+    return table.concat(lines(), '\n'):find('Test Letters', 1, true) ~= nil
+  end)
+  keys('hq')
+  held = false
+
   -- Retry and close are real picker transitions, including a late download.
   mode = 'network-error'
   lilt.open()

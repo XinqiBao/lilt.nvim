@@ -551,6 +551,40 @@ def library_tests():
         input_keys("")
 
 
+def library_diagnostic_tests():
+    global width, height
+    with tempfile.TemporaryDirectory(prefix="lilt-library-diagnostic-") as directory:
+        home = Path(directory) / ("long-library-path-" * 8)
+        broken = home / "references" / ("invalid-work-" * 10)
+        broken.mkdir(parents=True)
+        (broken.parent / "invalid\nwork").mkdir()
+        (broken / "lilt.json").write_text(json.dumps({
+            "title": "Broken work", "units": [{"title": "Missing unit", "path": "missing.txt"}],
+        }), encoding="utf-8")
+        nvim.exec_lua("require('lilt').setup({library=...})", str(home))
+        width, height = 24, 8
+        nvim.ui_try_resize(width, height)
+        input_keys(":Lilt<CR>gg")
+        content = nvim.current.buffer[:]
+        compact = "".join("".join(line.split()) for line in content)
+        cause = "missing file or unsupported symlink in unit path: missing.txt"
+        check("".join(cause.split()) in compact and str(broken) in compact,
+              "library diagnostics retain the complete long path and validation cause")
+        check("invalidworkdirectoryname:" in compact and "invalidwork" in compact,
+              "a directory name containing a newline remains a readable discovery diagnostic")
+        for index, line in enumerate(content):
+            if index:
+                rows = input_keys("j")
+            else:
+                rows = screen()
+            check(any(line.strip() in row for row in rows), "native scrolling exposes each library diagnostic row")
+        input_keys("a<Esc>q")
+        check(not floats() and not (home / "manuscripts").exists(),
+              "long diagnostics leave local import and Picker cleanup usable")
+        width, height = 90, 22
+        nvim.ui_try_resize(width, height)
+
+
 def information_tests():
     global width, height
     with tempfile.TemporaryDirectory(prefix="lilt-information-ui-") as directory:
@@ -784,7 +818,12 @@ def online_tests():
             "media_type": "Text", "formats": {"application/epub+zip": "https://www.gutenberg.org/ebooks/11.epub.noimages"},
         }
         other_book = dict(book, id=12, title="Other Letters", copyright=True)
-        catalog = json.dumps({"count": 2, "next": None, "results": [book, other_book]})
+        long_title = "天地玄黃宇宙洪荒" * 12
+        long_author = "A writer with a lengthy unabridged name " * 3
+        long_books = [dict(other_book, id=identity, title=long_title + ending,
+                           authors=[{"name": long_author}])
+                      for identity, ending in ((13, "上卷"), (14, "下卷"))]
+        catalog = json.dumps({"count": 4, "next": None, "results": [book, other_book, *long_books]})
         # Control only the process boundary; exercise the real floating search,
         # async redraw, catalog parser, converter, installation, and reading UI.
         nvim.exec_lua("""
@@ -824,6 +863,29 @@ def online_tests():
             check((loading_size["width"], loading_size["height"]) == (loaded_size["width"], loaded_size["height"]),
                   "catalog completion keeps the float dimensions")
             check(any("Test Letters" in row for row in rows), "online entry browses works without a query")
+            width, height = 24, 8
+            nvim.ui_try_resize(width, height)
+            input_keys("")
+            compact = "".join("".join(line.split()) for line in nvim.current.buffer[:])
+            check(all("".join(item["title"].split()) in compact for item in long_books)
+                  and "".join(long_author.split()) in compact,
+                  "catalog results retain distinct long Unicode titles and complete authors")
+            for identity, ending in ((13, "上卷"), (14, "下卷")):
+                result_row = next(row for row, line in enumerate(nvim.current.buffer[:], 1) if ending in line)
+                rows = input_keys(str(result_row) + "G")
+                check(any(ending in row for row in rows) and nvim.current.window.options["cursorline"],
+                      "native result scrolling exposes the distinguishing title ending as an action")
+                result_view = (nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"])
+                input_keys("<CR>")
+                details = "".join("".join(line.split()) for line in nvim.current.buffer[:])
+                check("gutenberg:" + str(identity) in details,
+                      "a continuation row opens the matching catalog work")
+                input_keys("h")
+                check((nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"]) == result_view,
+                      "details back restores the wrapped result row and viewport")
+            width, height = 90, 22
+            nvim.ui_try_resize(width, height)
+            input_keys("")
             formatting = {name: nvim.api.get_option_value(name, {"scope": "global"})
                           for name in ("textwidth", "wrapmargin", "formatoptions")}
             try:
@@ -1110,6 +1172,7 @@ def run():
     check(nvim.api.buf_get_lines(buf, 0, -1, False) == authored, "close retains actual writing")
     check(not floats() and len(nvim.buffers) == 2, "close leaves no hint or reference buffers")
     library_tests()
+    library_diagnostic_tests()
     information_tests()
     catalog_feedback_tests()
     online_tests()

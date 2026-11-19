@@ -26,10 +26,10 @@ highlighting. Menus initially prefer an action; information pages start at
 the title so identity and availability can be inspected before acquisition.
 New pages reset the shared window's scroll. Returning, cancelling search, and
 resizing retain the cursor item and its wrapped-line offset (clamped when text
-reflows). Work-information and online bibliographic fields wrap completely,
-including unspaced UTF-8 and URLs; ordinary menu labels remain bounded. Duplicate
-local titles show directory names only when needed to distinguish them. Unit
-percentages report saved rows.
+reflows). Work-information, online bibliographic fields and Discover result
+titles/authors wrap completely, including unspaced UTF-8 and URLs. Local work and
+unit labels remain bounded. Duplicate local titles show directory names only
+when needed to distinguish them. Unit percentages report saved rows.
 
 `picker/information.lua` formats shared bibliographic/source facts as inert page
 items. Online details label current catalog metadata and retain their acquisition
@@ -74,7 +74,8 @@ flow. Returning from details restores the loaded result selection and viewport
 without a request.
 Empty catalog results select their explanation so it remains visible in short
 windows. Request failures show their cause and a retry action; they do not imply
-an empty catalog.
+an empty catalog. Local discovery errors wrap completely so long work paths do
+not hide the validation cause; native scrolling reaches the full message.
 
 `name.lua` converts a user-chosen title into directory spelling; it knows neither
 library files nor UI. `picker/name.lua` supplies editable official-title defaults,

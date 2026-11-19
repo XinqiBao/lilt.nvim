@@ -210,7 +210,7 @@ local function browse(root, example_root, catalog)
       items[#items + 1] = { label = 'No works yet. Discover one or try an example.', wrap = true }
     end
     for _, err in ipairs(errors) do
-      items[#items + 1] = { label = err, wrap = true, hl = 'DiagnosticWarn', max_lines = 2 }
+      items[#items + 1] = { label = err, wrap = 'full', hl = 'DiagnosticWarn' }
     end
     vim.list_extend(items, {
       { label = '' },
@@ -253,7 +253,7 @@ local function browse(root, example_root, catalog)
             { { label = 'Try reading · writing stays in this Neovim process', wrap = true } }
           vim.list_extend(choices, work_items(samples, true))
           for _, err in ipairs(sample_errors) do
-            choices[#choices + 1] = { label = err, wrap = true, hl = 'DiagnosticWarn' }
+            choices[#choices + 1] = { label = err, wrap = 'full', hl = 'DiagnosticWarn' }
           end
           if #samples == 0 then
             choices[#choices + 1] = { label = 'No examples found.' }

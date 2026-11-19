@@ -130,6 +130,7 @@ function M.open(s, root, catalog, units, refresh)
       for _, book in ipairs(result.books) do
         local item = {
           label = book.title .. (book.author ~= '' and (' — ' .. book.author) or ''),
+          wrap = 'full',
           select = function()
             details(book)
           end,

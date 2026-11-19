@@ -93,7 +93,8 @@ catalog IDs; Poetry and Short stories browse popular works in those topics.
 Search edits a line inside the float: Enter submits, Escape/CTRL-C cancels.
 An empty query returns to Popular. Native insertion and editing remain available.
 Next page and Previous page preserve the query. Changing a query, preset or page
-replaces the results; back returns to the library. Details add one level and back
+replaces the results; back returns to the library. Result titles and authors wrap
+fully; every continuation row opens the same work. Details add one level and back
 restores your result selection and scroll. A failed request offers retry in place;
 back, leaving the window, or closing cancels outstanding requests.
 

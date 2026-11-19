@@ -1,5 +1,17 @@
 # Developing Lilt
 
+## Contributing
+
+Use a separate feature branch for each independent change. Make small, checked
+commits that each complete one purpose, keeping behavior, its tests, and necessary
+documentation together rather than splitting them mechanically. Open a pull
+request for review. An isolated feature branch may be rebased onto current
+`main` when inexpensive; do not rewrite shared or integrated history. Merge
+approved pull requests with a merge commit, preserving the feature commits and
+the pull request's merge node.
+
+## Setup
+
 Reading needs only **Neovim 0.11.0 or newer**; online discovery also requires
 `curl` on `PATH`; acquiring new works also uses Pandoc 3.1.1+. For development,
 [mise](https://mise.jdx.dev/) pins StyLua, Selene, Pandoc, and uv in

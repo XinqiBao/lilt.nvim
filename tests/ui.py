@@ -551,6 +551,40 @@ def library_tests():
         input_keys("")
 
 
+def library_diagnostic_tests():
+    global width, height
+    with tempfile.TemporaryDirectory(prefix="lilt-library-diagnostic-") as directory:
+        home = Path(directory) / ("long-library-path-" * 8)
+        broken = home / "references" / ("invalid-work-" * 10)
+        broken.mkdir(parents=True)
+        (broken.parent / "invalid\nwork").mkdir()
+        (broken / "lilt.json").write_text(json.dumps({
+            "title": "Broken work", "units": [{"title": "Missing unit", "path": "missing.txt"}],
+        }), encoding="utf-8")
+        nvim.exec_lua("require('lilt').setup({library=...})", str(home))
+        width, height = 24, 8
+        nvim.ui_try_resize(width, height)
+        input_keys(":Lilt<CR>gg")
+        content = nvim.current.buffer[:]
+        compact = "".join("".join(line.split()) for line in content)
+        cause = "missing file or unsupported symlink in unit path: missing.txt"
+        check("".join(cause.split()) in compact and str(broken) in compact,
+              "library diagnostics retain the complete long path and validation cause")
+        check("invalidworkdirectoryname:" in compact and "invalidwork" in compact,
+              "a directory name containing a newline remains a readable discovery diagnostic")
+        for index, line in enumerate(content):
+            if index:
+                rows = input_keys("j")
+            else:
+                rows = screen()
+            check(any(line.strip() in row for row in rows), "native scrolling exposes each library diagnostic row")
+        input_keys("a<Esc>q")
+        check(not floats() and not (home / "manuscripts").exists(),
+              "long diagnostics leave local import and Picker cleanup usable")
+        width, height = 90, 22
+        nvim.ui_try_resize(width, height)
+
+
 def information_tests():
     global width, height
     with tempfile.TemporaryDirectory(prefix="lilt-information-ui-") as directory:
@@ -1110,6 +1144,7 @@ def run():
     check(nvim.api.buf_get_lines(buf, 0, -1, False) == authored, "close retains actual writing")
     check(not floats() and len(nvim.buffers) == 2, "close leaves no hint or reference buffers")
     library_tests()
+    library_diagnostic_tests()
     information_tests()
     catalog_feedback_tests()
     online_tests()

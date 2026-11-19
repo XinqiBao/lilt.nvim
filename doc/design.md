@@ -74,7 +74,8 @@ flow. Returning from details restores the loaded result selection and viewport
 without a request.
 Empty catalog results select their explanation so it remains visible in short
 windows. Request failures show their cause and a retry action; they do not imply
-an empty catalog.
+an empty catalog. Local discovery errors wrap completely so long work paths do
+not hide the validation cause; native scrolling reaches the full message.
 
 `name.lua` converts a user-chosen title into directory spelling; it knows neither
 library files nor UI. `picker/name.lua` supplies editable official-title defaults,

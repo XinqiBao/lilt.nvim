@@ -44,6 +44,8 @@ end
 -- Information fields must remain readable even without word boundaries (URLs,
 -- CJK titles). Split at UTF-8 boundaries, preferring spaces when they fit.
 local function full_wrap(text, width)
+  -- Paths and diagnostics may contain controls; buffer rows must not.
+  text = text:gsub('%c', ' ')
   local lines = {}
   while text ~= '' do
     local bytes = 0

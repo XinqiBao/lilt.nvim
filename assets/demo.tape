@@ -29,6 +29,10 @@ Sleep 300ms
 # Start at the unit preview, without spending the opening on menu traversal.
 Show
 Sleep 1500ms
+Type "i"
+Sleep 2s
+Type "h"
+Sleep 700ms
 Enter
 Sleep 500ms
 # Two physical rows show Ghost; a deliberate typo gets a delayed local hint.

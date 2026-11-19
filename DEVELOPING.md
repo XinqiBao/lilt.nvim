@@ -1,5 +1,17 @@
 # Developing Lilt
 
+## Contributing
+
+Use a separate feature branch for each independent change. Make small, checked
+commits that each complete one purpose, keeping behavior, its tests, and necessary
+documentation together rather than splitting them mechanically. Open a pull
+request for review. An isolated feature branch may be rebased onto current
+`main` when inexpensive; do not rewrite shared or integrated history. Merge
+approved pull requests with a merge commit, preserving the feature commits and
+the pull request's merge node.
+
+## Setup
+
 Reading needs only **Neovim 0.11.0 or newer**; online discovery also requires
 `curl` on `PATH`; acquiring new works also uses Pandoc 3.1.1+. For development,
 [mise](https://mise.jdx.dev/) pins StyLua, Selene, Pandoc, and uv in
@@ -178,22 +190,23 @@ disabled. Fetch assets only when working on presentation.
 Presentation media and their recording source live in [assets/](assets/).
 [demo.tape](assets/demo.tape) generates the single [demo.gif](assets/demo.gif)
 from a real Neovim terminal. It opens Examples → The Tyger offscreen, then shows
-the unit preview, two rows of Ghost typing, a typo and delayed hint, native
-correction with `r`, side-by-side Split, independent reference search, and a
-return to Ghost. Short verse makes both panes readable without a wide canvas;
-Split still chooses its orientation normally.
+the unit preview, a brief Work information visit, two rows of Ghost typing, a
+typo and delayed hint, native correction with `r`, side-by-side Split,
+independent reference search, and a return to Ghost. Short verse makes both panes
+readable without a wide canvas; Split still chooses its orientation normally.
 
 The capture uses temporary XDG directories, `--clean -i NONE`, the default dark
 colorscheme, and DejaVu Sans Mono. It adjusts only display options, including
 hiding end-of-buffer tildes, and never uses the owner's library. The checked-in
-GIF is about 18 seconds at 1200 × 680, recorded with Neovim 0.12.5 and VHS 0.12.1.
+GIF is 20.52 seconds at 1200 × 680, recorded with Neovim 0.12.5, VHS 0.12.1,
+ttyd 1.7.7, and FFmpeg 8.0.1.
 
-Recording is optional, outside the test environment and CI. Install
-[VHS](https://github.com/charmbracelet/vhs), its ttyd and FFmpeg dependencies, and
-the font. VHS also downloads Chromium on its first run. From the repository root:
+Recording is optional, outside the test environment and CI. Install ttyd,
+FFmpeg, and the font. [VHS](https://github.com/charmbracelet/vhs) also downloads
+Chromium on its first run. From the repository root, run the capture using mise:
 
 ```sh
-vhs assets/demo.tape
+mise exec github:charmbracelet/vhs@0.12.1 -- vhs assets/demo.tape
 ```
 
 If the host blocks Chromium's sandbox, VHS supports `VHS_NO_SANDBOX=true`; this

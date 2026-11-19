@@ -7,7 +7,7 @@ Just you, the words, and the pleasure of typing.
 
 A poem, a page, or a few lines is enough. Pick it up again whenever you like.
 
-![Retype William Blake's The Tyger in Ghost, correct a typo, and browse the reference in side-by-side Split](assets/demo.gif)
+![Preview The Tyger and work information, correct a typo in Ghost, and search the reference in side-by-side Split](assets/demo.gif)
 
 Lilt keeps the passage in view and offers quiet feedback as you go. Your writing
 stays an ordinary buffer: edit, undo, and save as usual.

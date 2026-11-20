@@ -295,7 +295,7 @@ function M.open(s, root, catalog, units, refresh)
     request('load')
   end
 
-  s:push({ title = 'Discover online', items = menu_items(true, nil, true), height = 20 })
+  s:push({ title = 'Discover online', items = menu_items(true, nil, true) })
 end
 
 return M

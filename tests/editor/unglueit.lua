@@ -82,6 +82,11 @@ local function run()
     'browse uses published popular/new EPUB feeds, without a Gutenberg exclusion or title search'
   )
   assert(#page.entries == 2 and not page.count, 'lists only eligible explicit English copies')
+  assert(
+    page.title == 'Popular EPUBs · page 1 · 2 eligible English works / 5 source records',
+    'mixed page counts works/groups once, independently of acquisition copy totals'
+  )
+  local continuation = page.next
   local group, single = unpack(page.entries)
   assert(group.kind == 'group' and group.label:find('2 EPUB copies', 1, true), 'copy choice group')
   assert(
@@ -99,6 +104,7 @@ local function run()
   err, page = browse(query)
   assert(not err and #requests == before, 'copy group opens the retained feed without refetching')
   local first, second = unpack(page.entries)
+  assert(page.title == first.title .. ' · choose an EPUB copy', 'copy group heading is unchanged')
   assert(
     #page.entries == 2 and first.source.id == '42-101' and second.source.id == '42-102',
     'only eligible copies have distinct stable source identities'
@@ -144,10 +150,16 @@ local function run()
   response = fixture
     :gsub('<dc:language>en</dc:language>', '<dc:language>fr</dc:language>')
     :gsub('<dc:language>en%-GB</dc:language>', '<dc:language>fr</dc:language>')
-  err, page = browse()
+    :gsub('page=1', 'page=2')
+  err, page = browse(continuation)
   assert(
     not err and #page.entries == 0 and page.next and page.empty:find('English', 1, true),
     'filtered empty pages explain eligibility and retain the next page'
+  )
+  assert(
+    page.title == 'Popular EPUBs · page 2 · 0 eligible English works / 5 source records'
+      and not page.count,
+    'advertised page=1 is readable page 2; filtered counts are local, not global totals'
   )
   response = '<feed xmlns="http://www.w3.org/2005/Atom"/>'
   err, page = browse(page.next)
@@ -155,10 +167,18 @@ local function run()
     not err and #page.entries == 0 and not page.next,
     'a genuinely empty last page is supported'
   )
-  assert(requests[#requests]:find('&page=1', 1, true), 'follow actual advertised next link')
+  assert(
+    page.title == 'Popular EPUBs · page 3 · 0 eligible English works / 0 source records'
+      and requests[#requests]:find('&page=2', 1, true),
+    'continued empty page follows actual next link and retains its page context'
+  )
   response = fixture:gsub('order_by=popular', 'order_by=newest')
-  err = browse(provider.menu[2].query)
+  err, page = browse(provider.menu[2].query)
   assert(not err and requests[#requests]:find('order_by=newest', 1, true), 'new EPUB browse')
+  assert(
+    page.title == 'New EPUBs · page 1 · 2 eligible English works / 5 source records',
+    'newest page context'
+  )
 
   rejected('<html><body>Service error</body></html>', 'HTML is not an OPDS feed')
   rejected('<feed xmlns="https://example.invalid"><entry/></feed>', 'wrong namespace rejected')

@@ -89,7 +89,7 @@ be UTF-8 without NUL bytes. A UTF-8 BOM and CRLF line endings are accepted. Empt
 reference files are allowed, though usually not useful. Include source and
 attribution and license information in a separate README when appropriate;
 `source` alone does not establish licensing or public-domain status. Online
-acquisition records provenance and keeps the original distribution in `SOURCE.epub`.
+acquisition records provenance and keeps the original artifact named by `source.file`.
 Generated and installed manifests use two-space indentation, sorted object keys,
 literal UTF-8 and a final newline. Array order is preserved. Personal directory
 names, saved progress and last-opened state do not belong in this manifest.

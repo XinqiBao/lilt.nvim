@@ -2,8 +2,8 @@
 
 Lilt places a reference beside an ordinary manuscript buffer. Use native editing,
 undo, redo, and :write. There are no scores, automatic corrections, or autosave.
-Requires Neovim 0.11 or newer. Online discovery/downloads need curl; acquiring
-EPUBs also needs Pandoc 3.1.1+ on PATH. Local reading needs neither tool.
+Requires Neovim 0.11 or newer. Online discovery/downloads need curl; EPUB acquisition
+also needs Pandoc 3.1.1+ on PATH. PoetryDB needs only curl; local reading needs neither.
 
 START                                                        *lilt-start*
 
@@ -96,6 +96,8 @@ copies with direct EPUB links and recognized per-copy rights. Works with several
 eligible downloads open a copy list showing supplied titles, versions and rights;
 Lilt does not silently choose an edition. A filtered page may be empty and still
 offer Next. Unglue.it title search is not offered. See doc/sources/unglueit.md.
+PoetryDB offers author groups and title/author search. One poem becomes one native
+text unit; source line breaks and punctuation remain exact. It has no pagination.
 Search edits a line inside the float: Enter submits, Escape/CTRL-C cancels.
 An empty query preserves the current page. Native insertion and editing remain available.
 Next page and Previous page preserve the query. Changing a query, preset or page
@@ -158,5 +160,11 @@ Unglue.it uses published anonymous OPDS feeds (https://unglue.it/api/help).
 Rights apply to the selected copy; short CC labels do not establish a license
 version. SOURCE.opds retains the exact feed, SOURCE.json identifies the selected
 link, and SOURCE.epub retains original notices. Read those notices before reuse.
+
+PoetryDB (https://poetrydb.org) acquisitions retain the original full JSON response
+in SOURCE.poetrydb.json and the selected record/request in SOURCE.json. Attribution
+distinguishes its CC BY 4.0 curated data from primary texts it describes as public
+domain. Source provenance is retained only when supplied; generated biographies
+and guessed language tags are excluded. See doc/sources/poetrydb.md.
 
 vim:tw=80:ts=8:noet:ft=help:norl:

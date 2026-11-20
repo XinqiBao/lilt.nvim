@@ -95,21 +95,24 @@ require("lilt").setup({
 ## Online sources
 
 - **curl** for online discovery and downloads;
-  [Pandoc 3.1.1+](https://pandoc.org/installing.html) for acquiring EPUBs.
-  Both use `PATH`; local reading needs neither.
-- [Gutendex](https://gutendex.com/) supplies the searchable catalog. Literary texts
-  come from [Project Gutenberg](https://www.gutenberg.org/) through its designated
-  PGLAF mirror. Acquired works remain available offline.
+  [Pandoc 3.1.1+](https://pandoc.org/installing.html) also for EPUB acquisition.
+  PoetryDB needs only curl. Both use `PATH`; local reading needs neither.
+- [Project Gutenberg](https://www.gutenberg.org/) uses the searchable
+  [Gutendex](https://gutendex.com/) catalog and its designated PGLAF text mirror.
+  Acquired works remain available offline.
 - [Unglue.it](doc/sources/unglueit.md) supplies popular/new EPUB feeds. Lilt
   lists eligible English copies with explicit rights and lets you choose among
   multiple downloads. Original EPUBs, catalog snapshots and notices are retained.
+- [PoetryDB](doc/sources/poetrydb.md) offers author browsing and title/author
+  search. Each poem becomes one plain-text unit with its original JSON retained.
 
 Each source has its own menu and supported formats. Source details, supplied
 rights and descriptions remain readable offline; original downloads and source
 records are retained. See [online sources](doc/sources.md).
 
-Check copyright in your country before downloading or sharing. Downloads retain
-the original EPUB, credits, and license in `SOURCE.epub`; see [sources and redistribution
+Check copyright in your country before downloading or sharing. EPUB acquisitions
+retain `SOURCE.epub`; PoetryDB retains `SOURCE.poetrydb.json`. Source credits and
+rights remain with the saved work; see [sources and redistribution
 terms](doc/works.md#online-acquisition). Lilt is an independent client; Project
 Gutenberg is a registered trademark. The plugin’s [MIT license](LICENSE) applies
 to its code, separately from literary texts. Each bundled example records its

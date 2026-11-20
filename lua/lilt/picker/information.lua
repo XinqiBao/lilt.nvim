@@ -31,10 +31,20 @@ function M.items(metadata, context)
   if metadata.source then
     items[#items + 1] = { label = 'Source', hl = 'Title' }
     items[#items + 1] = {
+      label = require('lilt.online.providers').name(metadata.source.provider),
+      wrap = 'full',
+    }
+    items[#items + 1] = {
       label = metadata.source.provider .. ':' .. metadata.source.id,
       wrap = 'full',
     }
     items[#items + 1] = { label = metadata.source.url, wrap = 'full' }
+    if metadata.source.version then
+      items[#items + 1] = { label = 'Source version: ' .. metadata.source.version, wrap = 'full' }
+    end
+    if metadata.source.title then
+      items[#items + 1] = { label = 'Source copy title: ' .. metadata.source.title, wrap = 'full' }
+    end
   end
   return items
 end

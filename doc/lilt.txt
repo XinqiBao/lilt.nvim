@@ -88,15 +88,21 @@ remain in the library list; Work information shows the actual directory.
 Repeated source entries open their existing copy, regardless of its directory.
 See doc/works.md in the plugin checkout for the manifest format and validation.
 
-Discover starts with Popular (Gutenberg download order). Newest uses descending
-catalog IDs; Poetry and Short stories browse popular works in those topics.
+Discover first selects a source, then opens that source's menu. Project Gutenberg
+offers Popular (download order), Newest (descending catalog IDs), Poetry and
+Short stories (popular works in those topics), and title/author search.
 Search edits a line inside the float: Enter submits, Escape/CTRL-C cancels.
-An empty query returns to Popular. Native insertion and editing remain available.
+An empty query preserves the current page. Native insertion and editing remain available.
 Next page and Previous page preserve the query. Changing a query, preset or page
-replaces the results; back returns to the library. Result titles and authors wrap
+replaces the results; back returns to the parent group or source menu, then source
+selection and the library. Result titles and authors wrap
 fully; every continuation row opens the same work. Details add one level and back
 restores your result selection and scroll. A failed request offers retry in place;
 back, leaving the window, or closing cancels outstanding requests.
+Source-supplied descriptions, publisher/publication facts, rights and license URLs
+appear when available. Source version records an advertised acquisition revision,
+not an inferred bibliographic edition. Saved work information reads these facts
+offline and lists retained original source, catalog, attribution and license files.
 
 SAVING                                                       *lilt-saving*
 

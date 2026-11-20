@@ -162,11 +162,16 @@ function M.load(directory)
   if data.source ~= nil then
     fields(
       data.source,
-      { provider = true, id = true, url = true, file = true },
+      { provider = true, id = true, url = true, file = true, version = true, title = true },
       manifest .. ': source'
     )
     for _, key in ipairs({ 'provider', 'id', 'url' }) do
       title(data.source[key], manifest .. ': source ' .. key)
+    end
+    for _, key in ipairs({ 'version', 'title' }) do
+      if data.source[key] ~= nil then
+        title(data.source[key], manifest .. ': source ' .. key)
+      end
     end
     if not data.source.url:match('^https?://%S+$') then
       fail(manifest .. ': source url must be an HTTP(S) URL')

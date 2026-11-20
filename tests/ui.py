@@ -601,7 +601,8 @@ def information_tests():
             "rights": "CC BY 4.0 curated data; public-domain primary text",
             "rights_url": "https://example.invalid/licenses/4.0",
             "publisher": "Source Press", "published": "1912",
-            "source": {"provider": "test-source", "id": "42", "url": source_url},
+            "source": {"provider": "test-source", "id": "42", "url": source_url,
+                       "version": "0.2", "title": "Illustrated copy"},
             "preparation": {"wrap_columns": 72, "plain_quotes": True},
             "units": [{"title": "Unit " + str(i), "path": str(i) + ".txt"} for i in range(1, 25)],
         }
@@ -640,6 +641,8 @@ def information_tests():
             check("".join(metadata[key].split()) in compact,
                   "saved source " + key + " remains readable offline at narrow width")
         check("Savedcatalogfile:" not in compact, "missing raw snapshot needs no placeholder or error")
+        check("Sourceversion:0.2" in compact, "supplied acquisition revision remains visible offline")
+        check("Sourcecopytitle:Illustratedcopy" in compact, "supplied acquisition copy title remains visible offline")
         width, height = 90, 22
         nvim.ui_try_resize(width, height)
         input_keys("")
@@ -738,7 +741,9 @@ def catalog_feedback_tests():
             width, height = 52, 10
             nvim.ui_try_resize(width, height)
             input_keys(":Lilt<CR>")
-            rows = choose("Discover online")
+            choose("Discover online")
+            choose("Project Gutenberg")
+            rows = choose("Popular")
             check(any("Loading catalog" in row for row in rows), "short window shows pending catalog feedback")
             input_keys("s")
             check(nvim.eval("mode()") == "i", "Search is available while initial Popular request is pending")
@@ -789,9 +794,11 @@ def catalog_feedback_tests():
             settled("No works found")
             check(nvim.exec_lua("return _G.lilt_catalog_jobs[#_G.lilt_catalog_jobs-1].killed"),
                   "new search cancels a pending search")
-            input_keys("s<C-u>slow<CR>h")
+            input_keys("s<C-u>slow<CR>hhh")
             check("Discover online" in "\n".join(nvim.current.buffer[:]), "back leaves a pending search")
             choose("Discover online")
+            choose("Project Gutenberg")
+            choose("Popular")
             input_keys("q")
             release.set()
             check(not floats(), "close releases the pending catalog window")
@@ -862,7 +869,9 @@ def online_tests():
         """, str(home), catalog, str(fixture))
         try:
             input_keys(":Lilt<CR>")
-            rows = choose("Discover online")
+            choose("Discover online")
+            choose("Project Gutenberg")
+            rows = choose("Popular")
             loading_size = nvim.api.win_get_config(nvim.current.window.handle)
             check(any("Loading catalog" in row for row in rows), "catalog loading stays visible")
             rows = pause(130)
@@ -936,7 +945,7 @@ def online_tests():
             check(nvim.current.window.cursor == previous[0] and nvim.funcs.winsaveview()["topline"] == previous[1],
                   "cancelled search restores selection and scroll")
             order_row = next(row for row, line in enumerate(nvim.current.buffer[:], 1)
-                             if line.strip() == "Order")
+                             if line.strip().startswith("Search:"))
             nvim.current.window.cursor = (order_row, 0)
             input_keys("")
             metadata_view = (nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"])
@@ -1019,7 +1028,9 @@ def online_tests():
             check(any("Café" in row for row in rows), "prepared Unicode content appears in Ghost")
             nvim.command("LiltClose")
             input_keys(":Lilt<CR>")
-            choose("Discover online")  # close while request is pending
+            choose("Discover online")
+            choose("Project Gutenberg")
+            choose("Popular")  # close while request is pending
             input_keys("hq")
             pause(130)
             check(not floats(), "leaving online discovery cancels delayed UI work")

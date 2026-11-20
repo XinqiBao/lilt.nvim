@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"
+      xmlns:dc="http://purl.org/dc/terms/"
+      xmlns:o="http://opds-spec.org/"
+      xmlns:s="http://schema.org/"
+      xmlns:extra="https://example.invalid/metadata">
+  <title>Unglue.it fixture</title>
+  <id>https://unglue.it/api/opds/epub/?order_by=popular</id>
+  <link rel="next" href="https://unglue.it/api/opds/epub/?order_by=popular&amp;page=1"/>
+  <entry>
+    <id>https://unglue.it/api/id/work/42/</id>
+    <title>Letters &amp; reply &#x2014; &#233;</title>
+    <author><name>A. Writer</name></author>
+    <author><name><![CDATA[B. Contributor]]></name></author>
+    <dc:language>en</dc:language>
+    <category term="Letters"/>
+    <dc:issued>1907-2016</dc:issued>
+    <dc:publisher>A work-level publisher</dc:publisher>
+    <dc:identifier>urn:ISBN:0000000000</dc:identifier>
+    <content type="html">&lt;p&gt;A descriptive field retained verbatim.&lt;/p&gt;</content>
+    <extra:fact extra:detail="unmodeled">Keep every source fact.</extra:fact>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/epub+zip"
+          href="https://unglue.it/download_ebook/101/?feed=opds" dc:rights="CC BY-NC-ND"
+          s:version="0.2" title="Illustrated copy" extra:credit="A source-specific credit"/>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/epub+zip"
+          href="https://unglue.it/download_ebook/102/?feed=opds" dc:rights="PD-US" s:version="0.1"/>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/epub+zip"
+          href="https://unglue.it/download_ebook/103/?feed=opds" dc:rights="None"/>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="text/html"
+          href="https://unglue.it/download_ebook/104/?feed=opds" dc:rights="CC BY">
+      <o:indirectAcquisition type="application/epub+zip"/>
+    </link>
+  </entry>
+  <entry>
+    <id>https://unglue.it/api/id/work/43/</id><title>Single copy</title>
+    <author><name>C. Writer</name></author>
+    <dc:language>en-GB</dc:language>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/epub+zip"
+          href="https://unglue.it/download_ebook/105/?feed=opds" dc:rights="CC0"/>
+  </entry>
+  <entry>
+    <id>https://unglue.it/api/id/work/44/</id><title>Unknown language</title>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/epub+zip"
+          href="https://unglue.it/download_ebook/106/?feed=opds" dc:rights="CC BY"/>
+  </entry>
+  <entry>
+    <id>https://unglue.it/api/id/work/45/</id><title>Explicit other language</title>
+    <dc:language>es</dc:language>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/epub+zip"
+          href="https://unglue.it/download_ebook/107/?feed=opds" dc:rights="CC BY"/>
+  </entry>
+  <entry>
+    <id>https://unglue.it/api/id/work/46/</id><title>Indirect, paid or ambiguous identity</title>
+    <dc:language>en</dc:language>
+    <link rel="http://opds-spec.org/acquisition/buy" type="application/epub+zip"
+          href="https://unglue.it/download_ebook/108/?feed=opds" dc:rights="CC BY"/>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/epub+zip"
+          href="https://unglue.it/download_ebook/109/?feed=opds" dc:rights="CC BY">
+      <o:indirectAcquisition type="application/epub+zip"/>
+    </link>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/epub+zip"
+          href="https://example.invalid/edition.epub" dc:rights="CC BY"/>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/epub+zip"
+          href="http://unglue.it/download_ebook/110/?feed=opds" dc:rights="CC BY"/>
+    <link rel="http://opds-spec.org/acquisition/open-access" type="application/pdf"
+          href="https://unglue.it/download_ebook/111/?feed=opds" dc:rights="CC BY"/>
+  </entry>
+</feed>

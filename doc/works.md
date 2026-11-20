@@ -148,7 +148,7 @@ Images are omitted. CSS-only layout and imperfect source editing can still limit
 the result. Nonlinear resources are excluded; unsupported spine resource types
 fail conversion explicitly.
 
-Pandoc parses/renders XHTML; bundled [SLAXML](../pandoc/vendor/README.md) reads XML
+Pandoc parses/renders XHTML; bundled [SLAXML](../lua/lilt/vendor/README.md) reads XML
 package/navigation metadata. No separate XML tool is required. Malformed navigation
 falls back to available structure; returned `work.import_warnings` reports that
 fallback. Acquired copies retain these notes in `README.txt`.

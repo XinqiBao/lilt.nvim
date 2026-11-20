@@ -2,8 +2,8 @@
 
 Lilt places a reference beside an ordinary manuscript buffer. Use native editing,
 undo, redo, and :write. There are no scores, automatic corrections, or autosave.
-Requires Neovim 0.11 or newer. Online discovery needs curl; acquiring new works
-also needs Pandoc 3.1.1+ on PATH. Local reading needs neither tool.
+Requires Neovim 0.11 or newer. Online discovery/downloads need curl; acquiring
+EPUBs also needs Pandoc 3.1.1+ on PATH. Local reading needs neither tool.
 
 START                                                        *lilt-start*
 
@@ -91,6 +91,11 @@ See doc/works.md in the plugin checkout for the manifest format and validation.
 Discover first selects a source, then opens that source's menu. Project Gutenberg
 offers Popular (download order), Newest (descending catalog IDs), Poetry and
 Short stories (popular works in those topics), and title/author search.
+Unglue.it offers Popular EPUBs and New EPUBs, listing eligible explicit English
+copies with direct EPUB links and recognized per-copy rights. Works with several
+eligible downloads open a copy list showing supplied titles, versions and rights;
+Lilt does not silently choose an edition. A filtered page may be empty and still
+offer Next. Unglue.it title search is not offered. See doc/sources/unglueit.md.
 Search edits a line inside the float: Enter submits, Escape/CTRL-C cancels.
 An empty query preserves the current page. Native insertion and editing remain available.
 Next page and Previous page preserve the query. Changing a query, preset or page
@@ -100,8 +105,9 @@ fully; every continuation row opens the same work. Details add one level and bac
 restores your result selection and scroll. A failed request offers retry in place;
 back, leaving the window, or closing cancels outstanding requests.
 Source-supplied descriptions, publisher/publication facts, rights and license URLs
-appear when available. Source version records an advertised acquisition revision,
-not an inferred bibliographic edition. Saved work information reads these facts
+appear when available. Source copy title and Source version record advertised
+acquisition metadata, not an inferred bibliographic edition. Saved work
+information reads these facts
 offline and lists retained original source, catalog, attribution and license files.
 
 SAVING                                                       *lilt-saving*
@@ -141,12 +147,16 @@ Keep reference files and unit paths stable after starting. Ghost may clip text
 in narrow windows; Split provides wrapped reference browsing. Comparison uses
 UTF-8 codepoints, not full grapheme layout.
 
-Discovery uses Gutendex (https://gutendex.com/); literary texts come from Project
-Gutenberg's PGLAF mirror. Public-domain status in the USA does not establish status
-in your country. Acquisitions preserve the original EPUB and credits/license in
-SOURCE.epub.
+Project Gutenberg discovery uses Gutendex (https://gutendex.com/); its literary
+texts come from Gutenberg's PGLAF mirror. Public-domain status in the USA does
+not establish status in your country. Acquisitions preserve the original EPUB
+and credits/license in SOURCE.epub.
 Review https://www.gutenberg.org/policy/license.html before sharing, including
 terms for the Project Gutenberg registered trademark. Lilt is an independent
 client. Details on preparation, service limits, and redistribution: doc/works.md.
+Unglue.it uses published anonymous OPDS feeds (https://unglue.it/api/help).
+Rights apply to the selected copy; short CC labels do not establish a license
+version. SOURCE.opds retains the exact feed, SOURCE.json identifies the selected
+link, and SOURCE.epub retains original notices. Read those notices before reuse.
 
 vim:tw=80:ts=8:noet:ft=help:norl:

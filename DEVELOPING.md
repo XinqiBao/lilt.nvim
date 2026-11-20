@@ -13,7 +13,9 @@ the pull request's merge node.
 ## Setup
 
 Reading needs only **Neovim 0.11.0 or newer**; online discovery also requires
-`curl` on `PATH`; acquiring new works also uses Pandoc 3.1.1+. For development,
+`curl` on `PATH`; acquiring EPUBs from Gutenberg or Unglue.it also uses Pandoc
+3.1.1+. Both sources use controlled fixtures in tests, with no live catalog
+dependency. For development,
 [mise](https://mise.jdx.dev/) pins StyLua, Selene, Pandoc, and uv in
 [mise.toml](mise.toml). It deliberately leaves Neovim on your own `PATH`.
 [uv](https://docs.astral.sh/uv/) manages the test-only Python interpreter in
@@ -55,7 +57,7 @@ directories. Each subprocess has a 60-second deadline. No display server or live
 catalog service is required. It builds the tiny EPUB fixture from the inspectable
 XHTML/package sources in `tests/fixtures/`; conversion tests run the actual Pandoc.
 The navigation fixture covers distinct source labels, nested/alias targets and
-colliding filenames. The bundled XML parser and license are in `pandoc/vendor/`;
+colliding filenames. The bundled XML parser and license are in `lua/lilt/vendor/`;
 Selene excludes upstream code, while conversion tests exercise it end to end.
 
 | Location | Responsibility |

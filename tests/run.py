@@ -22,6 +22,7 @@ SUITES = {
     "cache": "editor/cache.lua",
     "picker": "editor/picker.lua",
     "online": "editor/online.lua",
+    "unglueit": "editor/unglueit.lua",
     "ui": "ui.py",
 }
 

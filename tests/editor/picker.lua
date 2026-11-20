@@ -596,6 +596,90 @@ local function run()
   )
   keys('q')
   no_picker()
+  -- Progressive requests use the same lifetime as acquisition and native input.
+  local ui = require('lilt.picker.ui')
+  local s = ui.new(function() end)
+  local page = { title = 'Progressive', items = {}, blocking = false, height = 8 }
+  for i = 1, 30 do
+    page.items[i] = { label = 'Result ' .. i, select = function() end }
+  end
+  s:push(page)
+  local done, update, cancelled
+  s:request(
+    page,
+    function(finish, progress)
+      done, update = finish, progress
+      return function()
+        cancelled = true
+        progress('late cancellation')
+        finish(nil, 'late cancellation')
+      end
+    end,
+    function(value)
+      page.items[#page.items + 1] = { label = value }
+      s:render(true)
+    end,
+    'Loading…',
+    function(value)
+      page.items[#page.items + 1] = { label = value }
+      s:render(true)
+    end
+  )
+  keys('20G')
+  local progressive_view = api.nvim_win_call(s.win, vim.fn.winsaveview)
+  update('Peer result')
+  assert(
+    api.nvim_win_get_cursor(s.win)[1] == 20
+      and api.nvim_win_call(s.win, vim.fn.winsaveview).topline == progressive_view.topline,
+    'progressive arrival preserves selected result and scroll'
+  )
+  s:search('', function()
+    error('cancelled input must not submit')
+  end)
+  local progressive_input = api.nvim_get_current_buf()
+  api.nvim_buf_set_lines(progressive_input, 0, -1, false, { 'editing query' })
+  update('Another peer')
+  done(nil, 'Settled')
+  assert(
+    api.nvim_get_current_buf() == progressive_input and lines()[1] == 'editing query',
+    'updates and completion do not steal or replace native input'
+  )
+  keys('<Esc>')
+  assert(
+    api.nvim_win_get_cursor(s.win)[1] == 20
+      and api.nvim_win_call(s.win, vim.fn.winsaveview).topline == progressive_view.topline,
+    'cancelled input restores the result position after completion'
+  )
+  local count = #page.items
+  update('late progress')
+  done(nil, 'duplicate completion')
+  assert(#page.items == count, 'settled generations reject late and duplicate callbacks')
+  s:request(
+    page,
+    function(finish, progress)
+      done, update = finish, progress
+      return function()
+        cancelled = true
+        progress('late cancellation')
+        finish(nil, 'late cancellation')
+      end
+    end,
+    function()
+      error('cancelled request completed')
+    end,
+    'Loading…',
+    function()
+      error('cancelled request updated')
+    end
+  )
+  s:push({ title = 'Details', items = { { label = 'Work details' } } })
+  assert(cancelled and not page.busy and not page.status, 'navigation clears cached loading')
+  done(nil, 'late')
+  update('late')
+  s:back()
+  assert(find('Result 20'), 'back restores cached results')
+  s:close()
+  no_picker()
   print('Lilt picker: XDG, hierarchy, multiple examples, buffer reuse and cleanup passed')
 end
 local ok, err = xpcall(run, debug.traceback)

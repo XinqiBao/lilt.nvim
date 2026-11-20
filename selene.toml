@@ -1,2 +1,2 @@
 std = "lua51+vim"
-exclude = ["pandoc/vendor/*"]
+exclude = ["lua/lilt/vendor/*"]

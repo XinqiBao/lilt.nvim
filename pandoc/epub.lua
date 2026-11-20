@@ -2,7 +2,7 @@
 -- selene: allow(global_usage)
 local pandoc = _G.pandoc
 local directory = debug.getinfo(1, 'S').source:sub(2):match('^(.*)/')
-local xml = dofile(directory .. '/xml.lua')
+local xml = dofile(directory .. '/../lua/lilt/xml.lua')
 local opf = 'http://www.idpf.org/2007/opf'
 local xhtml = 'http://www.w3.org/1999/xhtml'
 local ops = 'http://www.idpf.org/2007/ops'

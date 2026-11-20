@@ -1,9 +1,10 @@
 # SLAXML
 
 `slaxml.lua` is [SLAXML 0.8](https://github.com/Phrogz/SLAXML), by Gavin Kistner,
-under the [MIT license](LICENSE.slaxml). It runs only inside Pandoc and supplies
-namespace-aware XML parsing for EPUB package/navigation metadata. Neovim does
-not load it. No additional runtime executable is required.
+under the [MIT license](LICENSE.slaxml). The shared pure-Lua adapter in
+[`../xml.lua`](../xml.lua) supplies namespace-aware metadata parsing in Neovim
+and Pandoc. Both hosts load this one bundled parser; no additional runtime
+executable is required.
 
 The upstream file is formatted with the repository's StyLua configuration;
 its behavior is unchanged. Selene excludes this third-party Lua 5.1/5.2 code.

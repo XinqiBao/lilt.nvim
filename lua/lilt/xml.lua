@@ -4,12 +4,12 @@ local parser = dofile(directory .. '/vendor/slaxml.lua')
 local M = {}
 
 function M.parse(text)
-  assert(#text <= 4 * 1024 * 1024, 'EPUB XML exceeds 4 MiB')
+  assert(#text <= 4 * 1024 * 1024, 'XML exceeds 4 MiB')
   local root, stack = nil, {}
   parser
     :parser({
       startElement = function(name, namespace)
-        assert(#stack < 64, 'EPUB XML nesting exceeds 64 levels')
+        assert(#stack < 64, 'XML nesting exceeds 64 levels')
         local node = { name = name, namespace = namespace, attrs = {}, children = {} }
         if #stack == 0 then
           assert(not root, 'multiple XML roots')

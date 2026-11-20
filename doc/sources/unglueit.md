@@ -12,8 +12,8 @@ its own rights, supplied version/title and copy number. Those downloads can
 be different editions; Lilt does not pick one automatically. A work with one
 eligible copy opens its details directly. Saved identity includes the Unglue.it
 work and acquisition numbers, independently of your chosen directory name.
-The supplied copy version is also retained for offline Work information; it is
-not an inferred edition description.
+The supplied copy title and version are also retained for offline Work
+information; neither is an inferred edition description or a personal alias.
 Only advertised official download links with those unambiguous identities are
 supported. Unknown language or rights, indirect HTML downloads, paid links and
 other formats are excluded. The EPUB feed itself can contain those records.

@@ -102,6 +102,10 @@ local function run()
   assert(first.label:find('copy 101', 1, true), 'copy selection label preserves the official title')
   assert(first.source.version == '0.2' and second.source.version == '0.1', 'supplied copy versions')
   assert(
+    first.source.title == 'Illustrated copy' and not second.source.title,
+    'only supplied nonempty acquisition titles are retained'
+  )
+  assert(
     vim.deep_equal(first.authors, { 'A. Writer', 'B. Contributor' })
       and first.subjects[1] == 'Letters',
     'all source authors, CDATA and categories survive normalization'
@@ -269,6 +273,10 @@ local function run()
     prepared.manifest.source.version == '0.2',
     'offline source retains the supplied copy version'
   )
+  assert(
+    prepared.manifest.source.title == 'Illustrated copy',
+    'offline source retains the advertised copy title'
+  )
   assert(prepared.manifest.preparation.plain_quotes == false, 'source punctuation policy')
   assert(prepared.snapshot.catalog_url == requests[1], 'catalog provenance')
   assert(
@@ -301,8 +309,10 @@ local function run()
   assert(installed.name == 'chosen-copy' and installed.source.id == '42-101', 'install chosen copy')
   local offline = work.validate(installed.root)
   assert(
-    offline.source.version == '0.2' and offline.manifest.rights == 'CC BY-NC-ND',
-    'offline manifest preserves selected copy version and rights'
+    offline.source.version == '0.2'
+      and offline.source.title == 'Illustrated copy'
+      and offline.manifest.rights == 'CC BY-NC-ND',
+    'offline manifest preserves selected copy title, version and rights'
   )
   assert(bytes(installed.root .. '/SOURCE.opds') == fixture, 'installation retains complete feed')
   local snapshot = vim.json.decode(bytes(installed.root .. '/SOURCE.json'))

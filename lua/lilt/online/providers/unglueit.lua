@@ -141,6 +141,7 @@ local function parse(text, url, selected)
                 id = number .. '-' .. ebook,
                 url = id,
                 version = version ~= '' and version or nil,
+                title = link_title ~= '' and link_title or nil,
               },
               availability = label .. ' · copy ' .. ebook,
               supported = true,

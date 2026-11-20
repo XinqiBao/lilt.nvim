@@ -13,6 +13,7 @@ SUITES = {
     "json": "core/json.lua",
     "name": "core/name.lua",
     "compare": "core/compare.lua",
+    "discovery": "core/discovery.lua",
     "work": "core/work.lua",
     "epub": "core/epub.lua",
     "library": "core/library.lua",

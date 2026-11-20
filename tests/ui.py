@@ -597,6 +597,10 @@ def information_tests():
         metadata = {
             "title": title, "authors": ["A. Writer"], "translators": ["A. Translator"],
             "languages": ["en", "fr"], "subjects": subjects, "bookshelves": ["Letters", "Classics"],
+            "description": "A source description.\n\nSecond paragraph with Unicode — 文學.",
+            "rights": "CC BY 4.0 curated data; public-domain primary text",
+            "rights_url": "https://example.invalid/licenses/4.0",
+            "publisher": "Source Press", "published": "1912",
             "source": {"provider": "test-source", "id": "42", "url": source_url},
             "preparation": {"wrap_columns": 72, "plain_quotes": True},
             "units": [{"title": "Unit " + str(i), "path": str(i) + ".txt"} for i in range(1, 25)],
@@ -632,6 +636,9 @@ def information_tests():
             check("".join(value.split()) in compact, "long CJK title, source URL and every subject remain complete")
         check("A.Translator" in compact and "Languages:en;fr" in compact and "Bookshelves:Letters;Classics" in compact,
               "shared bibliographic fields survive narrow wrapping")
+        for key in ["description", "rights", "rights_url", "publisher", "published"]:
+            check("".join(metadata[key].split()) in compact,
+                  "saved source " + key + " remains readable offline at narrow width")
         check("Savedcatalogfile:" not in compact, "missing raw snapshot needs no placeholder or error")
         width, height = 90, 22
         nvim.ui_try_resize(width, height)

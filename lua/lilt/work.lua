@@ -118,6 +118,11 @@ function M.load(directory)
     languages = true,
     subjects = true,
     bookshelves = true,
+    description = true,
+    rights = true,
+    rights_url = true,
+    publisher = true,
+    published = true,
     source = true,
     preparation = true,
     units = true,
@@ -127,6 +132,23 @@ function M.load(directory)
     fail(manifest .. ': unsupported version')
   end
   title(data.title, manifest .. ': title')
+  for _, key in ipairs({ 'rights', 'rights_url', 'publisher', 'published' }) do
+    if data[key] ~= nil then
+      title(data[key], manifest .. ': ' .. key)
+    end
+  end
+  if data.rights_url ~= nil and not data.rights_url:match('^https?://%S+$') then
+    fail(manifest .. ': rights_url must be an HTTP(S) URL')
+  end
+  if data.description ~= nil then
+    if
+      type(data.description) ~= 'string'
+      or not data.description:find('%S')
+      or data.description:gsub('[\n\t]', ''):find('%c')
+    then
+      fail(manifest .. ': description must be plain text without control characters')
+    end
+  end
   for _, key in ipairs({ 'authors', 'translators', 'languages', 'subjects', 'bookshelves' }) do
     if data[key] ~= nil then
       if type(data[key]) ~= 'table' or not vim.islist(data[key]) then

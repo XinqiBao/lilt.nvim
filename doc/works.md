@@ -36,6 +36,12 @@ The manifest accepts exactly these fields:
 - `authors`, `translators`, `languages`, `subjects`, `bookshelves`: optional arrays
   of nonempty single-line strings. Use source-provided names and language codes;
   do not infer missing bibliographic details. Empty arrays are allowed.
+- `description`: optional plain text, allowing paragraph newlines and tabs;
+  other control characters are rejected. This is source-supplied text, not HTML.
+- `rights`, `publisher`, `published`: optional nonempty single-line source facts.
+  Rights describe the source's claim; they do not establish universal permission.
+  Publication text retains supplied precision; ambiguous feed-update dates are
+  omitted. `rights_url` optionally links to an HTTP(S) license or rights notice.
 - `source`: optional object with `provider`, `id`, and `url` strings. All three
   must be nonempty single-line strings; `url` must be an HTTP(S) URL. This is
   portable attribution, not a download or synchronization instruction. `provider`

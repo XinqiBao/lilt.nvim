@@ -16,6 +16,18 @@ function M.items(metadata, context)
   field('Languages', metadata.languages)
   field('Subjects', metadata.subjects)
   field('Bookshelves', metadata.bookshelves)
+  for _, pair in ipairs({
+    { 'Publisher', 'publisher' },
+    { 'Published', 'published' },
+    { 'Description', 'description' },
+    { 'Rights (source claim)', 'rights' },
+    { 'License / rights URL', 'rights_url' },
+  }) do
+    local value = metadata[pair[2]]
+    if value then
+      items[#items + 1] = { label = pair[1] .. ': ' .. value, wrap = 'full' }
+    end
+  end
   if metadata.source then
     items[#items + 1] = { label = 'Source', hl = 'Title' }
     items[#items + 1] = {

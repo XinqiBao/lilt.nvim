@@ -20,6 +20,11 @@ local function run()
     languages = { 'en', 'zh' },
     subjects = { 'Literature' },
     bookshelves = { 'Fiction' },
+    description = 'A plain description.\n\nWith another paragraph.',
+    rights = 'Public domain in the USA',
+    rights_url = 'https://example.org/license',
+    publisher = 'Source publisher',
+    published = '1912',
     preparation = { wrap_columns = 72, plain_quotes = false },
     units = {
       { path = 'chapters/02.txt', title = 'Second first' },
@@ -39,6 +44,12 @@ local function run()
     { languages = { '' } },
     { preparation = { wrap_columns = 0 } },
     { preparation = { plain_quotes = 'yes' } },
+    { description = 'bad\0description' },
+    { description = false },
+    { rights = 'multiple\nlines' },
+    { rights_url = 'file:///license' },
+    { publisher = '' },
+    { published = 1912 },
   }) do
     local ok = pcall(function()
       manifest(vim.tbl_extend('force', data, invalid))

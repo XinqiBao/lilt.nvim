@@ -76,7 +76,8 @@ local function parse(text, url, selected)
   end
   local entries, seen = {}, {}
   local found = false
-  for _, node in ipairs(xml.children(feed, 'entry', atom)) do
+  local records = xml.children(feed, 'entry', atom)
+  for _, node in ipairs(records) do
     local title = child_text(node, 'title', atom)
     local id = child_text(node, 'id', atom)
     local number = id:match('^https://unglue%.it/api/id/work/([1-9]%d*)/$')
@@ -179,7 +180,13 @@ local function parse(text, url, selected)
     fail('selected work is absent from the feed snapshot')
   end
   local page = {
-    title = selected and child_text(feed, 'title', atom) or (orders[order] .. ' · English copies'),
+    title = selected and child_text(feed, 'title', atom) or string.format(
+      '%s · page %d · %d eligible English works / %d source records',
+      orders[order],
+      tonumber(url:match('&page=(%d+)$') or '0') + 1,
+      #entries,
+      #records
+    ),
     entries = entries,
     empty = 'No eligible English EPUB copies on this page. Only direct EPUBs with known rights are listed.',
   }

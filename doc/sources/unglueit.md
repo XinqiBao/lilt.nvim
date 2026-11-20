@@ -6,6 +6,8 @@ explicitly English copies with direct HTTPS EPUB acquisitions and a recognized
 rights notice. A page may contain no eligible copies; its Next action remains
 available when the feed advertises another page. Title search is not offered
 because the documented service has returned search timeouts.
+Headings show the current page and its eligible English work/group count against
+raw feed records. These are local page counts; copy choices are counted separately.
 
 A work with several eligible downloads opens a copy list. Each choice shows
 its own rights, supplied version/title and copy number. Those downloads can

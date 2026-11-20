@@ -1,13 +1,14 @@
 # Unglue.it
 
 Unglue.it offers anonymous [OPDS catalog feeds](https://unglue.it/api/help).
-Choose **Popular EPUBs** or **New EPUBs** inside Discover online. Lilt lists
-explicitly English copies with direct HTTPS EPUB acquisitions and a recognized
-rights notice. A page may contain no eligible copies; its Next action remains
-available when the feed advertises another page. Title search is not offered
+Inside Discover online, **Explore** includes its popular EPUB feed and
+**Recently listed** includes its new EPUB feed. Lilt lists explicitly English
+copies with direct HTTPS EPUB acquisitions and a recognized
+rights notice. A page may contain no eligible copies; **Load more** remains
+available when the feed advertises another page. Unglue.it does not join search
 because the documented service has returned search timeouts.
-Headings show the current page and its eligible English work/group count against
-raw feed records. These are local page counts; copy choices are counted separately.
+A feed can mix eligible and ineligible works, so its record count is not an
+eligible catalog total.
 
 A work with several eligible downloads opens a copy list. Each choice shows
 its own rights, supplied version/title and copy number. Those downloads can

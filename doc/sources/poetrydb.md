@@ -2,11 +2,19 @@
 
 PoetryDB provides free anonymous access to a curated poetry collection through
 its [documented JSON API](https://github.com/thundercomb/poetrydb#api-reference).
-Choose **Discover online → PoetryDB** to browse authors or search titles and
-authors. An author's group lists that author's poems. Search matches either
-title or author; it does not search poem text. The service supplies no pagination
-or reliable total for these queries. If a search is too broad, narrow it rather
-than expecting another page. Catalog availability depends on the service.
+In **Discover online**, PoetryDB contributes random poems to **Explore** and
+**Poetry**, author groups to **Browse poets**, and title/author matches to
+search. A poet's group lists that author's poems. Search matches either title or
+author; it does not search poem text. The service supplies no pagination or
+reliable total for author/search queries. If a search is too broad, narrow it
+rather than expecting another page. Catalog availability depends on the service.
+
+Explore and Poetry each request a random batch of up to 20 poem metadata
+records using `/random/20/author,title,linecount`. Browsing does not download
+poem bodies. **Load more** requests another bounded random batch, which may
+repeat previously seen poems; exact source identities appear once in accumulated
+results. Random browsing does not promise exhaustive coverage or short poems.
+No catalog total or page count is inferred from these samples.
 
 Each selected poem becomes one plain-text reading unit. Acquisition requires
 `curl`, without EPUB conversion or Pandoc. The reference retains every API line,

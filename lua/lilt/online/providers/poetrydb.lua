@@ -4,13 +4,11 @@ local work = require('lilt.work')
 local M = {
   id = 'poetrydb',
   name = 'PoetryDB',
-  menu = {
-    { label = 'Browse authors', query = {} },
-    { label = 'Search title or author…', query = {}, input = 'Search title or author' },
-  },
+  browse = {},
 }
 local base = 'https://poetrydb.org'
 local fields = '/author,title,linecount'
+local random_count = 20
 local license = 'https://github.com/thundercomb/poetrydb/blob/main/DATA_LICENSE.md'
 local rights = 'PoetryDB curated data: CC BY 4.0; primary poem texts: public domain (source claim).'
 
@@ -134,12 +132,12 @@ local function source(author, poem_title)
     url
 end
 
-function M.browse(query, callback)
+local function browse(query, callback)
   local ok, url = pcall(function()
+    if query.random then
+      return base .. '/random/' .. random_count .. fields
+    end
     if query.search ~= nil then
-      if not title(query.search) then
-        fail('enter a title or author to search')
-      end
       -- Percent encoding does not hide API delimiters or terminal modifiers.
       if
         query.search:find('[;/]')
@@ -163,7 +161,7 @@ function M.browse(query, callback)
   end
   return fetch(url, function(data)
     local entries = {}
-    if query.search == nil and query.author == nil then
+    if not query.random and query.search == nil and query.author == nil then
       local authors = data.authors
       if authors == nil and vim.islist(data) and #data == 0 then
         authors = {}
@@ -177,13 +175,22 @@ function M.browse(query, callback)
           fail('invalid author name')
         end
         if not seen[author] then
-          entries[#entries + 1] = { kind = 'group', label = author, query = { author = author } }
+          entries[#entries + 1] = {
+            kind = 'group',
+            id = author,
+            label = author,
+            query = { author = author },
+          }
           seen[author] = true
         end
       end
     else
       local seen = {}
-      for _, record in ipairs(records(data)) do
+      local poems = records(data)
+      if query.random and #poems > random_count then
+        fail('random response exceeds requested batch size')
+      end
+      for _, record in ipairs(poems) do
         if query.author and record.author ~= query.author then
           fail('author response does not match the selected author')
         end
@@ -204,11 +211,41 @@ function M.browse(query, callback)
       end
     end
     return {
-      title = query.search and ('Search: ' .. query.search) or query.author or 'Authors',
+      title = query.random and 'Random poems'
+        or query.search and ('Search: ' .. query.search)
+        or query.author
+        or 'Poets',
       entries = entries,
-      empty = 'No poems or authors found. Try another title or author.',
+      -- Each continuation is a fresh sample, not an exhaustive catalog page.
+      next = query.random and { random = true } or nil,
+      empty = query.random and 'No poems returned in this random batch. Load more to try again.'
+        or 'No poems or poets found. Try another title or author.',
     }
   end, callback)
+end
+
+function M.browse.explore(_, callback)
+  return browse({ random = true }, callback)
+end
+
+M.browse.poetry = M.browse.explore
+
+function M.browse.poets(_, callback)
+  return browse({}, callback)
+end
+
+function M.search(text, _, callback)
+  if not title(text) then
+    return deferred('Lilt: PoetryDB: enter a title or author to search', callback)
+  end
+  return browse({ search = text }, callback)
+end
+
+function M.expand(query, callback)
+  if not query.author then
+    return deferred('Lilt: PoetryDB: missing selected author', callback)
+  end
+  return browse({ author = query.author }, callback)
 end
 
 function M.prepare(entry, directory, callback)

@@ -70,6 +70,11 @@ local function rejected(text, message)
 end
 local function run()
   vim.fn.mkdir(root, 'p')
+  local registered = false
+  for _, source in ipairs(require('lilt.online.providers').list()) do
+    registered = registered or source == provider
+  end
+  assert(registered, 'Unglue.it is registered for source selection')
   local err, page = browse()
   assert(not err, tostring(err))
   assert(

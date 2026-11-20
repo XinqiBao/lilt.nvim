@@ -6,6 +6,14 @@ identity reuse, cancellation and publication. There is no federated search or
 user provider registration. The `catalog` setup option overrides Gutenberg's
 Gutendex server only.
 
+| Source | Discovery | Acquisition |
+| --- | --- | --- |
+| Project Gutenberg | Popular, newest, poetry, short stories, title/author search through Gutendex | EPUBs marked public domain in the USA, from its PGLAF mirror |
+| [Unglue.it](sources/unglueit.md) | Popular/new EPUB feeds; eligible English copies, with explicit copy choices | Advertised direct EPUBs with recognized per-copy rights |
+
+Online requests require curl on PATH; acquiring EPUBs also requires Pandoc
+3.1.1+. Saved library works remain available offline without either tool.
+
 ## Internal contract
 
 `lua/lilt/online/providers.lua` explicitly constructs the installed providers

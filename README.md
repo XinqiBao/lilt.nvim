@@ -94,11 +94,15 @@ require("lilt").setup({
 
 ## Online sources
 
-- **curl** for online discovery; [Pandoc 3.1.1+](https://pandoc.org/installing.html)
-  for acquiring new works. Both use `PATH`; local reading needs neither.
+- **curl** for online discovery and downloads;
+  [Pandoc 3.1.1+](https://pandoc.org/installing.html) for acquiring EPUBs.
+  Both use `PATH`; local reading needs neither.
 - [Gutendex](https://gutendex.com/) supplies the searchable catalog. Literary texts
   come from [Project Gutenberg](https://www.gutenberg.org/) through its designated
   PGLAF mirror. Acquired works remain available offline.
+- [Unglue.it](doc/sources/unglueit.md) supplies popular/new EPUB feeds. Lilt
+  lists eligible English copies with explicit rights and lets you choose among
+  multiple downloads. Original EPUBs, catalog snapshots and notices are retained.
 
 Each source has its own menu and supported formats. Source details, supplied
 rights and descriptions remain readable offline; original downloads and source

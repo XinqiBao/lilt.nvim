@@ -8,11 +8,13 @@ Gutendex server only.
 
 | Source | Discovery | Acquisition |
 | --- | --- | --- |
-| Project Gutenberg | Popular, newest, poetry, short stories, title/author search through Gutendex | EPUBs marked public domain in the USA, from its PGLAF mirror |
+| [Project Gutenberg](works.md#online-acquisition) | Popular, newest, poetry, short stories, title/author search through Gutendex | EPUBs marked public domain in the USA, from its PGLAF mirror |
 | [Unglue.it](sources/unglueit.md) | Popular/new EPUB feeds; eligible English copies, with explicit copy choices | Advertised direct EPUBs with recognized per-copy rights |
+| [PoetryDB](sources/poetrydb.md) | Author groups and title/author search | One poem as native text; original full JSON retained |
 
 Online requests require curl on PATH; acquiring EPUBs also requires Pandoc
-3.1.1+. Saved library works remain available offline without either tool.
+3.1.1+. PoetryDB needs only curl. Saved library works remain available offline
+without either tool.
 
 ## Internal contract
 

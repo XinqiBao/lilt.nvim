@@ -13,9 +13,10 @@ the pull request's merge node.
 ## Setup
 
 Reading needs only **Neovim 0.11.0 or newer**; online discovery also requires
-`curl` on `PATH`; acquiring EPUBs from Gutenberg or Unglue.it also uses Pandoc
-3.1.1+. Both sources use controlled fixtures in tests, with no live catalog
-dependency. For development,
+`curl` on `PATH`. Acquiring EPUBs from Gutenberg or Unglue.it also uses Pandoc
+3.1.1+; PoetryDB's native text path needs only curl and retains the original JSON.
+All three source suites use controlled fixtures without a live catalog dependency.
+For development,
 [mise](https://mise.jdx.dev/) pins StyLua, Selene, Pandoc, and uv in
 [mise.toml](mise.toml). It deliberately leaves Neovim on your own `PATH`.
 [uv](https://docs.astral.sh/uv/) manages the test-only Python interpreter in

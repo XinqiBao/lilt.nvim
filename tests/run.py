@@ -23,6 +23,7 @@ SUITES = {
     "picker": "editor/picker.lua",
     "online": "editor/online.lua",
     "unglueit": "editor/unglueit.lua",
+    "poetrydb": "editor/poetrydb.lua",
     "ui": "ui.py",
 }
 

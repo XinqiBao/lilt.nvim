@@ -4,6 +4,7 @@ function M.list(catalog)
   return {
     require('lilt.online.providers.gutenberg').new(catalog),
     require('lilt.online.providers.unglueit'),
+    require('lilt.online.providers.poetrydb'),
   }
 end
 

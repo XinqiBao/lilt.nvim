@@ -36,12 +36,23 @@ The manifest accepts exactly these fields:
 - `authors`, `translators`, `languages`, `subjects`, `bookshelves`: optional arrays
   of nonempty single-line strings. Use source-provided names and language codes;
   do not infer missing bibliographic details. Empty arrays are allowed.
+- `description`: optional plain text, allowing paragraph newlines and tabs;
+  other control characters are rejected. This is source-supplied text, not HTML.
+- `rights`, `publisher`, `published`: optional nonempty single-line source facts.
+  Rights describe the source's claim; they do not establish universal permission.
+  Publication text retains supplied precision; ambiguous feed-update dates are
+  omitted. `rights_url` optionally links to an HTTP(S) license or rights notice.
 - `source`: optional object with `provider`, `id`, and `url` strings. All three
   must be nonempty single-line strings; `url` must be an HTTP(S) URL. This is
   portable attribution, not a download or synchronization instruction. `provider`
   is a lowercase machine identifier such as `gutenberg`, starting with a letter
   and containing only ASCII letters, digits and hyphens. Optional `file` names
   an existing relative source file, with the same path rules as reference files.
+  Optional `version` is a nonempty single-line acquisition revision supplied by
+  the source. It is shown as Source version, not inferred as a bibliographic
+  edition. Only provider/ID identify an existing library copy.
+  Optional `title` is the source's nonempty single-line advertised acquisition
+  title, labeled Source copy title; it is not a personal alias or inferred edition.
 - `preparation`: optional record of applied text processing. `wrap_columns` is
   an optional positive integer; `plain_quotes` is an optional boolean. Editing
   this record does not reconvert references.
@@ -249,6 +260,21 @@ other path's parents yourself.
 
 ## Online acquisition
 
+Choose **Discover online…**, select a source, then choose a source-specific browse
+or search action. Catalogs stay separate. Groups open a deeper list; next/previous
+page replace the current list. Back restores the parent group or source menu,
+then source selection. Failed requests offer retry; leaving cancels pending work.
+Empty or cancelled search input preserves the current page.
+
+Shared acquisition stages each new work, checks selected provider/ID against the
+prepared source, validates all files, and checks names and identity again before
+installation. The directory name is independent of the source's official title.
+Matching provider/ID always reopens the saved copy without refreshing references.
+Source-specific contracts and internal adapter signatures are in
+[Online source adapters](sources.md).
+
+### Project Gutenberg
+
 Lilt uses [Gutendex](https://gutendex.com/), Gareth Johnson's
 [open source catalog API](https://github.com/garethbjohnson/gutendex), for discovery.
 Gutendex serves Project Gutenberg metadata; it does not supply Lilt's downloaded
@@ -263,13 +289,17 @@ updated or overwritten. Each copy records its source in `lilt.json` and
 `SOURCE.epub`. `SOURCE.json` preserves the raw catalog entry and its catalog URL,
 including source fields that Lilt does not model. The manifest retains author and
 translator names, languages, subjects, bookshelves and actual preparation settings.
+Supplied descriptions, rights/license URLs, publisher/publication facts and source
+versions are optional metadata. Absent or ambiguous facts are omitted. Rights are
+the source's claim, not a universal licensing assertion.
 These are acquisition snapshots, not live metadata synchronization.
 
 Work information uses the saved manifest offline. It shows recorded bibliographic
 and source fields, followed by local directory/preparation facts, omitting absent
 fields. Online work details use the current catalog; they do not describe or
 refresh an installed edition. The information page lists the path to SOURCE.json
-when retained, for access to the fuller raw catalog snapshot. Missing or older
+when retained, for access to the fuller raw catalog snapshot; original source and
+README attribution/license paths are also listed. Missing or older
 snapshots do not block reading, and the page does not infer their age.
 
 Only works cataloged as public domain in the USA with EPUB are supported.

@@ -93,10 +93,16 @@ format manifests without changing array order or reference bodies. Acquisition
 also retains the complete catalog record in `SOURCE.json`; modeled metadata and
 preparation settings are snapshots, never instructions to refresh a reading copy.
 
-`online/catalog.lua` queries Gutendex and validates catalog metadata.
-`online/acquire.lua` downloads image-free EPUB from Gutenberg's listed PGLAF
-mirror, prepares an ordinary work, and delegates validation and publication to
-`library.add`. Both use `online/request.lua` for bounded, cancellable requests.
+`online/providers.lua` explicitly lists source adapters. Source menu/query,
+group/work entries and continuation queries use the small contract in
+[sources.md](sources.md). `online/catalog.lua` validates Gutendex metadata for
+the Gutenberg adapter. `online/materialize.lua` shares bounded EPUB download and
+local conversion, or writes exact plain-text rows without Pandoc.
+`online/acquire.lua` owns staging, checks returned identity against selection,
+persists metadata/attribution, and delegates publication to `library.add`.
+Adapters own source semantics and original artifacts; they never see the library
+root or personal directory name. EPUB sources use `online/request.lua` for bounded,
+cancellable requests.
 The optional manifest `source` records portable attribution; a matching
 provider/id permits reopening an existing copy without fetching or changing its
 reference edition. Colliding local works and orphan manuscripts block acquisition.
@@ -104,8 +110,9 @@ reference edition. Colliding local works and orphan manuscripts block acquisitio
 The picker owns each asynchronous request's cancellation function. Back, leaving
 the picker, and editor exit cancel it; callbacks also check page/picker lifetime.
 Requests use argument-vector curl, HTTPS-only redirects, time/size limits and
-owned temporary files. Only the current catalog page remains on the page stack;
-there is no background polling, persistent catalog cache, or remote reading state.
+owned temporary files. Continuation replaces the current catalog page; source
+menus and parent groups remain on the page stack for back navigation.
+There is no background polling, persistent catalog cache, or remote reading state.
 
 `import/epub.lua` is a local-file converter: `prepare(input, destination,
 options, callback)` produces a validated, ordinary work with `lilt.json` and

@@ -20,6 +20,11 @@ local function run()
     languages = { 'en', 'zh' },
     subjects = { 'Literature' },
     bookshelves = { 'Fiction' },
+    description = 'A plain description.\n\nWith another paragraph.',
+    rights = 'Public domain in the USA',
+    rights_url = 'https://example.org/license',
+    publisher = 'Source publisher',
+    published = '1912',
     preparation = { wrap_columns = 72, plain_quotes = false },
     units = {
       { path = 'chapters/02.txt', title = 'Second first' },
@@ -39,6 +44,12 @@ local function run()
     { languages = { '' } },
     { preparation = { wrap_columns = 0 } },
     { preparation = { plain_quotes = 'yes' } },
+    { description = 'bad\0description' },
+    { description = false },
+    { rights = 'multiple\nlines' },
+    { rights_url = 'file:///license' },
+    { publisher = '' },
+    { published = 1912 },
   }) do
     local ok = pcall(function()
       manifest(vim.tbl_extend('force', data, invalid))
@@ -57,8 +68,15 @@ local function run()
   rejects({ title = 'Work', units = vim.NIL }, 'nonempty array')
   rejects({ title = 'Work', typo = true, units = data.units }, 'unknown field')
   data.source = { provider = 'gutenberg', id = '11', url = 'https://www.gutenberg.org/ebooks/11' }
+  data.source.version = '0.2'
+  data.source.title = 'Illustrated copy'
   manifest(data)
-  assert(work.load(root).source.id == '11', 'portable optional provenance')
+  assert(
+    work.load(root).source.id == '11'
+      and work.load(root).source.version == '0.2'
+      and work.load(root).source.title == 'Illustrated copy',
+    'portable optional provenance'
+  )
   for _, source in ipairs({
     {},
     { provider = 'PG', id = '11' },
@@ -66,6 +84,9 @@ local function run()
     { provider = 'PG', id = '11\n12', url = 'https://example.org/' },
     { provider = 'PG', id = '11', url = 'file:///etc/passwd' },
     { provider = 'PG', id = '11', url = 'https://example.org/', extra = true },
+    { provider = 'gutenberg', id = '11', url = 'https://example.org/', version = '' },
+    { provider = 'gutenberg', id = '11', url = 'https://example.org/', title = 'copy\nsecond' },
+    { provider = 'gutenberg', id = '11', url = 'https://example.org/', version = '0.1\n0.2' },
   }) do
     rejects({ title = 'Work', source = source, units = data.units }, 'source')
   end

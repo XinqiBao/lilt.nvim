@@ -46,6 +46,9 @@ end
 local function full_wrap(text, width)
   -- Paths and diagnostics may contain controls; buffer rows must not.
   text = text:gsub('%c', ' ')
+  if text == '' then
+    return { '' }
+  end
   local lines = {}
   while text ~= '' do
     local bytes = 0

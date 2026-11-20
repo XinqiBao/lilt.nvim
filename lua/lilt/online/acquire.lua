@@ -1,170 +1,133 @@
--- Project Gutenberg acquisition produces ordinary local works.
+-- Acquisition owns staging and publication; providers own source preparation.
 local library = require('lilt.library')
 local names = require('lilt.name')
 local json = require('lilt.json')
-local request = require('lilt.online.request')
-local epub = require('lilt.import.epub')
+local work = require('lilt.work')
 local M = {}
-local mirror = 'https://gutenberg.pglaf.org/cache/epub/'
-local filter = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':h:h:h:h')
-  .. '/pandoc/gutenberg.lua'
 
-local function checked(value, err)
-  if not value then
-    error('Lilt: ' .. tostring(err), 0)
-  end
-  return value
+function M.existing(root, entry)
+  return library.find_source(root, entry.source)
 end
 
-function M.source(book)
-  return { provider = 'gutenberg', id = tostring(book.id), url = M.url(book) }
-end
-function M.name(book, value)
-  return names.work(value or book.title, M.source(book))
-end
-function M.url(book)
-  return 'https://www.gutenberg.org/ebooks/' .. book.id
-end
-
--- Never refresh a reference beneath an existing manuscript, even if the source
--- edition has changed. Only a matching portable provenance record permits reuse.
-function M.existing(root, book)
-  return library.find_source(root, M.source(book))
-end
-
-function M.acquire(root, book, callback, name)
-  local existing_ok, existing = pcall(function()
-    local installed = M.existing(root, book)
-    if not installed then
-      name = name or M.name(book)
-      library.available(root, name, M.source(book))
-    end
-    return installed
-  end)
-  if not existing_ok or existing then
-    local cancelled = false
-    vim.schedule(function()
-      if not cancelled then
-        if existing_ok then
-          callback(nil, existing)
-        else
-          callback(tostring(existing))
-        end
-      end
-    end)
-    return function()
-      cancelled = true
-    end
-  end
-  if not book.supported then
-    local cancelled = false
-    vim.schedule(function()
-      if not cancelled then
-        callback('Lilt: this work has no supported public-domain EPUB')
-      end
-    end)
-    return function()
-      cancelled = true
-    end
-  end
-  local url = mirror .. book.id .. '/pg' .. book.id .. '.epub'
-  local staging, cancel_step, cancelled = vim.fn.tempname(), nil, false
+function M.acquire(root, provider, entry, callback, name)
+  local cancelled, finished, cancel_step, staging = false, false, nil, nil
+  local selected_source = vim.deepcopy(entry.source)
   local function cleanup()
-    if vim.uv.fs_lstat(staging) and vim.fn.delete(staging, 'rf') ~= 0 then
+    if staging and vim.uv.fs_lstat(staging) and vim.fn.delete(staging, 'rf') ~= 0 then
       vim.notify('Lilt: could not remove acquisition staging: ' .. staging, vim.log.levels.WARN)
     end
   end
   local function finish(err, value)
+    if finished then
+      return
+    end
+    finished = true
     cleanup()
     if not cancelled then
       callback(err, value)
     end
   end
-  cancel_step = epub.check(function(tool_error)
-    if tool_error then
-      finish(tool_error)
+  -- Defer even immediate reuse/errors so callers can install their cancel handle.
+  vim.schedule(function()
+    if cancelled then
       return
     end
-    cancel_step = request(url, function(err, path)
-      if cancelled then
+    local ok, err = pcall(function()
+      if not entry.source or entry.source.provider ~= provider.id then
+        error('Lilt: selected source does not match provider', 0)
+      end
+      local installed = M.existing(root, entry)
+      if installed then
+        finish(nil, installed)
         return
       end
-      if err then
-        finish(err)
-        return
+      name = name or names.work(entry.title, entry.source)
+      library.available(root, name, entry.source)
+      if not entry.supported then
+        error('Lilt: ' .. (entry.availability or 'this source entry is unavailable'), 0)
       end
-      local source = staging .. '/SOURCE.epub'
-      local directory = staging .. '/' .. name
-      -- The request deletes its download when this callback returns. Keep an
-      -- acquisition-owned input until conversion finishes; the converter only
-      -- receives local paths and metadata, never a URL or library root.
-      local copied, copy_error = pcall(function()
-        checked(vim.fn.mkdir(staging, 'p') == 1, 'cannot create acquisition staging directory')
-        checked(vim.uv.fs_copyfile(path, source, { excl = true }))
-      end)
-      if not copied then
-        finish(tostring(copy_error))
-        return
-      end
-      local plain_quotes = #book.languages == 1 and book.languages[1] == 'en'
-      cancel_step = epub.prepare(source, directory, {
-        title = book.title,
-        authors = book.authors,
-        translators = book.translators,
-        languages = book.languages,
-        subjects = book.subjects,
-        bookshelves = book.bookshelves,
-        source = M.source(book),
-        plain_quotes = plain_quotes,
-        filter = filter,
-      }, function(prepare_error, prepared)
+      staging = vim.fn.tempname()
+      assert(vim.fn.mkdir(staging) == 1, 'Lilt: cannot create acquisition staging directory')
+      local directory = staging .. '/work'
+      cancel_step = provider.prepare(entry, directory, function(prepare_error, prepared)
+        if cancelled or finished then
+          return
+        end
         if prepare_error then
           finish(prepare_error)
           return
         end
-        local ok, result = pcall(function()
-          checked(vim.uv.fs_rename(source, directory .. '/SOURCE.epub'))
-          prepared.manifest.source.file = 'SOURCE.epub'
-          json.write(directory .. '/lilt.json', prepared.manifest)
-          json.write(directory .. '/SOURCE.json', {
-            catalog_url = book.catalog_url,
-            entry = book.catalog_entry,
-          })
-          checked(vim.fn.writefile({
-            book.title,
-            book.author,
+        local installed_ok, result = pcall(function()
+          local manifest = prepared.manifest
+          local source = manifest.source
+          if
+            not source
+            or source.provider ~= selected_source.provider
+            or source.id ~= selected_source.id
+          then
+            error('Lilt: prepared source identity does not match selection', 0)
+          end
+          assert(source.file, 'Lilt: prepared work must retain its original source artifact')
+          json.write(directory .. '/lilt.json', manifest)
+          json.write(directory .. '/SOURCE.json', prepared.snapshot)
+          local lines = {
+            manifest.title,
+            table.concat(manifest.authors or {}, '; '),
             '',
-            'Source: Project Gutenberg #' .. book.id,
-            M.url(book),
-            'Downloaded from: ' .. url,
+            'Source: ' .. provider.name .. ' · ' .. source.id,
+            source.url,
             '',
-            'SOURCE.epub is the unmodified download, including original credits and license.',
-            'Pandoc converts the EPUB reading order and headings to UTF-8 reading units.',
-            'Distribution boilerplate and images are omitted from reading text.',
-            'Prose wraps at 72 columns; explicit verse and preformatted line breaks are retained.',
-            'Source nav/NCX supplies navigation; body headings are the fallback.',
-            'Long sections divide at paragraph breaks under their source chapter.',
-            table.concat(prepared.import_warnings or {}, ' '),
-            plain_quotes
-                and 'English curly quotation marks and apostrophes are converted to straight quotes.'
-              or 'Source punctuation is preserved.',
-            '',
-            'Public domain in the USA. Check the law in your country before use.',
-            'Project Gutenberg is a registered trademark; Lilt is an independent client.',
-            'Before sharing, retain SOURCE.epub and review the source license and trademark terms:',
-            'https://www.gutenberg.org/policy/license.html',
-          }, directory .. '/README.txt') == 0, 'cannot write attribution')
-          local installed = library.add(root, directory)
-          installed.import_warnings = prepared.import_warnings
-          return installed
+          }
+          if source.version then
+            lines[#lines + 1] = 'Source version: ' .. source.version
+          end
+          if source.title then
+            lines[#lines + 1] = 'Source copy title: ' .. source.title
+          end
+          for _, field in ipairs({
+            { 'Rights (source claim)', 'rights' },
+            { 'License / rights URL', 'rights_url' },
+            { 'Publisher', 'publisher' },
+            { 'Published', 'published' },
+            { 'Description', 'description' },
+          }) do
+            if manifest[field[2]] then
+              vim.list_extend(
+                lines,
+                vim.split(field[1] .. ': ' .. manifest[field[2]], '\n', { plain = true })
+              )
+            end
+          end
+          if manifest.preparation then
+            local preparation = manifest.preparation
+            if preparation.wrap_columns then
+              lines[#lines + 1] = 'Prose wrap columns: ' .. preparation.wrap_columns
+            end
+            if preparation.plain_quotes ~= nil then
+              lines[#lines + 1] = 'Plain quotes: ' .. (preparation.plain_quotes and 'yes' or 'no')
+            end
+          end
+          vim.list_extend(lines, prepared.attribution)
+          vim.list_extend(lines, prepared.import_warnings or {})
+          assert(
+            vim.fn.writefile(lines, directory .. '/README.txt') == 0,
+            'Lilt: cannot write attribution'
+          )
+          work.validate(directory)
+          local reading = library.add(root, directory, name)
+          reading.import_warnings = prepared.import_warnings
+          return reading
         end)
-        if ok then
+        if installed_ok then
           finish(nil, result)
         else
           finish(tostring(result))
         end
       end)
     end)
+    if not ok then
+      finish(tostring(err))
+    end
   end)
   return function()
     cancelled = true

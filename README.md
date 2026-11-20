@@ -46,14 +46,14 @@ Plug 'XinqiBao/lilt.nvim'
 Run `:Lilt` and choose a work and unit. **Examples** offers an offline first try.
 Retype the passage following its physical line breaks, including blank rows.
 
-To build a personal library, choose **Discover online…**, browse or search for a
-work, then choose **Add to library**. For your own texts, choose **Add local
-work…** and enter a [prepared work directory](doc/works.md). The floating path
-input supports directory completion with Tab / Shift-Tab; Enter accepts a
+To build a personal library, choose **Discover online…**, select a source, then
+browse or search its catalog and choose **Add to library**. For your own texts,
+choose **Add local work…** and enter a [prepared work directory](doc/works.md).
+The floating path input supports directory completion with Tab / Shift-Tab; Enter accepts a
 completion, then Enter opens the work. Paths may include `~` and spaces.
 Adding a new work offers its official title as an editable directory name and
-previews the normalized spelling. Source IDs prevent version collisions; the
-library list keeps official titles and authors.
+previews the normalized spelling. Provider and source IDs distinguish saved
+copies; the library list keeps official titles and authors.
 
 From a work's reading units, press `i` for **Work information**: saved book and
 source details, directory, and recorded text preparation. This page works
@@ -99,6 +99,10 @@ require("lilt").setup({
 - [Gutendex](https://gutendex.com/) supplies the searchable catalog. Literary texts
   come from [Project Gutenberg](https://www.gutenberg.org/) through its designated
   PGLAF mirror. Acquired works remain available offline.
+
+Each source has its own menu and supported formats. Source details, supplied
+rights and descriptions remain readable offline; original downloads and source
+records are retained. See [online sources](doc/sources.md).
 
 Check copyright in your country before downloading or sharing. Downloads retain
 the original EPUB, credits, and license in `SOURCE.epub`; see [sources and redistribution

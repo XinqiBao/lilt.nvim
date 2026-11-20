@@ -1,6 +1,7 @@
 local api = vim.api
 local catalog = require('lilt.online.catalog')
 local acquisition = require('lilt.online.acquire')
+local provider = require('lilt.online.providers.gutenberg').new()
 local work = require('lilt.work')
 local root = vim.fn.tempname()
 local home = root .. '/library'
@@ -173,7 +174,107 @@ local function no_staging()
     assert(not vim.uv.fs_stat(job.path), 'download file leaked')
   end
 end
+local function shared_preparation()
+  local materialize = require('lilt.online.materialize')
+  vim.fn.mkdir(root, 'p')
+  local metadata = {
+    title = 'A poem',
+    authors = { 'A. Poet' },
+    source = {
+      provider = 'test-source',
+      id = 'chosen',
+      url = 'https://example.org/poem',
+      version = '0.2',
+      title = 'Illustrated copy',
+    },
+    rights = 'Source rights notice',
+    rights_url = 'https://example.org/license',
+  }
+  local rows = { '  “A poem 🐇”  ', '', 'Last stanza', '', '' }
+  local prepared = materialize.text(rows, root .. '/text-work', metadata)
+  assert(
+    vim.deep_equal(work.read(root .. '/text-work/001.txt'), rows),
+    'all physical source rows survive unchanged'
+  )
+  assert(
+    not prepared.manifest.preparation.plain_quotes
+      and prepared.snapshot
+      and prepared.attribution
+      and prepared.import_warnings,
+    'text helper returns the shared prepared envelope'
+  )
+  for i, invalid in ipairs({
+    { 'embedded\nrow' },
+    { 'embedded\rrow' },
+    { '\0' },
+    { '\255' },
+    { '\194' },
+    { '\239\187\191BOM' },
+    { 12 },
+  }) do
+    assert(
+      not pcall(materialize.text, invalid, root .. '/invalid-rows-' .. i, metadata),
+      'changed or invalid source rows must fail preparation'
+    )
+  end
+  local blank = materialize.text({ '' }, root .. '/blank-row', metadata)
+  assert(
+    #work.read(root .. '/blank-row/001.txt') == 1 and #blank.manifest.units == 1,
+    'one blank row is valid text'
+  )
+  local selected_entry = vim.tbl_extend('force', vim.deepcopy(metadata), { supported = true })
+  local temporary, substituted, mutate = nil, true, false
+  local fake = { id = 'test-source', name = 'Test Source' }
+  function fake.prepare(selected, directory, callback)
+    temporary = vim.fn.fnamemodify(directory, ':h')
+    local result = materialize.text(rows, directory, vim.deepcopy(metadata))
+    result.manifest.source.file = 'SOURCE.txt'
+    vim.fn.writefile({ 'original source and license' }, directory .. '/SOURCE.txt')
+    result.attribution = { 'Retain the original source license.' }
+    if substituted then
+      result.manifest.source.id = 'substituted'
+    end
+    if mutate then
+      selected.source.id = 'substituted'
+    end
+    vim.schedule(function()
+      callback(nil, result)
+    end)
+    return function() end
+  end
+  local destination = root .. '/shared-library'
+  for _, mutation in ipairs({ false, true }) do
+    mutate = mutation
+    local err = call(function(cb)
+      acquisition.acquire(destination, fake, selected_entry, cb)
+    end)
+    assert(
+      err and err:find('identity', 1, true),
+      'prepared source cannot substitute or mutate selection'
+    )
+    assert(
+      not vim.uv.fs_stat(temporary) and not vim.uv.fs_stat(destination .. '/references'),
+      'rejected preparation cleans staging without publication'
+    )
+    selected_entry.source = vim.deepcopy(metadata.source)
+  end
+  substituted, mutate = false, false
+  local err, reading = call(function(cb)
+    acquisition.acquire(destination, fake, selected_entry, cb)
+  end)
+  assert(not err and reading.source.id == 'chosen', tostring(err))
+  assert(not vim.uv.fs_stat(temporary), 'successful preparation cleans staging')
+  local credits = read_binary(reading.root .. '/README.txt')
+  assert(
+    credits:find('Source version: 0.2', 1, true)
+      and credits:find('Source copy title: Illustrated copy', 1, true)
+      and credits:find(metadata.rights, 1, true)
+      and credits:find(metadata.rights_url, 1, true),
+    'source revision and rights are retained offline'
+  )
+end
 local function run()
+  shared_preparation()
   local err, page = call(function(cb)
     catalog.fetch(catalog.default_url, {}, cb)
   end)
@@ -233,12 +334,17 @@ local function run()
     'cancel and late completion cleanup'
   )
   held = false
+  err, page = call(function(cb)
+    provider.browse({}, cb)
+  end)
+  assert(not err, tostring(err))
+  book = page.entries[1]
   local request_count = #requests
   vim.fn.executable = function(name)
     return name == 'pandoc' and 0 or executable(name)
   end
   err = call(function(cb)
-    acquisition.acquire(home, book, cb)
+    acquisition.acquire(home, provider, book, cb)
   end)
   vim.fn.executable = executable
   assert(
@@ -248,17 +354,20 @@ local function run()
   for _, failure in ipairs({ 'old-pandoc', 'broken-pandoc' }) do
     mode = failure
     err = call(function(cb)
-      acquisition.acquire(home, book, cb)
+      acquisition.acquire(home, provider, book, cb)
     end)
     assert(
       err and err:find('3.1.1', 1, true) and #requests == request_count,
       'unusable tools must fail before any download'
     )
   end
-  mode = 'hold-tool-check'
+  mode, tool_check = 'hold-tool-check', nil
   delivered = false
-  cancel = acquisition.acquire(home, book, function()
+  cancel = acquisition.acquire(home, provider, book, function()
     delivered = true
+  end)
+  wait_for(function()
+    return tool_check ~= nil
   end)
   cancel()
   tool_check.finish()
@@ -272,7 +381,7 @@ local function run()
   for _, failure in ipairs({ 'network-error', 'invalid-epub' }) do
     mode = failure
     err = call(function(cb)
-      acquisition.acquire(home, book, cb)
+      acquisition.acquire(home, provider, book, cb)
     end)
     assert(
       err and not vim.uv.fs_stat(home .. '/references/test-letters-gutenberg-11'),
@@ -286,7 +395,7 @@ local function run()
     error('disk failure')
   end
   err = call(function(cb)
-    acquisition.acquire(home, book, cb)
+    acquisition.acquire(home, provider, book, cb)
   end)
   vim.uv.fs_copyfile = copy
   assert(err and err:find('disk failure', 1, true), 'conversion/install disk failure')
@@ -294,7 +403,7 @@ local function run()
 
   mode = 'hold-conversion'
   delivered = false
-  cancel = acquisition.acquire(root .. '/cancel-converter', book, function()
+  cancel = acquisition.acquire(root .. '/cancel-converter', provider, book, function()
     delivered = true
   end)
   wait_for(function()
@@ -331,15 +440,19 @@ local function run()
   lilt.setup({ library = home, catalog = 'https://catalog.example.test/api/' })
   lilt.open()
   keys('d')
+  choose('Project Gutenberg')
+  choose('Popular')
   assert(requests[#requests] == 'https://catalog.example.test/api/books/', 'custom Gutendex base')
   keys('hq')
   lilt.setup({ catalog = catalog.default_url })
   lilt.setup({ library = home })
   lilt.open()
   choose('Discover online')
+  choose('Project Gutenberg')
+  choose('Popular')
   assert(
     table.concat(lines(), '\n'):find('Test Letters', 1, true),
-    'browsing starts with popular results'
+    'selected source menu opens popular results'
   )
   keys(']')
   assert(table.concat(lines(), '\n'):find('Another page', 1, true), 'navigate additional results')
@@ -364,12 +477,14 @@ local function run()
     requests[#requests]:find('topic=short%20stories', 1, true),
     'short stories is a topic preset'
   )
-  keys('h')
+  keys('hhh')
   assert(
     table.concat(lines(), '\n'):find('Discover online', 1, true),
-    'query and page changes do not add back navigation depth'
+    'query changes retain results, source menu and source selector depth'
   )
   choose('Discover online')
+  choose('Project Gutenberg')
+  choose('Popular')
   keys('s')
   api.nvim_buf_set_lines(0, 0, -1, false, { 'no such book' })
   keys('<CR>')
@@ -385,8 +500,13 @@ local function run()
   api.nvim_buf_set_lines(0, 0, -1, false, { '' })
   keys('<CR>')
   assert(
+    table.concat(lines(), '\n'):find('No works found', 1, true),
+    'empty input preserves results'
+  )
+  choose('Popular')
+  assert(
     table.concat(lines(), '\n'):find('Test Letters', 1, true),
-    'empty query returns to popular works'
+    'empty query preserves the current results'
   )
   local result_requests = #requests
   choose('second work')
@@ -466,7 +586,7 @@ local function run()
   for i, languages in ipairs({ { 'fr' }, { 'en', 'fr' }, {} }) do
     local other = vim.tbl_extend('force', book, { languages = languages })
     local language_error, reading = call(function(cb)
-      acquisition.acquire(root .. '/original-punctuation-' .. i, other, cb)
+      acquisition.acquire(root .. '/original-punctuation-' .. i, provider, other, cb)
     end)
     assert(not language_error, tostring(language_error))
     assert(
@@ -496,6 +616,8 @@ local function run()
   local saved_metadata = read_binary(installed.root .. '/lilt.json')
   lilt.open()
   keys('d')
+  choose('Project Gutenberg')
+  choose('Popular')
   wait_for(function()
     return table.concat(lines(), '\n'):find('Catalog title changed', 1, true) ~= nil
   end, 'changed catalog metadata did not load')
@@ -540,6 +662,7 @@ local function run()
   err, installed = call(function(cb)
     acquisition.acquire(
       home,
+      provider,
       vim.tbl_extend('force', book, { title = 'Catalog title changed' }),
       cb
     )
@@ -557,7 +680,7 @@ local function run()
   local collision = root .. '/collision'
   vim.fn.mkdir(collision .. '/manuscripts/test-letters-gutenberg-11', 'p')
   err = call(function(cb)
-    acquisition.acquire(collision, book, cb)
+    acquisition.acquire(collision, provider, book, cb)
   end)
   assert(err and #requests == count, 'orphan manuscripts block acquisition before downloading')
   require('lilt.library').add(collision, 'examples/tyger')
@@ -577,7 +700,7 @@ local function run()
   )
   require('lilt.library').add(root .. '/local-library', root .. '/local/test-letters-gutenberg-11')
   err = call(function(cb)
-    acquisition.acquire(root .. '/local-library', book, cb)
+    acquisition.acquire(root .. '/local-library', provider, book, cb)
   end)
   assert(err and #requests == count, 'same-name local work cannot be mistaken for a duplicate')
   assert(
@@ -588,6 +711,8 @@ local function run()
 
   lilt.open()
   choose('Discover online')
+  choose('Project Gutenberg')
+  choose('Popular')
   choose('Next page')
   choose('Another page')
   held = true
@@ -619,6 +744,8 @@ local function run()
   }) do
     lilt.open()
     choose('Discover online')
+    choose('Project Gutenberg')
+    choose('Popular')
     choose('Next page')
     choose('Another page')
     held = true
@@ -645,6 +772,8 @@ local function run()
   for _, quit in ipairs({ 'q', '<Esc>' }) do
     lilt.open()
     keys('d')
+    choose('Project Gutenberg')
+    choose('Popular')
     keys(']')
     choose('Another page')
     held = true
@@ -667,6 +796,8 @@ local function run()
   held = true
   lilt.open()
   choose('Discover online')
+  choose('Project Gutenberg')
+  choose('Popular')
   job = jobs[#jobs]
   keys('s')
   api.nvim_buf_set_lines(0, 0, -1, false, { 'query in progress' })
@@ -705,6 +836,8 @@ local function run()
   mode = 'network-error'
   lilt.open()
   choose('Discover online')
+  choose('Project Gutenberg')
+  choose('Popular')
   assert(table.concat(lines(), '\n'):find('retry', 1, true), 'recoverable network error page')
   mode = 'ok'
   keys('l')
@@ -713,6 +846,8 @@ local function run()
   held = true
   lilt.open()
   choose('Discover online')
+  choose('Project Gutenberg')
+  choose('Popular')
   assert(table.concat(lines(), '\n'):find('Loading catalog', 1, true), 'nonblocking progress')
   job = jobs[#jobs]
   keys('hq')
@@ -742,6 +877,8 @@ local function run()
   }) do
     lilt.open()
     choose('Discover online')
+    choose('Project Gutenberg')
+    choose('Popular')
     local menu = api.nvim_get_current_buf()
     keys('s')
     local search_buf, before_search_close = api.nvim_get_current_buf(), #requests
@@ -760,6 +897,97 @@ local function run()
     )
   end
   no_staging()
+  local registry = require('lilt.online.providers')
+  local list = registry.list
+  local calls, fail_group = {}, true
+  local browser = {
+    id = 'test-source',
+    name = 'Test Source',
+    menu = { { label = 'Authors', query = {} } },
+  }
+  function browser.browse(query, callback)
+    calls[#calls + 1] = query
+    local cancelled = false
+    vim.schedule(function()
+      if cancelled then
+        return
+      end
+      if query.author and fail_group then
+        callback('Lilt: temporary group failure')
+      elseif query.author then
+        callback(nil, {
+          title = 'Selected author · 1 eligible copy from 10 source records',
+          entries = {
+            {
+              kind = 'work',
+              title = 'A selected work',
+              label = 'A selected work · copy 2',
+              authors = { 'A. Writer' },
+              source = { provider = 'test-source', id = '2', url = 'https://example.org/2' },
+              supported = false,
+              availability = 'Unavailable: fixture',
+            },
+          },
+          previous = { cursor = 'empty' },
+        })
+      elseif query.cursor then
+        callback(nil, {
+          title = '0 eligible copies from 10 source records',
+          entries = {},
+          next = { author = 'chosen' },
+        })
+      else
+        callback(nil, {
+          title = 'Authors',
+          entries = { { kind = 'group', label = 'A. Writer', query = { author = 'chosen' } } },
+        })
+      end
+    end)
+    return function()
+      cancelled = true
+    end
+  end
+  registry.list = function()
+    return { browser }
+  end
+  lilt.open()
+  keys('d')
+  choose('Test Source')
+  assert(#calls == 0, 'source choice opens a menu without fetching')
+  choose('Authors')
+  choose('A. Writer')
+  assert(table.concat(lines(), '\n'):find('retry', 1, true), 'group requests share retry behavior')
+  fail_group = false
+  keys('r')
+  assert(calls[#calls].author == 'chosen', 'group retry preserves opaque source query')
+  keys('[')
+  assert(
+    table.concat(lines(), '\n'):find('0 eligible copies from 10 source records', 1, true),
+    'filtered counts remain source-specific'
+  )
+  keys(']')
+  choose('A selected work')
+  assert(
+    table.concat(lines(), '\n'):find('Test Source', 1, true),
+    'details show actual source display name'
+  )
+  keys('hh')
+  assert(
+    table.concat(lines(), '\n'):find('A. Writer', 1, true) and calls[#calls].author == 'chosen',
+    'back from a continued group restores parent without fetching'
+  )
+  keys('h')
+  assert(
+    table.concat(lines(), '\n'):find('Authors', 1, true),
+    'back from groups restores source menu'
+  )
+  keys('h')
+  assert(
+    table.concat(lines(), '\n'):find('Test Source', 1, true),
+    'back from menu restores source selection'
+  )
+  keys('q')
+  registry.list = list
   print('Lilt online: catalog, cancellation, fidelity, installation and discover-to-reading passed')
 end
 local ok, err = xpcall(run, debug.traceback)

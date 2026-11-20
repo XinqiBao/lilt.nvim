@@ -64,6 +64,11 @@ local function browse(root, example_root, catalog)
       if stat and stat.type == 'file' then
         items[#items + 1] = { label = 'Saved catalog file: ' .. snapshot, wrap = 'full' }
       end
+      local attribution = reading.root .. '/README.txt'
+      local attribution_stat = vim.uv.fs_stat(attribution)
+      if attribution_stat and attribution_stat.type == 'file' then
+        items[#items + 1] = { label = 'Attribution and licenses: ' .. attribution, wrap = 'full' }
+      end
       items[#items + 1] = {
         label = temporary and 'Writing: temporary, for this Neovim process'
           or 'Writing: saved with :write; progress counts saved rows',

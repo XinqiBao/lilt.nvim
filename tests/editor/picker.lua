@@ -680,6 +680,60 @@ local function run()
   assert(find('Result 20'), 'back restores cached results')
   s:close()
   no_picker()
+  for _, destination in ipairs({ 'close', 'page' }) do
+    local startup = ui.new(function() end)
+    local startup_page = { title = 'Starting', items = {}, blocking = false }
+    startup:push(startup_page)
+    local startup_cancelled, cached_cancelled = false, false
+    startup_page.cancelled = function()
+      cached_cancelled = true
+    end
+    startup:request(
+      startup_page,
+      function(finish, progress)
+        progress()
+        return function()
+          startup_cancelled = true
+          finish(nil, 'late completion during cancel')
+        end
+      end,
+      function()
+        error('invalidated startup delivered')
+      end,
+      'Starting…',
+      function()
+        if destination == 'close' then
+          startup:close()
+        else
+          startup:push({ title = 'Destination', items = {} })
+        end
+      end
+    )
+    assert(
+      startup_cancelled and cached_cancelled,
+      'startup invalidation retains returned cancellation'
+    )
+    startup:close()
+    no_picker()
+  end
+  local synchronous = ui.new(function() end)
+  local synchronous_page = { title = 'Synchronous', items = {} }
+  synchronous:push(synchronous_page)
+  local synchronous_done, synchronous_cancelled = false, false
+  synchronous:request(synchronous_page, function(finish)
+    finish(nil, 'Ready')
+    return function()
+      synchronous_cancelled = true
+    end
+  end, function(value)
+    synchronous_done = value == 'Ready'
+  end, 'Starting…')
+  synchronous:close()
+  assert(
+    synchronous_done and not synchronous_cancelled,
+    'synchronous completion does not retain stale cancellation'
+  )
+  no_picker()
   print('Lilt picker: XDG, hierarchy, multiple examples, buffer reuse and cleanup passed')
 end
 local ok, err = xpcall(run, debug.traceback)

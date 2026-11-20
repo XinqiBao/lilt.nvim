@@ -404,11 +404,13 @@ function M.new(on_close)
     local function current()
       return not self.closed and self:page() == page and page.generation == generation
     end
+    local completed = false
     local cancel = start(function(err, value)
       if not current() then
         return
       end
       save()
+      completed = true
       page.generation = nil
       self.cancel_request, page.busy, page.status = nil, nil, nil
       M.attempt(function()
@@ -440,6 +442,12 @@ function M.new(on_close)
     end)
     if current() then
       self.cancel_request = cancel
+    elseif not completed then
+      -- Startup progress can navigate or close before start returns its cancel.
+      cancel()
+      if page.cancelled then
+        page.cancelled()
+      end
     end
   end
 

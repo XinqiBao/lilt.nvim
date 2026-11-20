@@ -5,10 +5,7 @@ local work = require('lilt.work')
 local M = {
   id = 'unglueit',
   name = 'Unglue.it',
-  menu = {
-    { label = 'Popular EPUBs', query = { order = 'popular' } },
-    { label = 'New EPUBs', query = { order = 'newest' } },
-  },
+  browse = {},
 }
 local atom = 'http://www.w3.org/2005/Atom'
 local dc = 'http://purl.org/dc/terms/'
@@ -166,6 +163,7 @@ local function parse(text, url, selected)
       elseif #copies > 1 then
         entries[#entries + 1] = {
           kind = 'group',
+          id = id,
           label = title
             .. (#authors > 0 and (' — ' .. table.concat(authors, '; ')) or '')
             .. ' · '
@@ -230,14 +228,22 @@ local function deferred(callback, action)
   end
 end
 
-function M.browse(query, callback)
-  if query.work_id then
-    return deferred(callback, function()
-      return parse(query.feed, query.catalog_url, query.work_id)
-    end)
-  end
-  local url = query.url or (base .. '?order_by=' .. (query.order or 'popular'))
-  local ok, err = pcall(feed_order, url)
+function M.expand(query, callback)
+  return deferred(callback, function()
+    if not query.work_id then
+      fail('missing selected work identity')
+    end
+    return parse(query.feed, query.catalog_url, query.work_id)
+  end)
+end
+
+local function browse(order, cursor, callback)
+  local url = cursor and cursor.url or (base .. '?order_by=' .. order)
+  local ok, err = pcall(function()
+    if feed_order(url) ~= order then
+      fail('continuation changed feed order')
+    end
+  end)
   if not ok then
     return deferred(callback, function()
       error(err, 0)
@@ -265,6 +271,14 @@ function M.browse(query, callback)
       callback(tostring(result))
     end
   end)
+end
+
+function M.browse.explore(cursor, callback)
+  return browse('popular', cursor, callback)
+end
+
+function M.browse.recent(cursor, callback)
+  return browse('newest', cursor, callback)
 end
 
 function M.prepare(entry, directory, callback)

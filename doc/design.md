@@ -41,7 +41,7 @@ expansion. Viewing information never changes references, metadata or manuscripts
 
 Action-local shortcut keys are displayed with their labels and active only on
 that page. Pending acquisition disables actions; pending catalog requests keep
-search, ordering and topics available so a new query can replace the request.
+search and navigation available so a new query can replace the request.
 q/Escape exits from any menu, while h/Backspace goes back. Escape in a
 search/name/path editor cancels only that input.
 
@@ -67,15 +67,21 @@ validation and completion semantics. Local paths use Neovim's directory
 completion through Tab / Shift-Tab and expand tilde/environment variables
 without interpreting filename glob characters. Enter accepts a visible
 completion before submitting; Escape cancels the input and restores selection.
-Invalid paths stay editable with feedback. There is no global UI override. Queries,
-presets and pagination replace the Discover page. Previous/Next are explicit
-page actions. Work details add one level; acquired units use the shared local
-flow. Returning from details restores the loaded result selection and viewport
-without a request.
-Empty catalog results select their explanation so it remains visible in short
-windows. Request failures show their cause and a retry action; they do not imply
-an empty catalog. Local discovery errors wrap completely so long work paths do
-not hide the validation cause; native scrolling reaches the full message.
+Invalid paths stay editable with feedback. There is no global UI override.
+Discover opens on Search and supported content categories. Results keep Search
+above a content heading and flat accumulated entries with secondary provenance;
+Back restores the category landing. Queries replace the current results page.
+Load more appends a batch, while Retry failed requests only failed sources.
+Both actions are omitted while a batch is in flight. Groups push a provider's
+own page with Previous/Next actions; work details add one level and acquired units
+use the shared local flow. Returning restores result selection and viewport.
+
+Empty batch feedback remains visible in short windows. Partial coverage keeps
+successful results usable and exposes failed-source causes and retry; successful
+empty responses alongside failures describe incomplete results. Unsupported
+categories are omitted. Search shows one coverage note for browse-only sources.
+Normal source status and catalog totals do not crowd the result list. Local
+discovery errors wrap completely so native scrolling reaches the full cause.
 
 `name.lua` converts a user-chosen title into directory spelling; it knows neither
 library files nor UI. `picker/name.lua` supplies editable official-title defaults,
@@ -93,8 +99,8 @@ format manifests without changing array order or reference bodies. Acquisition
 also retains the complete catalog record in `SOURCE.json`; modeled metadata and
 preparation settings are snapshots, never instructions to refresh a reading copy.
 
-`online/providers.lua` explicitly lists source adapters. Source menu/query,
-group/work entries and continuation queries use the small contract in
+`online/providers.lua` explicitly lists source adapters. Optional capabilities,
+group/work entries and opaque continuation cursors use the small contract in
 [sources.md](sources.md). `online/catalog.lua` validates Gutendex metadata for
 the Gutenberg adapter. `online/materialize.lua` shares bounded EPUB download and
 local conversion, or writes exact plain-text rows without Pandoc.
@@ -110,8 +116,15 @@ reference edition. Colliding local works and orphan manuscripts block acquisitio
 The picker owns each asynchronous request's cancellation function. Back, leaving
 the picker, and editor exit cancel it; callbacks also check page/picker lifetime.
 Requests use argument-vector curl, HTTPS-only redirects, time/size limits and
-owned temporary files. Continuation replaces the current catalog page; source
-menus and parent groups remain on the page stack for back navigation.
+owned temporary files. `online/discovery.lua` coordinates independent provider
+cursors, progressive results, exact identity deduplication and failure retries.
+It has no UI or acquisition dependencies. Picker requests wrap its updates and
+completion in the existing page generation. Input retains the running request;
+updates never replace its buffer or focus. Navigation invalidates callbacks before
+cancelling and updates cached results to offer resumption without stale Loading.
+Stable result items preserve selection and scroll as peers finish. Activating
+Load more or Retry failed retains the existing result boundary while the action
+is hidden. Group continuation replaces only its source's current page.
 There is no background polling, persistent catalog cache, or remote reading state.
 
 `import/epub.lua` is a local-file converter: `prepare(input, destination,

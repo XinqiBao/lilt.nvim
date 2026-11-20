@@ -2,6 +2,11 @@ local api = vim.api
 local catalog = require('lilt.online.catalog')
 local acquisition = require('lilt.online.acquire')
 local provider = require('lilt.online.providers.gutenberg').new()
+local registry = require('lilt.online.providers')
+local registry_list = registry.list
+registry.list = function(base)
+  return { require('lilt.online.providers.gutenberg').new(base) }
+end
 local work = require('lilt.work')
 local root = vim.fn.tempname()
 local home = root .. '/library'
@@ -273,6 +278,249 @@ local function shared_preparation()
     'source revision and rights are retained offline'
   )
 end
+local function unified_discovery(lilt)
+  local pending = {}
+  local function request(id, query, callback)
+    local job = { id = id, query = query, callback = callback }
+    pending[#pending + 1] = job
+    return function()
+      job.cancelled = true
+    end
+  end
+  local function source(id, name, search)
+    local p = { id = id, name = name, browse = {} }
+    p.browse.explore = function(cursor, cb)
+      return request(id, cursor, cb)
+    end
+    if search then
+      p.search = function(text, cursor, cb)
+        return request(id, { search = text, cursor = cursor }, cb)
+      end
+    end
+    return p
+  end
+  local first = source('first', 'First Library', true)
+  local second = source('second', 'Second Library', true)
+  local third = source('third', 'Browse Library', false)
+  first.browse.poetry = function(cursor, cb)
+    return request('poetry', cursor, cb)
+  end
+  first.expand = function(query, cb)
+    return request('group', query, cb)
+  end
+  registry.list = function()
+    return { first, second, third }
+  end
+  local function text()
+    return table.concat(lines(), '\n')
+  end
+  local function finish(job, err, page)
+    job.callback(err, page)
+    vim.wait(10, function()
+      return false
+    end)
+  end
+  local function item(id, title, provider_id)
+    return {
+      kind = 'work',
+      title = title,
+      authors = { 'A. Writer' },
+      supported = false,
+      availability = 'Unavailable: fixture',
+      source = { provider = provider_id or 'first', id = id, url = 'https://example.org/' .. id },
+    }
+  end
+  lilt.open()
+  keys('d')
+  assert(
+    #pending == 0 and text():find('Poetry', 1, true),
+    'landing exposes supported content without requests'
+  )
+  assert(
+    not text():find('Choose source', 1, true) and not text():find('Browse poets', 1, true),
+    'no source chooser or unsupported categories'
+  )
+  choose('Explore')
+  assert(
+    #pending == 3 and not text():find('Load more', 1, true),
+    'one concurrent request per source and no in-flight load action'
+  )
+  local works = {}
+  for i = 1, 16 do
+    works[i] = item(tostring(i), 'Fast work ' .. i)
+  end
+  works[#works + 1] =
+    { kind = 'group', id = 'author:one', label = 'Selected author', query = { author = 'one' } }
+  finish(pending[1], nil, { entries = works, next = 'next-first', title = '900 source records' })
+  assert(
+    text():find('Fast work 1', 1, true) and text():find('First Library', 1, true),
+    'successful works are usable during a slow peer with secondary provenance'
+  )
+  assert(
+    not text():find('900 source records', 1, true) and not text():find('Poetry', 1, true),
+    'results keep content first without category menus or normal source diagnostics'
+  )
+  local row
+  for i, line in ipairs(lines()) do
+    if line:find('Fast work 12', 1, true) then
+      row = i
+    end
+  end
+  api.nvim_win_set_cursor(0, { row, 0 })
+  keys('j') -- provenance is an actionable continuation of the same result
+  local position, view = api.nvim_win_get_cursor(0), vim.fn.winsaveview()
+  finish(pending[2], 'fixture peer failed')
+  finish(pending[3], nil, { entries = {} })
+  assert(
+    vim.deep_equal(api.nvim_win_get_cursor(0), position)
+      and vim.fn.winsaveview().topline == view.topline,
+    'partial and settled updates preserve selection/scroll'
+  )
+  assert(
+    text():find('Partial coverage', 1, true)
+      and text():find('Second Library · Request failed: fixture peer failed', 1, true),
+    'partial success retains the failed source cause'
+  )
+  assert(
+    text():find('Load more', 1, true) and text():find('Retry failed', 1, true),
+    'continuation and failure have independent actions'
+  )
+  keys('<CR>')
+  assert(text():find('first:12', 1, true), 'secondary provenance row opens its exact work details')
+  keys('h')
+  assert(
+    vim.deep_equal(api.nvim_win_get_cursor(0), position),
+    'details restore selected provenance row'
+  )
+  choose('Load more')
+  assert(
+    api.nvim_win_get_cursor(0)[1] > 20 and vim.fn.winsaveview().topline > 1,
+    'clicking Load more preserves the scrolled result boundary'
+  )
+  assert(
+    #pending == 4 and pending[4].id == 'first' and pending[4].query == 'next-first',
+    'load more skips failed and exhausted peers'
+  )
+  finish(pending[4], nil, { entries = { item('17', 'Continued work') } })
+  assert(
+    text():find('Fast work 1', 1, true) and text():find('Continued work', 1, true),
+    'load more appends without replacing earlier results'
+  )
+  choose('Retry failed')
+  assert(
+    lines()[api.nvim_win_get_cursor(0)[1]]:find('First Library', 1, true)
+      and vim.fn.winsaveview().topline > 1,
+    'clicking Retry failed retains the scrolled result boundary'
+  )
+  assert(#pending == 5 and pending[5].id == 'second', 'retry requests failed sources only')
+  finish(pending[5], nil, { entries = {}, empty = 'No eligible copies.' })
+  assert(
+    not text():find('Partial coverage', 1, true) and not text():find('Retry failed', 1, true),
+    'successful empty retry clears stale failure without hiding works'
+  )
+  choose('Selected author')
+  assert(
+    pending[6].id == 'group' and pending[6].query.author == 'one',
+    'group expansion retains its provider query'
+  )
+  finish(pending[6], 'temporary group failure')
+  keys('r')
+  finish(pending[7], nil, {
+    entries = { item('copy', 'An exact copy') },
+    title = '1 eligible copy from 10 source records',
+    next = { author = 'next' },
+  })
+  assert(
+    text():find('1 eligible copy from 10 source records', 1, true),
+    'expanded groups retain honest provider-specific context'
+  )
+  keys(']')
+  finish(
+    pending[8],
+    nil,
+    { entries = {}, empty = 'No eligible copies.', previous = { author = 'one' } }
+  )
+  keys('[')
+  finish(pending[9], nil, { entries = { item('copy', 'An exact copy') } })
+  keys('h')
+  assert(
+    text():find('Selected author', 1, true) and #pending == 9,
+    'group back restores accumulated parent without a request'
+  )
+  keys('h')
+  choose('Poetry')
+  assert(
+    #pending == 10 and pending[10].id == 'poetry',
+    'category with one participant sends no unsupported requests'
+  )
+  finish(pending[10], nil, { entries = {}, next = 'another-poetry-batch' })
+  assert(
+    text():find('No works found in this batch.', 1, true)
+      and text():find('Load more', 1, true)
+      and not text():find('Second Library', 1, true),
+    'empty category batch can continue without unsupported source diagnostics'
+  )
+  keys('s')
+  api.nvim_buf_set_lines(0, 0, -1, false, { 'fixture query' })
+  keys('<CR>')
+  assert(#pending == 12, 'search invokes only capable sources')
+  finish(pending[11], nil, { entries = {} })
+  finish(pending[12], 'search failed')
+  assert(
+    text():find('Incomplete results · No works found in this batch.', 1, true)
+      and text():find('Browse Library · browse only; not searched', 1, true),
+    'partial empty search explains failures and browse-only coverage'
+  )
+  keys('r')
+  finish(pending[13], nil, { entries = { item('recovered', 'Recovered result', 'second') } })
+  choose('Recovered result')
+  assert(
+    text():find('Second Library', 1, true) and text():find('second:recovered', 1, true),
+    'recovered work keeps original provider identity'
+  )
+  keys('hh')
+  choose('Explore')
+  local fast, slow, browse = pending[14], pending[15], pending[16]
+  finish(fast, nil, { entries = { item('fast', 'Usable early result') } })
+  choose('Usable early result')
+  assert(
+    slow.cancelled and browse.cancelled,
+    'opening details cancels pending peers through shared lifetime'
+  )
+  finish(slow, nil, { entries = { item('late', 'Stale result', 'second') } })
+  keys('h')
+  assert(
+    text():find('Paused', 1, true)
+      and not text():find('Loading', 1, true)
+      and not text():find('Stale result', 1, true),
+    'cached cancelled feed resumes honestly without stale loading or late rows'
+  )
+  keys(']')
+  assert(
+    #pending == 18 and pending[17].id == 'second' and pending[18].id == 'third',
+    'load more resumes cancelled peers without refetching completed source'
+  )
+  finish(pending[17], nil, { entries = {} })
+  finish(pending[18], nil, { entries = {} })
+  keys('q')
+  registry.list = function()
+    return { third }
+  end
+  lilt.open()
+  keys('ds')
+  api.nvim_buf_set_lines(0, 0, -1, false, { 'unsupported search' })
+  keys('<CR>')
+  assert(
+    #pending == 18
+      and text():find('Unsupported by available sources', 1, true)
+      and text():find('browse only; not searched', 1, true)
+      and not text():find('No works found', 1, true)
+      and not text():find('Retry failed', 1, true),
+    'wholly unsupported search does not claim empty results or a request failure'
+  )
+  keys('q')
+end
+
 local function run()
   shared_preparation()
   local err, page = call(function(cb)
@@ -335,7 +583,7 @@ local function run()
   )
   held = false
   err, page = call(function(cb)
-    provider.browse({}, cb)
+    provider.browse.explore(nil, cb)
   end)
   assert(not err, tostring(err))
   book = page.entries[1]
@@ -440,16 +688,14 @@ local function run()
   lilt.setup({ library = home, catalog = 'https://catalog.example.test/api/' })
   lilt.open()
   keys('d')
-  choose('Project Gutenberg')
-  choose('Popular')
+  choose('Explore')
   assert(requests[#requests] == 'https://catalog.example.test/api/books/', 'custom Gutendex base')
   keys('hq')
   lilt.setup({ catalog = catalog.default_url })
   lilt.setup({ library = home })
   lilt.open()
   choose('Discover online')
-  choose('Project Gutenberg')
-  choose('Popular')
+  choose('Explore')
   assert(
     table.concat(lines(), '\n'):find('Test Letters', 1, true),
     'selected source menu opens popular results'
@@ -460,31 +706,32 @@ local function run()
     requests[#requests] == catalog.default_url .. '/books/?page=2',
     'never follow foreign pagination URL'
   )
-  keys('[')
   assert(
     table.concat(lines(), '\n'):find('Test Letters', 1, true),
-    'previous page returns to the same query'
+    'load more retains earlier works'
   )
-  choose('Newest')
+  keys('h')
+  choose('Recently listed')
   assert(
     requests[#requests]:find('sort=descending', 1, true),
     'newest means descending catalog IDs'
   )
+  keys('h')
   choose('Poetry')
   assert(requests[#requests]:find('topic=poetry', 1, true), 'poetry is a topic preset')
+  keys('h')
   choose('Short stories')
   assert(
     requests[#requests]:find('topic=short%20stories', 1, true),
     'short stories is a topic preset'
   )
-  keys('hhh')
+  keys('hh')
   assert(
     table.concat(lines(), '\n'):find('Discover online', 1, true),
-    'query changes retain results, source menu and source selector depth'
+    'category changes return through the preserved Discover landing'
   )
   choose('Discover online')
-  choose('Project Gutenberg')
-  choose('Popular')
+  choose('Explore')
   keys('s')
   api.nvim_buf_set_lines(0, 0, -1, false, { 'no such book' })
   keys('<CR>')
@@ -503,7 +750,8 @@ local function run()
     table.concat(lines(), '\n'):find('No works found', 1, true),
     'empty input preserves results'
   )
-  choose('Popular')
+  keys('h')
+  choose('Explore')
   assert(
     table.concat(lines(), '\n'):find('Test Letters', 1, true),
     'empty query preserves the current results'
@@ -616,8 +864,7 @@ local function run()
   local saved_metadata = read_binary(installed.root .. '/lilt.json')
   lilt.open()
   keys('d')
-  choose('Project Gutenberg')
-  choose('Popular')
+  choose('Explore')
   wait_for(function()
     return table.concat(lines(), '\n'):find('Catalog title changed', 1, true) ~= nil
   end, 'changed catalog metadata did not load')
@@ -711,9 +958,8 @@ local function run()
 
   lilt.open()
   choose('Discover online')
-  choose('Project Gutenberg')
-  choose('Popular')
-  choose('Next page')
+  choose('Explore')
+  choose('Load more')
   choose('Another page')
   held = true
   choose('Add to library')
@@ -744,9 +990,8 @@ local function run()
   }) do
     lilt.open()
     choose('Discover online')
-    choose('Project Gutenberg')
-    choose('Popular')
-    choose('Next page')
+    choose('Explore')
+    choose('Load more')
     choose('Another page')
     held = true
     choose('Add to library')
@@ -772,8 +1017,7 @@ local function run()
   for _, quit in ipairs({ 'q', '<Esc>' }) do
     lilt.open()
     keys('d')
-    choose('Project Gutenberg')
-    choose('Popular')
+    choose('Explore')
     keys(']')
     choose('Another page')
     held = true
@@ -796,8 +1040,7 @@ local function run()
   held = true
   lilt.open()
   choose('Discover online')
-  choose('Project Gutenberg')
-  choose('Popular')
+  choose('Explore')
   job = jobs[#jobs]
   keys('s')
   api.nvim_buf_set_lines(0, 0, -1, false, { 'query in progress' })
@@ -811,8 +1054,10 @@ local function run()
     table.concat(lines(), '\n'):find('Test Letters', 1, true),
     'cancelled input reveals results completed behind the editor'
   )
-  choose('Newest')
+  keys('h')
+  choose('Recently listed')
   local stale = jobs[#jobs]
+  keys('h')
   choose('Poetry')
   job = jobs[#jobs]
   stale.finish()
@@ -836,18 +1081,19 @@ local function run()
   mode = 'network-error'
   lilt.open()
   choose('Discover online')
-  choose('Project Gutenberg')
-  choose('Popular')
-  assert(table.concat(lines(), '\n'):find('retry', 1, true), 'recoverable network error page')
+  choose('Explore')
+  assert(
+    table.concat(lines(), '\n'):find('Retry failed', 1, true),
+    'recoverable network error page'
+  )
   mode = 'ok'
-  keys('l')
+  keys('r')
   assert(table.concat(lines(), '\n'):find('Test Letters', 1, true), 'retry succeeds')
   keys('hq')
   held = true
   lilt.open()
   choose('Discover online')
-  choose('Project Gutenberg')
-  choose('Popular')
+  choose('Explore')
   assert(table.concat(lines(), '\n'):find('Loading catalog', 1, true), 'nonblocking progress')
   job = jobs[#jobs]
   keys('hq')
@@ -877,8 +1123,7 @@ local function run()
   }) do
     lilt.open()
     choose('Discover online')
-    choose('Project Gutenberg')
-    choose('Popular')
+    choose('Explore')
     local menu = api.nvim_get_current_buf()
     keys('s')
     local search_buf, before_search_close = api.nvim_get_current_buf(), #requests
@@ -897,101 +1142,12 @@ local function run()
     )
   end
   no_staging()
-  local registry = require('lilt.online.providers')
-  local list = registry.list
-  local calls, fail_group = {}, true
-  local browser = {
-    id = 'test-source',
-    name = 'Test Source',
-    menu = { { label = 'Authors', query = {} } },
-  }
-  function browser.browse(query, callback)
-    calls[#calls + 1] = query
-    local cancelled = false
-    vim.schedule(function()
-      if cancelled then
-        return
-      end
-      if query.author and fail_group then
-        callback('Lilt: temporary group failure')
-      elseif query.author then
-        callback(nil, {
-          title = 'Selected author · 1 eligible copy from 10 source records',
-          entries = {
-            {
-              kind = 'work',
-              title = 'A selected work',
-              label = 'A selected work · copy 2',
-              authors = { 'A. Writer' },
-              source = { provider = 'test-source', id = '2', url = 'https://example.org/2' },
-              supported = false,
-              availability = 'Unavailable: fixture',
-            },
-          },
-          previous = { cursor = 'empty' },
-        })
-      elseif query.cursor then
-        callback(nil, {
-          title = '0 eligible copies from 10 source records',
-          entries = {},
-          next = { author = 'chosen' },
-        })
-      else
-        callback(nil, {
-          title = 'Authors',
-          entries = { { kind = 'group', label = 'A. Writer', query = { author = 'chosen' } } },
-        })
-      end
-    end)
-    return function()
-      cancelled = true
-    end
-  end
-  registry.list = function()
-    return { browser }
-  end
-  lilt.open()
-  keys('d')
-  choose('Test Source')
-  assert(#calls == 0, 'source choice opens a menu without fetching')
-  choose('Authors')
-  choose('A. Writer')
-  assert(table.concat(lines(), '\n'):find('retry', 1, true), 'group requests share retry behavior')
-  fail_group = false
-  keys('r')
-  assert(calls[#calls].author == 'chosen', 'group retry preserves opaque source query')
-  keys('[')
-  assert(
-    table.concat(lines(), '\n'):find('0 eligible copies from 10 source records', 1, true),
-    'filtered counts remain source-specific'
-  )
-  keys(']')
-  choose('A selected work')
-  assert(
-    table.concat(lines(), '\n'):find('Test Source', 1, true),
-    'details show actual source display name'
-  )
-  keys('hh')
-  assert(
-    table.concat(lines(), '\n'):find('A. Writer', 1, true) and calls[#calls].author == 'chosen',
-    'back from a continued group restores parent without fetching'
-  )
-  keys('h')
-  assert(
-    table.concat(lines(), '\n'):find('Authors', 1, true),
-    'back from groups restores source menu'
-  )
-  keys('h')
-  assert(
-    table.concat(lines(), '\n'):find('Test Source', 1, true),
-    'back from menu restores source selection'
-  )
-  keys('q')
-  registry.list = list
+  unified_discovery(lilt)
   print('Lilt online: catalog, cancellation, fidelity, installation and discover-to-reading passed')
 end
 local ok, err = xpcall(run, debug.traceback)
 vim.system, vim.notify = system, notify
+registry.list = registry_list
 pcall(require('lilt').close)
 vim.fn.delete(root, 'rf')
 if not ok then

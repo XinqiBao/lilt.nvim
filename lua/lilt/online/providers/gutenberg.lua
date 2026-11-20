@@ -9,16 +9,10 @@ function M.new(base)
   local provider = {
     id = 'gutenberg',
     name = 'Project Gutenberg',
-    menu = {
-      { label = 'Popular · most downloaded', query = {} },
-      { label = 'Newest · latest catalog IDs', query = { sort = 'descending' } },
-      { label = 'Poetry', query = { topic = 'poetry' } },
-      { label = 'Short stories', query = { topic = 'short stories' } },
-      { label = 'Search title or author…', query = {}, input = 'Search title or author' },
-    },
+    browse = {},
   }
 
-  function provider.browse(query, callback)
+  local function browse(query, callback)
     return catalog.fetch(base, query, function(err, result)
       if err then
         callback(err)
@@ -52,6 +46,21 @@ function M.new(base)
         empty = 'No works found. Try another title or author.',
       })
     end)
+  end
+
+  for category, query in pairs({
+    explore = {},
+    poetry = { topic = 'poetry' },
+    short_stories = { topic = 'short stories' },
+    recent = { sort = 'descending' },
+  }) do
+    provider.browse[category] = function(cursor, callback)
+      return browse(cursor or query, callback)
+    end
+  end
+
+  function provider.search(text, cursor, callback)
+    return browse(cursor or { search = text }, callback)
   end
 
   function provider.prepare(entry, directory, callback)

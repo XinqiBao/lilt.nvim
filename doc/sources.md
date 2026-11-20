@@ -1,16 +1,17 @@
 # Online source adapters
 
-Discover online selects a source before entering its menu or browser. Source
-adapters own source semantics; shared acquisition owns temporary storage,
-identity reuse, cancellation and publication. There is no federated search or
-user provider registration. The `catalog` setup option overrides Gutenberg's
-Gutendex server only.
+Discover online browses content categories and searches participating sources
+together. Each source advertises the categories and operations it supports;
+browse-only sources remain available without joining search. Source adapters
+own source semantics; shared acquisition owns temporary storage, identity reuse,
+cancellation and publication. There is no user provider registration. The
+`catalog` setup option overrides Gutenberg's Gutendex server only.
 
 | Source | Discovery | Acquisition |
 | --- | --- | --- |
 | [Project Gutenberg](works.md#online-acquisition) | Popular, newest, poetry, short stories, title/author search through Gutendex | EPUBs marked public domain in the USA, from its PGLAF mirror |
 | [Unglue.it](sources/unglueit.md) | Popular/new EPUB feeds; eligible English copies, with explicit copy choices | Advertised direct EPUBs with recognized per-copy rights |
-| [PoetryDB](sources/poetrydb.md) | Author groups and title/author search | One poem as native text; original full JSON retained |
+| [PoetryDB](sources/poetrydb.md) | Random poetry, poet groups and title/author search | One poem as native text; original full JSON retained |
 
 Online requests require curl on PATH; acquiring EPUBs also requires Pandoc
 3.1.1+. PoetryDB needs only curl. Saved library works remain available offline
@@ -21,26 +22,50 @@ without either tool.
 `lua/lilt/online/providers.lua` explicitly constructs the installed providers
 through `list(catalog)`.
 Each module under `online/providers/` supplies `id`, official display `name`,
-`menu`, `browse(query, callback)` and `prepare(entry, directory, callback)`.
-Gutenberg exposes `new(catalog)` to bind its existing catalog override.
+`browse` and `prepare(entry, directory, callback)`. Gutenberg exposes
+`new(catalog)` to bind its existing catalog override. `browse` is a table of
+optional category functions `(cursor, callback)`. Search is an optional
+`search(text, cursor, callback)` function; group expansion is an optional
+`expand(query, callback)` function. An absent operation means unsupported,
+rather than a successful empty response. There is no provider menu.
 
-Menu rows have `{label, query, input?}`. An input row opens native search editing
-and places submitted text in `query.search`; other query fields are opaque to
-the UI. Cancelled or empty input preserves the current location.
+| Category ID | Label | Gutenberg | Unglue.it | PoetryDB |
+| --- | --- | --- | --- | --- |
+| `explore` | Explore | Most downloaded | Popular EPUBs | Random poems |
+| `poetry` | Poetry | Poetry topic | — | Random poems |
+| `short_stories` | Short stories | Short stories topic | — | — |
+| `recent` | Recently listed | Descending catalog IDs | New EPUBs | — |
+| `poets` | Browse poets | — | — | Author groups |
 
-`browse` completes with `callback(err, page)` and returns a cancellation function.
-A page contains `title`, `entries`, optional `next`/`previous` queries, optional
-known `count`, and optional `empty` explanation. Counts must describe the shown
-selection honestly: filtered feeds should explain eligible results versus raw
-records in their page title and omit unknown eligible totals.
+Gutenberg and PoetryDB support title/author search. Unglue.it supports browsing
+and copy-group expansion only. PoetryDB expands exact author groups. Category
+IDs and labels use the fixed vocabulary above; callers display supported ones.
 
-Entries are either `{kind='group', label, query}` or work entries with
+Each operation returns a cancellation function and completes with
+`callback(err, page)`. The initial cursor is `nil`; a returned `next` cursor is
+opaque to callers and passed to the same category or search operation. A page
+contains `entries`, optional `next`, and optional honest `title`, `count` or
+`empty` explanation. Group expansion can also return `previous` and remains a
+single-source page. Counts must describe the selection honestly: filtered feeds
+retain eligible results versus raw records in adapter page metadata and omit
+unknown eligible totals. These source titles/counts provide adapter context;
+they are not permanent rows or headings in unified results. Random batches
+offer another sample, without implying exhaustive pagination or a total.
+
+Entries are either `{kind='group', id, label, query}` or work entries with
 `kind='work'`, `title`, `authors`, `source={provider,id,url}`, `supported`, and
 `availability`. Optional manifest bibliography and adapter-private fields may
 also be present. A work may supply `label` to distinguish acquisition copies
 while keeping its original `title`. UI passes work entries intact to preparation
-and never interprets their private fields. Groups push locations; continuation
-replaces the current page. Back returns to the parent group/menu.
+and never interprets their private fields. Group IDs are stable within a provider:
+PoetryDB uses the exact author name, and Unglue.it the official work URL. Group
+queries go unchanged to that provider's `expand` function. Groups push their own
+pages; back returns to the preserved results.
+
+The discovery coordinator accumulates category/search results from eligible
+sources and deduplicates exact provider/type/identity only. Works use
+`source.provider/id`; groups use the provider and group `id`. It does not merge
+works inferred to be the same across sources or invent a combined catalog total.
 
 `prepare` receives an absent output directory inside a shared-owned temporary
 parent. It returns a cancellation function and completes with

@@ -46,10 +46,14 @@ end
 
 local function call(start)
   local result
-  start(function(err, value)
+  local starting = true
+  local cancel = start(function(err, value)
+    assert(not starting and not vim.in_fast_event(), 'callbacks run once on the main loop')
     assert(not result, 'callback delivered more than once')
     result = { err = err, value = value }
   end)
+  starting = false
+  assert(type(cancel) == 'function', 'every operation returns cancellation')
   assert(
     vim.wait(5000, function()
       return result ~= nil
@@ -58,9 +62,14 @@ local function call(start)
   )
   return result.err, result.value
 end
-local function browse(query)
+local function browse(cursor, category)
   return call(function(callback)
-    return provider.browse(query or provider.menu[1].query, callback)
+    return provider.browse[category or 'explore'](cursor, callback)
+  end)
+end
+local function expand(query)
+  return call(function(callback)
+    return provider.expand(query, callback)
   end)
 end
 local function rejected(text, message)
@@ -74,12 +83,15 @@ local function run()
   for _, source in ipairs(require('lilt.online.providers').list()) do
     registered = registered or source == provider
   end
-  assert(registered, 'Unglue.it is registered for source selection')
+  assert(registered, 'Unglue.it is registered for unified discovery')
   local err, page = browse()
   assert(not err, tostring(err))
   assert(
-    requests[1] == 'https://unglue.it/api/opds/epub/?order_by=popular' and #provider.menu == 2,
-    'browse uses published popular/new EPUB feeds, without a Gutenberg exclusion or title search'
+    requests[1] == 'https://unglue.it/api/opds/epub/?order_by=popular'
+      and not provider.menu
+      and not provider.search
+      and vim.tbl_count(provider.browse) == 2,
+    'browse-only capabilities use published popular/new EPUB feeds'
   )
   assert(#page.entries == 2 and not page.count, 'lists only eligible explicit English copies')
   assert(
@@ -89,6 +101,7 @@ local function run()
   local continuation = page.next
   local group, single = unpack(page.entries)
   assert(group.kind == 'group' and group.label:find('2 EPUB copies', 1, true), 'copy choice group')
+  assert(group.id == 'https://unglue.it/api/id/work/42/', 'stable official work group identity')
   assert(
     group.label:find('A. Writer; B. Contributor', 1, true),
     'copy group identifies source authors'
@@ -101,7 +114,7 @@ local function run()
   assert(single.languages[1] == 'en-GB', 'explicit English regional tag is retained')
   local query = vim.json.decode(vim.json.encode(group.query))
   local before = #requests
-  err, page = browse(query)
+  err, page = expand(query)
   assert(not err and #requests == before, 'copy group opens the retained feed without refetching')
   local first, second = unpack(page.entries)
   assert(page.title == first.title .. ' · choose an EPUB copy', 'copy group heading is unchanged')
@@ -136,7 +149,10 @@ local function run()
 
   response = fixture:gsub('\n', '\r\n')
   err, page = browse()
-  assert(not err and page.entries[1].query.feed == response, 'snapshot retains original CRLF bytes')
+  assert(
+    not err and page.entries[1].query.feed == response and page.entries[1].id == group.id,
+    'snapshot retains original CRLF bytes without changing group identity'
+  )
   response = fixture:gsub('dc:rights="CC BY%-NC%-ND"', 'extra:rights="CC BY-NC-ND"')
   err, page = browse()
   assert(
@@ -173,7 +189,7 @@ local function run()
     'continued empty page follows actual next link and retains its page context'
   )
   response = fixture:gsub('order_by=popular', 'order_by=newest')
-  err, page = browse(provider.menu[2].query)
+  err, page = browse(nil, 'recent')
   assert(not err and requests[#requests]:find('order_by=newest', 1, true), 'new EPUB browse')
   assert(
     page.title == 'New EPUBs · page 1 · 2 eligible English works / 5 source records',
@@ -206,6 +222,10 @@ local function run()
   local request_count = #requests
   err = browse({ url = 'https://unglue.it@evil.invalid/api/opds/epub/?order_by=popular' })
   assert(err and #requests == request_count, 'invalid query fails before requesting')
+  err = browse(continuation, 'recent')
+  assert(err and #requests == request_count, 'a continuation cannot switch feed order')
+  err = expand({})
+  assert(err and #requests == request_count, 'expansion requires a selected work')
 
   response = fixture
   network_error = true
@@ -214,7 +234,7 @@ local function run()
   network_error = false
   held = true
   local delivered = false
-  local cancel = provider.browse(provider.menu[1].query, function()
+  local cancel = provider.browse.explore(nil, function()
     delivered = true
   end)
   local job = jobs[#jobs]
@@ -225,7 +245,7 @@ local function run()
   end)
   assert(job.killed and not delivered and not vim.uv.fs_stat(job.path), 'cancelled request cleaned')
   held = false
-  cancel = provider.browse(query, function()
+  cancel = provider.expand(query, function()
     delivered = true
   end)
   cancel()

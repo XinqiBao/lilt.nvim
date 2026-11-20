@@ -44,10 +44,14 @@ end
 
 local function call(start)
   local result
-  start(function(err, value)
+  local starting = true
+  local cancel = start(function(err, value)
+    assert(not starting and not vim.in_fast_event(), 'callbacks run once on the main loop')
     assert(not result, 'callback delivered twice')
     result = { err = err, value = value }
   end)
+  starting = false
+  assert(type(cancel) == 'function', 'every operation returns cancellation')
   assert(
     vim.wait(2000, function()
       return result ~= nil
@@ -57,10 +61,26 @@ local function call(start)
   return result.err, result.value
 end
 
-local function browse(query, data)
+local function respond(data, start)
   payload = type(data) == 'string' and data or vim.json.encode(data)
-  return call(function(cb)
-    return provider.browse(query, cb)
+  return call(start)
+end
+
+local function browse(category, cursor, data)
+  return respond(data, function(cb)
+    return provider.browse[category](cursor, cb)
+  end)
+end
+
+local function search(text, data)
+  return respond(data, function(cb)
+    return provider.search(text, nil, cb)
+  end)
+end
+
+local function expand(query, data)
+  return respond(data, function(cb)
+    return provider.expand(query, cb)
   end)
 end
 
@@ -74,7 +94,7 @@ local function poem(poem_title, author)
 end
 
 local function entry(record)
-  local err, page = browse({ search = 'Poem' }, { record })
+  local err, page = search('Poem', { record })
   assert(not err, err)
   return page.entries[1]
 end
@@ -100,7 +120,14 @@ local function run()
     require('lilt.online.providers').name(provider.id) == provider.name,
     'registered source is available to discovery and offline information'
   )
-  local err, page = browse({}, { authors = { 'A. Poet', 'É. Author', 'A. Poet' } })
+  assert(
+    not provider.menu
+      and vim.tbl_count(provider.browse) == 3
+      and not provider.browse.recent
+      and not provider.browse.short_stories,
+    'only supported content categories are advertised'
+  )
+  local err, page = browse('poets', nil, { authors = { 'A. Poet', 'É. Author', 'A. Poet' } })
   assert(
     not err and #page.entries == 2 and not page.count and not page.next and not page.previous,
     'author groups without invented totals or pages'
@@ -109,14 +136,21 @@ local function run()
   assert(
     vim.deep_equal(page.entries[2], {
       kind = 'group',
+      id = 'É. Author',
       label = 'É. Author',
       query = { author = 'É. Author' },
     }),
     'author group carries a data query'
   )
+  local author_group = page.entries[2]
+  err, page = browse('poets', nil, { authors = { 'É. Author', 'é. Author' } })
+  assert(
+    not err and page.entries[1].id == author_group.id and page.entries[2].id ~= author_group.id,
+    'poet group identity survives reordering and preserves exact spelling'
+  )
 
   local record = poem()
-  err, page = browse({ author = record.author }, { record })
+  err, page = expand({ author = record.author }, { record })
   assert(
     not err and page.title == record.author and #page.entries == 1,
     'selected author poem list'
@@ -143,9 +177,54 @@ local function run()
     'no inferred bibliography'
   )
 
-  err = browse({ author = 'Another Author' }, { record })
+  local metadata = vim.deepcopy(record)
+  metadata.lines = nil
+  for _, category in ipairs({ 'explore', 'poetry' }) do
+    local before = #requests
+    err, page = browse(category, nil, { metadata, metadata })
+    assert(not err and #requests == before + 1, 'one random request per action')
+    assert(
+      requests[#requests] == 'https://poetrydb.org/random/20/author,title,linecount',
+      'documented bounded random metadata query excludes poem bodies'
+    )
+    assert(
+      #page.entries == 1 and vim.deep_equal(page.entries[1], selected),
+      'random metadata deduplicates exact identities and preserves author-list work fields'
+    )
+    assert(
+      page.next and not page.count and not page.previous and page.title == 'Random poems',
+      'random batches offer another sample without exhaustive pagination or totals'
+    )
+    err, page = browse(category, vim.json.decode(vim.json.encode(page.next)), { metadata })
+    assert(
+      not err and page.next and #requests == before + 2,
+      'opaque continuation repeats a bounded batch'
+    )
+    err, page = browse(category, page.next, {})
+    assert(
+      not err and #page.entries == 0 and page.empty and page.next,
+      'an empty random sample can be retried by loading another batch'
+    )
+  end
+  local oversized = {}
+  for _ = 1, 21 do
+    oversized[#oversized + 1] = metadata
+  end
+  err = browse('explore', nil, oversized)
+  assert(
+    err and err:find('batch size', 1, true),
+    'oversized random responses fail before deduplication'
+  )
+  err = browse('poetry', nil, { authors = { record.author } })
+  assert(err, 'random poem metadata cannot masquerade as an author list')
+
+  local before_expansion = #requests
+  err = expand({}, {})
+  assert(err and #requests == before_expansion, 'expansion requires a selected author')
+
+  err = expand({ author = 'Another Author' }, { record })
   assert(err and err:find('does not match', 1, true), 'author browsing verifies exact author')
-  err, page = browse({ search = 'café & `x`' }, { record, record })
+  err, page = search('café & `x`', { record, record })
   assert(
     not err and #page.entries == 1,
     'duplicate metadata rows collapse without pretending text identity'
@@ -163,46 +242,49 @@ local function run()
   )
 
   for _, status in ipairs({ 404, '404' }) do
-    err, page = browse({ search = 'missing' }, { status = status, reason = 'Not found' })
+    err, page = search('missing', { status = status, reason = 'Not found' })
     assert(not err and #page.entries == 0 and page.empty, 'HTTP-200 JSON404 is empty')
   end
-  err, page = browse({}, { authors = {} })
+  err, page = browse('poets', nil, { authors = {} })
   assert(not err and #page.entries == 0, 'empty author list')
   for _, status in ipairs({ 413, '413' }) do
-    err = browse({ search = 'broad' }, { status = status, reason = 'too broad' })
+    err = search('broad', { status = status, reason = 'too broad' })
     assert(err and err:find('narrow', 1, true), 'JSON413 asks for narrower input')
   end
-  err = browse({}, { status = 405, reason = 'bad\nquery' })
+  err = browse('poets', nil, { status = 405, reason = 'bad\nquery' })
   assert(err and err:find('API error: bad query', 1, true), 'source error reason is safe text')
   for _, data in ipairs({ '{bad', 'null', '{}', '{"authors":[null]}', '{"authors":["bad\\nname"]}' }) do
-    err = browse({}, data)
+    err = browse('poets', nil, data)
     assert(err, 'invalid authors response is rejected')
   end
   for _, count in ipairs({ -1, 1.5, false, '', '2x', '1e2', '99999999999999999999' }) do
     local bad = poem()
     bad.linecount = count
-    err = browse({ search = 'Poem' }, { bad })
+    err = search('Poem', { bad })
     assert(err and err:find('linecount', 1, true), 'invalid literary counts are rejected')
   end
-  err = browse({ search = 'Poem' }, { status = 200, reason = 'unexpected status object' })
+  err = search('Poem', { status = 200, reason = 'unexpected status object' })
   assert(err, 'a status object is not a result array')
-  err = browse({ search = 'Poem' }, { title = 'not an array' })
+  err = search('Poem', { title = 'not an array' })
   assert(err, 'object cannot masquerade as poem array')
-  err = browse({}, '{"authors":["\255"]}')
+  err = browse('poets', nil, '{"authors":["\255"]}')
   assert(err and err:find('UTF-8', 1, true), 'invalid response UTF-8 is rejected')
   network_error = true
-  err = browse({}, { authors = {} })
+  err = browse('poets', nil, { authors = {} })
   network_error = false
   assert(err and err:find('online request failed', 1, true), 'network errors propagate')
 
-  for _, search in ipairs({ 'a;b', 'a/b', 'term:abs', 'term:word', '\n', '' }) do
+  for _, text in ipairs({ 'a;b', 'a/b', 'term:abs', 'term:word', '\n', '' }) do
     local before = #requests
-    err = browse({ search = search }, {})
+    err = search(text, {})
     assert(err and #requests == before, 'unsupported syntax never turns into a different query')
   end
+  local before_search = #requests
+  err = search(nil, {})
+  assert(err and #requests == before_search, 'missing search text cannot become an author browse')
   held = true
   local delivered = false
-  local cancel = provider.browse({}, function()
+  local cancel = provider.browse.poets(nil, function()
     delivered = true
   end)
   local job = jobs[#jobs]
@@ -215,7 +297,7 @@ local function run()
     job.killed and not delivered and not vim.uv.fs_stat(job.path),
     'cancelled browse cleans request'
   )
-  cancel = provider.browse({ search = 'a;b' }, function()
+  cancel = provider.search('a;b', nil, function()
     delivered = true
   end)
   cancel()

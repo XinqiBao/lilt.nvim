@@ -89,12 +89,20 @@ function M.new(on_close)
   end
 
   function s:cancel()
-    if self.cancel_request then
-      self.cancel_request()
-      self.cancel_request = nil
+    local page = self:page()
+    if page then
+      page.generation = nil
     end
-    if self:page() then
-      self:page().generation = nil
+    if self.cancel_request then
+      local cancel = self.cancel_request
+      self.cancel_request = nil
+      cancel()
+      if page and page.cancelled then
+        page.cancelled()
+      end
+    end
+    if page then
+      page.busy, page.status = nil, nil
     end
   end
 
@@ -243,6 +251,12 @@ function M.new(on_close)
         end
         row(clip(label, width), item)
       end
+      if item.secondary then
+        for _, text in ipairs(full_wrap(item.secondary, math.max(1, width - #indent))) do
+          row(indent .. text, item)
+          marks[#marks + 1] = { #lines - 1, 'Comment' }
+        end
+      end
     end
     if #lines == 0 then
       lines = { '' }
@@ -282,7 +296,12 @@ function M.new(on_close)
       footer = ' j/k move ·' .. footer
     end
     if page.busy then
-      footer = width < 40 and ' Working · q/Esc cancels ' or (' ' .. page.status[1].label .. ' ')
+      if page.blocking == false then
+        footer = width < 40 and ' Loading… · s search · h back '
+          or ' Loading… · s search · h back · q/Esc quit '
+      else
+        footer = width < 40 and ' Working · q/Esc cancels ' or (' ' .. page.status[1].label .. ' ')
+      end
     end
     local config = {
       relative = 'editor',
@@ -351,7 +370,7 @@ function M.new(on_close)
 
   local function save()
     local page = s:page()
-    if page and s.win and api.nvim_win_is_valid(s.win) then
+    if page and not s.input and s.win and api.nvim_win_is_valid(s.win) then
       remember()
       page.view = api.nvim_win_call(s.win, vim.fn.winsaveview)
     end
@@ -380,17 +399,24 @@ function M.new(on_close)
     end
   end
 
-  function s:request(page, start, done, message)
+  function s:request(page, start, done, message, update)
     save()
     self:cancel()
     local generation = {}
     page.generation, page.busy = generation, true
-    page.status = { { label = message } }
+    page.status = update and page.blocking == false and {} or { { label = message } }
     self:render(true)
-    self.cancel_request = start(function(err, value)
-      if self.closed or self:page() ~= page or page.generation ~= generation then
+    local function current()
+      return not self.closed and self:page() == page and page.generation == generation
+    end
+    local completed = false
+    local cancel = start(function(err, value)
+      if not current() then
         return
       end
+      save()
+      completed = true
+      page.generation = nil
       self.cancel_request, page.busy, page.status = nil, nil, nil
       M.attempt(function()
         if err then
@@ -398,7 +424,7 @@ function M.new(on_close)
             key = 'r',
             label = 'Request failed — retry',
             select = function()
-              self:request(page, start, done, message)
+              self:request(page, start, done, message, update)
             end,
           }
           page.status = {
@@ -411,7 +437,23 @@ function M.new(on_close)
           done(value)
         end
       end)
+    end, function(value)
+      if current() and update then
+        save()
+        M.attempt(function()
+          update(value)
+        end)
+      end
     end)
+    if current() then
+      self.cancel_request = cancel
+    elseif not completed then
+      -- Startup progress can navigate or close before start returns its cancel.
+      cancel()
+      if page.cancelled then
+        page.cancelled()
+      end
+    end
   end
 
   -- Input semantics belong to the caller; presentation and completion stay

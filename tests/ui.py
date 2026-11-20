@@ -625,6 +625,11 @@ def information_tests():
         nvim.ui_try_resize(width, height)
         rows = input_keys("gg")
         content = nvim.current.buffer[:]
+        second_paragraph = next(index for index, line in enumerate(content)
+                                if "Second paragraph" in line)
+        check(second_paragraph > 0 and not content[second_paragraph - 1].strip()
+              and "source description." in " ".join(" ".join(content[:second_paragraph - 1]).split()),
+              "description paragraphs retain a distinct blank row at narrow width")
         seen = set()
         for index, line in enumerate(content):
             if index:

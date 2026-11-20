@@ -25,7 +25,12 @@ function M.items(metadata, context)
   }) do
     local value = metadata[pair[2]]
     if value then
-      items[#items + 1] = { label = pair[1] .. ': ' .. value, wrap = 'full' }
+      local lines = pair[2] == 'description' and vim.split(value, '\n', { plain = true })
+        or { value }
+      lines[1] = pair[1] .. ': ' .. lines[1]
+      for _, line in ipairs(lines) do
+        items[#items + 1] = { label = line, wrap = 'full' }
+      end
     end
   end
   if metadata.source then

@@ -260,11 +260,20 @@ other path's parents yourself.
 
 ## Online acquisition
 
-Choose **Discover online…**, select a source, then choose a source-specific browse
-or search action. Catalogs stay separate. Groups open a deeper list; next/previous
-page replace the current list. Back restores the parent group or source menu,
-then source selection. Failed requests offer retry; leaving cancels pending work.
-Empty or cancelled search input preserves the current page.
+Choose **Discover online…**, then search or select a supported content category.
+Results arrive progressively in one list, with a secondary source label. Search
+covers Gutenberg and PoetryDB; Unglue.it is available through browsing.
+**Load more** appends another batch from sources with a continuation;
+**Retry failed** contacts only failed sources and retains successful results.
+An empty batch does not imply an exhausted catalog. No combined catalog total or
+ranking is inferred across sources.
+
+Groups open a source's poet or exact-copy list; next/previous replaces that group
+page. Back restores the accumulated results and selection, then the category
+landing. Search (`s`) remains available from the landing and results, including
+while loading. Empty or cancelled input preserves the current page. Leaving a
+page cancels its pending requests; returning to paused results offers Load more
+to resume them without refetching completed pages.
 
 Shared acquisition stages each new work, checks selected provider/ID against the
 prepared source, validates all files, and checks names and identity again before

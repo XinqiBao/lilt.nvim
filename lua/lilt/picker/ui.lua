@@ -296,7 +296,12 @@ function M.new(on_close)
       footer = ' j/k move ·' .. footer
     end
     if page.busy then
-      footer = width < 40 and ' Working · q/Esc cancels ' or (' ' .. page.status[1].label .. ' ')
+      if page.blocking == false then
+        footer = width < 40 and ' Loading… · s search · h back '
+          or ' Loading… · s search · h back · q/Esc quit '
+      else
+        footer = width < 40 and ' Working · q/Esc cancels ' or (' ' .. page.status[1].label .. ' ')
+      end
     end
     local config = {
       relative = 'editor',
@@ -399,7 +404,7 @@ function M.new(on_close)
     self:cancel()
     local generation = {}
     page.generation, page.busy = generation, true
-    page.status = { { label = message } }
+    page.status = update and page.blocking == false and {} or { { label = message } }
     self:render(true)
     local function current()
       return not self.closed and self:page() == page and page.generation == generation

@@ -46,8 +46,8 @@ Plug 'XinqiBao/lilt.nvim'
 Run `:Lilt` and choose a work and unit. **Examples** offers an offline first try.
 Retype the passage following its physical line breaks, including blank rows.
 
-To build a personal library, choose **Discover online…**, select a source, then
-browse or search its catalog and choose **Add to library**. For your own texts,
+To build a personal library, choose **Discover online…**, search or browse a
+content category, then select a work and choose **Add to library**. For your own texts,
 choose **Add local work…** and enter a [prepared work directory](doc/works.md).
 The floating path input supports directory completion with Tab / Shift-Tab; Enter accepts a
 completion, then Enter opens the work. Paths may include `~` and spaces.
@@ -106,9 +106,12 @@ require("lilt").setup({
 - [PoetryDB](doc/sources/poetrydb.md) offers author browsing and title/author
   search. Each poem becomes one plain-text unit with its original JSON retained.
 
-Each source has its own menu and supported formats. Source details, supplied
-rights and descriptions remain readable offline; original downloads and source
-records are retained. See [online sources](doc/sources.md).
+Discover combines participating sources in one list, with a source label beneath
+each result. **Load more** appends another batch; **Retry failed** retries failed
+sources while keeping successful results. Search covers Gutenberg and PoetryDB;
+Unglue.it contributes through browsing. Back returns to the category choices.
+Source details, supplied rights and descriptions remain readable offline;
+original downloads and source records are retained. See [online sources](doc/sources.md).
 
 Check copyright in your country before downloading or sharing. EPUB acquisitions
 retain `SOURCE.epub`; PoetryDB retains `SOURCE.poetrydb.json`. Source credits and

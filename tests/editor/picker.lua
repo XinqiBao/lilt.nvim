@@ -734,6 +734,32 @@ local function run()
     'synchronous completion does not retain stale cancellation'
   )
   no_picker()
+  local blocking = ui.new(function() end)
+  local blocking_page = { title = 'Blocking progress', items = {} }
+  blocking:push(blocking_page)
+  local blocking_done, blocking_update
+  blocking:request(
+    blocking_page,
+    function(finish, progress)
+      blocking_done, blocking_update = finish, progress
+      return function() end
+    end,
+    function()
+      blocking:render(true)
+    end,
+    'Preparing…',
+    function()
+      blocking:render(true)
+    end
+  )
+  assert(
+    blocking_page.busy and blocking_page.status[1].label == 'Preparing…',
+    'blocking progressive requests retain their status and footer message'
+  )
+  blocking_update('progress')
+  blocking_done(nil, 'Ready')
+  blocking:close()
+  no_picker()
   print('Lilt picker: XDG, hierarchy, multiple examples, buffer reuse and cleanup passed')
 end
 local ok, err = xpcall(run, debug.traceback)

@@ -264,11 +264,13 @@ Choose **Discover online…** to open Explore immediately. Search (`s`) and
 Browse categories (`b`) remain above results, including while loading. The
 category menu lists only supported categories; selecting the current category
 preserves its feed without a request.
-Results arrive progressively in one list. Wide windows show muted source hints
-at the right of each result's first row; narrow windows omit them. Full titles
-and authors wrap, and every continuation row selects the same item. Groups marked
-with › expand into poet or copy choices. Work information retains official source
-names and exact identities. Search
+Results arrive progressively, one work or group per row. Titles take priority;
+muted authors use spare room, with an ellipsis for overflow. Groups retain ›
+when truncated. Results and group pages allow up to 96 columns; input and
+information keep their regular widths. Native `/` searches visible text; `s`
+searches the catalogs by complete title or author. Work information retains
+complete metadata and exact source identity. Identical rows may be distinct
+source copies; inspect information to choose. Search
 covers Gutenberg and PoetryDB; Unglue.it is available through browsing.
 **Load more** appends another batch from sources with a continuation;
 **Retry failed** contacts only failed sources and retains successful results.

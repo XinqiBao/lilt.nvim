@@ -345,10 +345,10 @@ local function unified_discovery(lilt)
     'one concurrent request per source and no in-flight load action'
   )
   local works = {}
-  for i = 1, 16 do
+  for i = 1, 32 do
     works[i] = item(tostring(i), 'Fast work ' .. i)
   end
-  works[12].title = 'Fast work 12 ' .. string.rep('long title ', 12)
+  works[24].title = 'Fast work 24 ' .. string.rep('long title ', 12)
   works[#works + 1] =
     { kind = 'group', id = 'author:one', label = 'Selected author', query = { author = 'one' } }
   finish(pending[1], nil, { entries = works, next = 'next-first', title = '900 source records' })
@@ -362,12 +362,11 @@ local function unified_discovery(lilt)
   )
   local row
   for i, line in ipairs(lines()) do
-    if line:find('Fast work 12', 1, true) then
+    if line:find('Fast work 24', 1, true) then
       row = i
     end
   end
   api.nvim_win_set_cursor(0, { row, 0 })
-  keys('j') -- a wrapped title remains an actionable continuation of the same result
   local position, view = api.nvim_win_get_cursor(0), vim.fn.winsaveview()
   finish(pending[2], 'fixture peer failed')
   finish(pending[3], nil, { entries = {} })
@@ -386,11 +385,11 @@ local function unified_discovery(lilt)
     'continuation and failure have independent actions'
   )
   keys('<CR>')
-  assert(text():find('first:12', 1, true), 'continuation row opens its exact work details')
+  assert(text():find('first:24', 1, true), 'compact result opens its exact work details')
   keys('h')
   assert(
     vim.deep_equal(api.nvim_win_get_cursor(0), position),
-    'details restore selected continuation row'
+    'details restore selected result row'
   )
   choose('Load more')
   assert(
@@ -401,7 +400,7 @@ local function unified_discovery(lilt)
     #pending == 4 and pending[4].id == 'first' and pending[4].query == 'next-first',
     'load more skips failed and exhausted peers'
   )
-  finish(pending[4], nil, { entries = { item('17', 'Continued work') } })
+  finish(pending[4], nil, { entries = { item('33', 'Continued work') } })
   assert(
     text():find('Fast work 1', 1, true) and text():find('Continued work', 1, true),
     'load more appends without replacing earlier results'
@@ -635,58 +634,6 @@ local function discovery_navigation()
     'browse Back returns directly to library; completed startup cancels are not called'
   )
   s:close()
-  registry.list = saved
-end
-
-local function stable_source_layout()
-  local saved, pending = registry.list, {}
-  registry.list = function()
-    local sources = {}
-    for _, id in ipairs({ 'poetrydb', 'gutenberg' }) do
-      sources[#sources + 1] = {
-        id = id,
-        name = id,
-        browse = {
-          explore = function(_, cb)
-            pending[id] = cb
-            return function() end
-          end,
-        },
-      }
-    end
-    return sources
-  end
-  local original_columns = vim.o.columns
-  for _, columns in ipairs({ 66, 67 }) do
-    vim.o.columns = columns
-    local s = require('lilt.picker.ui').new(function() end)
-    s:push({ title = 'Library', items = {} })
-    require('lilt.picker.discover').open(s, home, nil, function() end, function() end)
-    local function result(id, title)
-      return { title = title, source = { provider = id, id = 'one', url = 'https://example.org' } }
-    end
-    pending.poetrydb(nil, { entries = { result('poetrydb', string.rep('天地é', 30)) } })
-    keys('G')
-    local before, position, view = lines(), api.nvim_win_get_cursor(0), vim.fn.winsaveview()
-    assert(
-      (table.concat(before):find('PoetryDB', 1, true) ~= nil) == (columns == 67),
-      'all participating source labels determine visibility before any provider responds'
-    )
-    pending.gutenberg(nil, { entries = { result('gutenberg', 'Later peer') } })
-    local after = lines()
-    for i, line in ipairs(before) do
-      if i > 3 then
-        assert(after[i] == line, 'peer arrival never reflows existing wrapped rows')
-      end
-    end
-    assert(
-      vim.deep_equal(api.nvim_win_get_cursor(0), position)
-        and vim.fn.winsaveview().topline == view.topline,
-      'longer peer source label preserves wrapped selection and viewport at threshold'
-    )
-    s:close()
-  end
-  vim.o.columns = original_columns
   registry.list = saved
 end
 
@@ -1306,7 +1253,6 @@ local function run()
     )
   end
   no_staging()
-  stable_source_layout()
   discovery_navigation()
   unified_discovery(lilt)
   print('Lilt online: catalog, cancellation, fidelity, installation and discover-to-reading passed')

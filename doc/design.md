@@ -26,8 +26,8 @@ highlighting. Menus initially prefer an action; information pages start at
 the title so identity and availability can be inspected before acquisition.
 New pages reset the shared window's scroll. Returning, cancelling search, and
 resizing retain the cursor item and its wrapped-line offset (clamped when text
-reflows). Work-information, online bibliographic fields and Discover result
-titles/authors wrap completely, including unspaced UTF-8 and URLs. Local work and
+reflows). Work-information and online bibliographic fields wrap completely,
+including unspaced UTF-8 and URLs. Discover results use compact rows. Local work and
 unit labels remain bounded. Duplicate local titles show directory names only
 when needed to distinguish them. Unit percentages report saved rows.
 
@@ -79,20 +79,21 @@ replaces the browse layer. Search pushes one layer above browse; query edits
 replace that search layer. Back restores the exact browse selection and viewport.
 Choosing a category from search returns to browse before applying the category.
 Back from browse returns directly to the library; category/query edits do not
-accumulate history. Results keep complete wrapped titles/authors. A muted short
-source label (Gutenberg, Unglue.it, PoetryDB) aligns right on the first visual row.
-The whole page omits hints when fewer than 48 display columns would remain for
-content after the action indent, source column and two-column gap. Each page
-reserves the participating sources' widest hint before requesting results, so
-later peers cannot reflow earlier entries at a fixed width. Continuation
-rows retain the same item identity. Short names belong to presentation; official
-names and source identities remain in Work information. Groups end in › to
-advertise expansion; copy labels remain source-supplied.
+accumulate history. Each result uses one compact row. The Picker receives the
+source-supplied label, optional secondary detail and expansion marker separately;
+the exact entry remains in the discovery action closure. Titles take priority.
+Complete title/author pairs fit inline when possible; otherwise authors use up
+to 24 spare display columns only when at least 12 remain. Two spaces separate
+muted authors from the title. Overflow uses a composing-character-safe ellipsis.
+The expansion marker reserves its width and remains visible on truncated groups.
+Only result/group pages request a 96-column cap; input and information retain
+their regular widths. Complete metadata and provenance stay in information.
+Native / searches visible text; catalog Search uses the full query. Identical
+rows may represent different source copies and are never deduplicated by display.
 Load more appends a batch, while Retry failed requests only failed sources.
 Both actions are omitted while a batch is in flight. Groups push a page titled
 with the selected content, with Previous/Next actions. Single-source groups show
-one official Source context row and use full-width entries without trailing
-hints. Work information adds one level; acquired units use the shared local flow.
+one official Source context row. Work information adds one level; acquired units use the shared local flow.
 Returning restores result selection and viewport.
 
 Progress appears only in the always-visible footer: Loading for the entire

@@ -893,20 +893,19 @@ def online_tests():
             width, height = 28, 10
             nvim.ui_try_resize(width, height)
             input_keys("")
-            compact = "".join("".join(line.split()) for line in nvim.current.buffer[:])
-            check(all("".join(item["title"].split()) in compact for item in long_books)
-                  and "".join(long_author.split()) in compact,
-                  "catalog results retain distinct long Unicode titles and complete authors")
-            for identity, ending in ((13, "上卷"), (14, "下卷")):
-                result_row = next(row for row, line in enumerate(nvim.current.buffer[:], 1) if ending in line)
+            result_rows = [row for row, line in enumerate(nvim.current.buffer[:], 1) if "天地" in line]
+            check(len(result_rows) == 2 and all(nvim.current.buffer[row - 1].rstrip().endswith("…") for row in result_rows),
+                  "long Unicode works each occupy one clipped result row")
+            for identity, result_row in zip((13, 14), result_rows):
                 rows = input_keys(str(result_row) + "G")
-                check(any(ending in row for row in rows) and nvim.current.window.options["cursorline"],
-                      "native result scrolling exposes the distinguishing title ending as an action")
+                check(nvim.current.window.options["cursorline"], "clipped result rows remain native actions")
                 result_view = (nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"])
                 input_keys("<CR>")
                 details = "".join("".join(line.split()) for line in nvim.current.buffer[:])
-                check("gutenberg:" + str(identity) in details,
-                      "a continuation row opens the matching catalog work")
+                check("gutenberg:" + str(identity) in details
+                      and "".join(long_books[identity - 13]["title"].split()) in details
+                      and "".join(long_author.split()) in details,
+                      "identical clipped labels open their exact source with complete title and author")
                 rows = screen()
                 if identity == 13:
                     check(any("a Add" in row for row in rows),
@@ -923,7 +922,7 @@ def online_tests():
                           "unsupported information advertises no acquisition action")
                 input_keys("h")
                 check((nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"]) == result_view,
-                      "details back restores the wrapped result row and viewport")
+                      "details back restores the compact result row and viewport")
             width, height = 90, 22
             nvim.ui_try_resize(width, height)
             input_keys("")
@@ -1111,6 +1110,14 @@ def group_presentation_tests():
             input_keys(":Lilt<CR>")
             choose("Discover online")
             check("Choose a copy ›" in "\n".join(nvim.current.buffer[:]), "aggregate groups visibly advertise expansion")
+            width, height = 28, 10
+            nvim.ui_try_resize(width, height)
+            input_keys("")
+            check(any("… ›" in line for line in nvim.current.buffer[:]),
+                  "truncated groups keep their expansion marker on the same row")
+            width, height = 132, 30
+            nvim.ui_try_resize(width, height)
+            input_keys("")
             parent = (nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"])
             rows = choose("Collected poems")
             check(any("Collected poems" in row for row in rows)
@@ -1121,12 +1128,13 @@ def group_presentation_tests():
             content = nvim.current.buffer[:]
             check(sum("Unglue.it" in line for line in content) == 1
                   and any("Source: Unglue.it" in row for row in rows),
-                  "single-source group provides one official source context rather than repeated trailing hints")
+                  "single-source group retains its official source context")
+            check(nvim.current.window.width == 96, "group results use the wider Discover allowance")
             first = next(line for line in content if "Collected poems · EPUB" in line)
             check(nvim.funcs.strdisplaywidth(first) > 64, "copy labels use the full group width")
             copy_row = next(i for i, line in enumerate(content, 1) if "copy 2" in line)
             input_keys(str(copy_row) + "G<CR>")
-            check("unglueit:2" in "\n".join(nvim.current.buffer[:]), "copy continuation opens its exact identity")
+            check("unglueit:2" in "\n".join(nvim.current.buffer[:]), "compact copy opens its exact identity")
             input_keys("h]")
             check(any("Loading more…" in row for row in screen()), "group continuation keeps visible progress")
             nvim.exec_lua("_G.lilt_group_finish()")
@@ -1199,51 +1207,48 @@ def unified_discovery_tests():
             check(any("Search title or author" in row for row in rows) and any("Explore" in row for row in rows),
                   "narrow Discover opens directly on content choices")
             check("Library" not in text() and "Choose source" not in text(), "Discover has no provider chooser")
-            titles = ["Early work " + str(i) for i in range(1, 13)]
-            titles[9] += " 天地é" * 20
+            titles = ["Early work " + str(i) for i in range(1, 33)]
+            titles[23] += " 天地é" * 20
             finish(1, titles=titles, more="next")
-            check("Gutenberg" not in text(), "narrow results uniformly omit source hints")
-            width, height = 90, 24
+            width, height = 120, 24
             nvim.ui_try_resize(width, height)
             input_keys("")
-            labels = [line for line in nvim.current.buffer[:] if "Gutenberg" in line]
-            check(len(labels) == 12 and all(line.endswith("Gutenberg") for line in labels),
-                  "wide results place one short source hint on each item's first row")
-            check(all(nvim.funcs.strdisplaywidth(line) == nvim.current.window.width for line in labels),
-                  "trailing hints align by display columns including CJK and combining characters")
-            compact = "".join("".join(line.replace("Gutenberg", "").split()) for line in nvim.current.buffer[:])
-            check("".join(titles[9].split()) in compact, "wide source hints preserve the entire unspaced Unicode title")
+            check(nvim.current.window.width == 96 and len(nvim.current.buffer[:]) == 35
+                  and "Gutenberg" not in text(),
+                  "wide Discover gives each work one row without a source rail")
+            check(all(nvim.funcs.strdisplaywidth(line) <= nvim.current.window.width for line in nvim.current.buffer[:]),
+                  "compact Unicode labels fit the available display width")
             check("Early work 1" in text() and sum("Loading…" in row for row in screen()) == 1
                   and "Loading" not in text(), "a successful source appears before slow peers settle")
             check("[r]" not in text() and "Load more" not in text(), "batch actions stay hidden while peers load")
-            result_row = next(row for row, line in enumerate(nvim.current.buffer[:], 1) if "Early work 10 " in line)
-            input_keys(str(result_row) + "Gj")
+            result_row = next(row for row, line in enumerate(nvim.current.buffer[:], 1) if "Early work 24 " in line)
+            input_keys(str(result_row) + "G")
             rows = screen()
-            provenance = next(row for row, line in enumerate(rows) if "Gutenberg" in line)
-            check(group_at(provenance, rows[provenance].index("Gutenberg"), "Comment"),
-                  "wide source hints use the muted Comment highlight")
+            author_row = next(row for row, line in enumerate(rows) if "A. Writer" in line)
+            check(group_at(author_row, rows[author_row].index("A. Writer"), "Comment"),
+                  "compact author text uses the muted Comment highlight")
             position = (nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"])
             finish(2, error="fixture service unavailable")
             finish(3)
             check((nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"]) == position,
-                  "peer failure and completion preserve the selected wrapped result and scroll")
+                  "peer failure and completion preserve the selected compact result and scroll")
             check("Some results unavailable" in text() and "fixture service unavailable" in text(),
                   "successful results retain honest partial coverage and failure causes")
             check("Private source ready title" not in text(), "normal source diagnostics do not crowd results")
             input_keys("<CR>")
-            check("gutenberg:Early work 10" in text(), "selecting a continuation opens the same exact-copy details")
+            check("gutenberg:Early work 24" in text() and "".join(titles[23].split()) in "".join(text().split())
+                  and nvim.current.window.width == 76,
+                  "compact work opens exact full information at the regular width")
             input_keys("h")
             check((nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"]) == position,
                   "details back restores the result viewport")
             width, height = 28, 10
             nvim.ui_try_resize(width, height)
             input_keys("")
-            check("Gutenberg" not in text() and not any(line.rstrip().endswith("Unglue.it") for line in nvim.current.buffer[:]),
-                  "resizing narrow removes all source hints")
             check(any("r retry" in row for row in screen()),
                   "28x10 keeps retry discoverable while scrolled among successful results")
             input_keys("<CR>")
-            check("gutenberg:Early" in "".join(text().split()), "resize keeps the continuation attached to its work")
+            check("gutenberg:Earlywork24" in "".join(text().split()), "resize keeps the compact row attached to its work")
             input_keys("h")
             load_row = next(row for row, line in enumerate(nvim.current.buffer[:], 1) if "Load more" in line)
             input_keys(str(load_row) + "G")
@@ -1256,7 +1261,7 @@ def unified_discovery_tests():
             check("Early work 1" in text() and "Later work" in text(), "next batch appends to the flat result list")
             choose("Retry failed")
             check(sum("Retrying…" in row for row in screen()) == 1 and "Retrying" not in text(), "retry keeps one visible footer indicator")
-            check(nvim.current.buffer[nvim.current.window.cursor[0] - 1].strip() in ("Later work — A.", "Writer")
+            check(nvim.current.buffer[nvim.current.window.cursor[0] - 1].strip().startswith("Later work")
                   and nvim.funcs.winsaveview()["topline"] > 1,
                   "clicking Retry failed retains the scrolled result boundary")
             check(nvim.exec_lua("return #_G.lilt_unified_jobs == 5 and _G.lilt_unified_jobs[5].id == 'poetrydb'"),

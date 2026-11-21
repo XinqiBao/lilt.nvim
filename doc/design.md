@@ -32,8 +32,12 @@ unit labels remain bounded. Duplicate local titles show directory names only
 when needed to distinguish them. Unit percentages report saved rows.
 
 `picker/information.lua` formats shared bibliographic/source facts as inert page
-items. Online details label current catalog metadata and retain their acquisition
-actions. Local unit pages expose Work information with i, using only the saved
+items, with separate identity and remaining-field formatters. Online Work
+information leads with title/authors, availability and Add to library or Open
+library copy, followed by the remaining complete metadata, source and rights.
+The primary shortcut stays visible in the footer even when identity fields exceed
+the viewport. Unsupported or failed identity checks advertise no acquisition.
+Formatting knows no acquisition state; the caller places actions between facts. Local unit pages expose Work information with i, using only the saved
 manifest, followed by local directory and recorded preparation settings. Back
 restores the selected unit and viewport. Optional SOURCE.json is exposed by file
 location without parsing arbitrary provider fields, network requests or schema
@@ -68,19 +72,41 @@ completion through Tab / Shift-Tab and expand tilde/environment variables
 without interpreting filename glob characters. Enter accepts a visible
 completion before submitting; Escape cancels the input and restores selection.
 Invalid paths stay editable with feedback. There is no global UI override.
-Discover opens on Search and supported content categories. Results keep Search
-above a content heading and flat accumulated entries with secondary provenance;
-Back restores the category landing. Queries replace the current results page.
+Discover immediately opens Explore with Search (s) and Browse categories (b)
+above the content heading. The category menu includes only supported categories.
+Selecting the current category retains the feed without a request; changing it
+replaces the browse layer. Search pushes one layer above browse; query edits
+replace that search layer. Back restores the exact browse selection and viewport.
+Choosing a category from search returns to browse before applying the category.
+Back from browse returns directly to the library; category/query edits do not
+accumulate history. Results keep complete wrapped titles/authors. A muted short
+source label (Gutenberg, Unglue.it, PoetryDB) aligns right on the first visual row.
+The whole page omits hints when fewer than 48 display columns would remain for
+content after the action indent, source column and two-column gap. Each page
+reserves the participating sources' widest hint before requesting results, so
+later peers cannot reflow earlier entries at a fixed width. Continuation
+rows retain the same item identity. Short names belong to presentation; official
+names and source identities remain in Work information. Groups end in › to
+advertise expansion; copy labels remain source-supplied.
 Load more appends a batch, while Retry failed requests only failed sources.
-Both actions are omitted while a batch is in flight. Groups push a provider's
-own page with Previous/Next actions; work details add one level and acquired units
-use the shared local flow. Returning restores result selection and viewport.
+Both actions are omitted while a batch is in flight. Groups push a page titled
+with the selected content, with Previous/Next actions. Single-source groups show
+one official Source context row and use full-width entries without trailing
+hints. Work information adds one level; acquired units use the shared local flow.
+Returning restores result selection and viewport.
 
-Empty batch feedback remains visible in short windows. Partial coverage keeps
-successful results usable and exposes failed-source causes and retry; successful
-empty responses alongside failures describe incomplete results. Unsupported
-categories are omitted. Search shows one coverage note for browse-only sources.
-Normal source status and catalog totals do not crowd the result list. Local
+Progress appears only in the always-visible footer: Loading for the entire
+initial batch (including partial arrivals), Loading more for explicit paging,
+Retrying for failure recovery. Cancelled incomplete sources show Paused at the
+heading. Footer navigation adapts to available width; failed settled batches
+include an r retry hint even in 28-column terminals. Progress stays visible
+when paging from the bottom of long lists, without duplicating the heading or
+following scroll position. Partial successes stay usable; failures remain
+summarized near the content heading with complete source causes in scrollable
+rows. Empty completed searches say No matching works found; failures say Could
+not complete search rather than claiming zero matches. Empty browse batches can
+still offer Load more. Search shows one muted Some collections are browse-only
+note. No cross-provider ranking or combined catalog totals are inferred. Local
 discovery errors wrap completely so native scrolling reaches the full cause.
 
 `name.lua` converts a user-chosen title into directory spelling; it knows neither

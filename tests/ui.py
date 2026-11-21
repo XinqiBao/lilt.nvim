@@ -751,28 +751,29 @@ def catalog_feedback_tests():
             nvim.ui_try_resize(width, height)
             input_keys(":Lilt<CR>")
             choose("Discover online")
-            rows = choose("Explore")
-            check(any("Loading catalog" in row for row in rows), "short window shows pending catalog feedback")
+            rows = screen()
+            check(sum("Loading…" in row for row in rows) == 1
+                  and "h back" in "\n".join(rows), "initial progress appears once and footer advertises navigation")
             input_keys("s")
             check(nvim.eval("mode()") == "i", "Search is available while initial Explore request is pending")
             rows = input_keys("<Esc>")
-            check(any("Loading catalog" in row for row in rows)
+            check(any("Loading…" in row for row in rows)
                   and nvim.exec_lua("return #_G.lilt_catalog_jobs") == 1,
                   "cancelling search input preserves the pending catalog request")
             input_keys("s")
             input_keys("empty<CR>")
-            rows = settled("No works found")
-            check(any("No works found" in row for row in rows), "empty results are visible without scrolling")
-            check("No works found" in nvim.current.buffer[nvim.current.window.cursor[0] - 1],
+            rows = settled("No matching works found")
+            check(any("No matching works found" in row for row in rows), "empty results are visible without scrolling")
+            check("No matching works found" in nvim.current.buffer[nvim.current.window.cursor[0] - 1],
                   "empty results select their explanation")
             check(nvim.exec_lua("return _G.lilt_catalog_jobs[1].killed"), "search submission cancels initial browsing")
             release.set()
             pause(50)
-            check("No works found" in "\n".join(nvim.current.buffer[:]), "late Explore completion preserves empty search")
+            check("No matching works found" in "\n".join(nvim.current.buffer[:]), "late Explore completion preserves empty search")
 
             input_keys("s<C-u>error<CR>")
-            rows = settled("Request failed")
-            check(any("Retry failed" in row for row in rows) and not any("No works found" in row for row in rows),
+            rows = settled("Could not complete search.")
+            check(any("Retry failed" in row for row in rows) and not any("No matching works found" in row for row in rows),
                   "HTTP failures offer retry and never claim zero matches")
             check("503" in "\n".join(nvim.current.buffer[:]), "HTTP failure retains its transport cause")
             before_retry = len(received)
@@ -784,28 +785,27 @@ def catalog_feedback_tests():
 
             release.clear()
             input_keys("s<C-u>timeout<CR>")
-            rows = settled("Request failed")
-            check("timed out" in "\n".join(nvim.current.buffer[:]) and not any("No works found" in row for row in rows),
+            rows = settled("Could not complete search.")
+            check("timed out" in "\n".join(nvim.current.buffer[:]) and not any("No matching works found" in row for row in rows),
                   "real curl timeout ends loading with an error")
             input_keys("s<C-u>found<CR>")
             rows = settled("Local catalog work")
             check(any("Local catalog work" in row for row in rows), "new query recovers after timeout")
             input_keys("]")
             rows = settled("Second catalog page")
-            check(any("Second catalog page" in row for row in rows) and received[-1].get("page") == ["2"],
+            check("Second catalog page" in "\n".join(nvim.current.buffer[:]) and received[-1].get("page") == ["2"],
                   "paging preserves the search")
             check("Local catalog work" in "\n".join(nvim.current.buffer[:]),
                   "load more retains earlier results")
 
             input_keys("s<C-u>slow<CR>")
             input_keys("s<C-u>empty<CR>")
-            settled("No works found")
+            settled("No matching works found")
             check(nvim.exec_lua("return _G.lilt_catalog_jobs[#_G.lilt_catalog_jobs-1].killed"),
                   "new search cancels a pending search")
             input_keys("s<C-u>slow<CR>hh")
             check("Discover online" in "\n".join(nvim.current.buffer[:]), "back leaves a pending search")
             choose("Discover online")
-            choose("Explore")
             input_keys("q")
             release.set()
             check(not floats(), "close releases the pending catalog window")
@@ -844,6 +844,7 @@ def online_tests():
         long_books = [dict(other_book, id=identity, title=long_title + ending,
                            authors=[{"name": long_author}])
                       for identity, ending in ((13, "上卷"), (14, "下卷"))]
+        long_books[0]["copyright"] = False
         catalog = json.dumps({"count": 4, "next": None, "results": [book, other_book, *long_books]})
         # Control only the process boundary; exercise the real floating search,
         # async redraw, catalog parser, converter, installation, and reading UI.
@@ -881,15 +882,15 @@ def online_tests():
         try:
             input_keys(":Lilt<CR>")
             choose("Discover online")
-            rows = choose("Explore")
+            rows = screen()
             loading_size = nvim.api.win_get_config(nvim.current.window.handle)
-            check(any("Loading catalog" in row for row in rows), "catalog loading stays visible")
+            check(any("Loading…" in row for row in rows), "catalog loading stays visible")
             rows = pause(130)
             loaded_size = nvim.api.win_get_config(nvim.current.window.handle)
             check((loading_size["width"], loading_size["height"]) == (loaded_size["width"], loaded_size["height"]),
                   "catalog completion keeps the float dimensions")
             check(any("Test Letters" in row for row in rows), "online entry browses works without a query")
-            width, height = 24, 8
+            width, height = 28, 10
             nvim.ui_try_resize(width, height)
             input_keys("")
             compact = "".join("".join(line.split()) for line in nvim.current.buffer[:])
@@ -906,6 +907,20 @@ def online_tests():
                 details = "".join("".join(line.split()) for line in nvim.current.buffer[:])
                 check("gutenberg:" + str(identity) in details,
                       "a continuation row opens the matching catalog work")
+                rows = screen()
+                if identity == 13:
+                    check(any("a Add" in row for row in rows),
+                          "28x10 information advertises Add despite a title longer than the viewport")
+                    before_name = nvim.exec_lua("return #_G.lilt_test_requests")
+                    input_keys("a")
+                    check(nvim.eval("mode()") == "i" and nvim.current.buffer[0] == long_books[0]["title"],
+                          "advertised Add opens naming directly without downloading text")
+                    input_keys("<Esc>")
+                    check(nvim.exec_lua("return #_G.lilt_test_requests") == before_name,
+                          "cancelling naming from long information makes no acquisition request")
+                else:
+                    check(not any("a Add" in row or "o Open" in row for row in rows),
+                          "unsupported information advertises no acquisition action")
                 input_keys("h")
                 check((nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"]) == result_view,
                       "details back restores the wrapped result row and viewport")
@@ -995,7 +1010,11 @@ def online_tests():
             check("Current online catalog metadata" in metadata_text
                   and "Translators: A. Translator" in metadata_text and "Bookshelves: Letters" in metadata_text,
                   "online details share bibliographic formatting with explicit catalog provenance")
-            check("[a] Add to library" in metadata_text, "online addition keeps its explicit a action")
+            check(metadata_text.index("[a] Add to library") < metadata_text.index("Translators:")
+                  and metadata_text.count("Author: A. Writer") == 1
+                  and metadata_text.count("Test Letters") == 1,
+                  "identity appears once and acquisition precedes remaining complete metadata")
+            check(any("Add to library" in row for row in rows), "online details expose their primary action on the first screen")
             width, height = 40, 10
             nvim.ui_try_resize(width, height)
             rows = input_keys("G")
@@ -1039,12 +1058,89 @@ def online_tests():
             nvim.command("LiltClose")
             input_keys(":Lilt<CR>")
             choose("Discover online")
-            choose("Explore")  # close while request is pending
-            input_keys("hq")
+            pause(130)
+            choose("Test Letters")
+            width, height = 28, 10
+            nvim.ui_try_resize(width, height)
+            rows = input_keys("")
+            check(any("o Open" in row for row in rows) and not any("a Add" in row for row in rows),
+                  "28x10 existing-copy information advertises Open rather than Add")
+            input_keys("G")
+            check(any("o Open" in row for row in screen()), "primary Open remains discoverable while reading long metadata")
+            input_keys("hhq")
             pause(130)
             check(not floats(), "leaving online discovery cancels delayed UI work")
         finally:
             nvim.exec_lua("require('lilt.online.providers').list=_G.lilt_test_providers; _G.lilt_test_providers=nil; vim.system=_G.lilt_test_system; _G.lilt_test_system=nil; _G.lilt_test_requests=nil")
+
+
+def group_presentation_tests():
+    global width, height
+    with tempfile.TemporaryDirectory(prefix="lilt-group-ui-") as directory:
+        nvim.exec_lua("""
+            _G.lilt_group_registry = require('lilt.online.providers').list
+            _G.lilt_group_queries = {}
+            local provider = {id='unglueit', name='Unglue.it', browse={}}
+            provider.browse.explore = function(_, cb)
+                cb(nil, {entries={{kind='group', id='collected',
+                    label='Collected poems · Choose a copy', query={page=1}}}})
+                return function() end
+            end
+            provider.expand = function(query, cb)
+                table.insert(_G.lilt_group_queries, query.page)
+                _G.lilt_group_finish = function()
+                    local entries = {}
+                    for i = 1, 2 do
+                        entries[i] = {kind='work', title='Collected poems',
+                            label='Collected poems · EPUB · CC BY 4.0 · supplied edition version '
+                                .. query.page .. ' · exact copy ' .. i,
+                            authors={'A. Poet'}, supported=false, availability='Unavailable: fixture',
+                            source={provider='unglueit', id=tostring(i), url='https://example.org/' .. i}}
+                    end
+                    cb(nil, {title='Collected poems · Choose a copy', entries=entries,
+                        count=2, next=query.page == 1 and {page=2} or nil})
+                end
+                return function() end
+            end
+            require('lilt.online.providers').list = function() return {provider} end
+            require('lilt').setup({library=...})
+        """, directory)
+        try:
+            width, height = 132, 30
+            nvim.ui_try_resize(width, height)
+            input_keys(":Lilt<CR>")
+            choose("Discover online")
+            check("Choose a copy ›" in "\n".join(nvim.current.buffer[:]), "aggregate groups visibly advertise expansion")
+            parent = (nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"])
+            rows = choose("Collected poems")
+            check(any("Collected poems" in row for row in rows)
+                  and sum("Loading…" in row for row in rows) == 1,
+                  "pending group leads with selected content and one visible progress indicator")
+            nvim.exec_lua("_G.lilt_group_finish()")
+            rows = screen()
+            content = nvim.current.buffer[:]
+            check(sum("Unglue.it" in line for line in content) == 1
+                  and any("Source: Unglue.it" in row for row in rows),
+                  "single-source group provides one official source context rather than repeated trailing hints")
+            first = next(line for line in content if "Collected poems · EPUB" in line)
+            check(nvim.funcs.strdisplaywidth(first) > 64, "copy labels use the full group width")
+            copy_row = next(i for i, line in enumerate(content, 1) if "copy 2" in line)
+            input_keys(str(copy_row) + "G<CR>")
+            check("unglueit:2" in "\n".join(nvim.current.buffer[:]), "copy continuation opens its exact identity")
+            input_keys("h]")
+            check(any("Loading more…" in row for row in screen()), "group continuation keeps visible progress")
+            nvim.exec_lua("_G.lilt_group_finish()")
+            input_keys("h")
+            check((nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"]) == parent
+                  and nvim.exec_lua("return _G.lilt_group_queries") == [1, 2],
+                  "group paging replaces one layer and Back restores its aggregate parent without a request")
+            input_keys("q")
+        finally:
+            input_keys("<Esc>")
+            nvim.exec_lua("""
+                require('lilt.online.providers').list = _G.lilt_group_registry
+                _G.lilt_group_registry=nil; _G.lilt_group_finish=nil; _G.lilt_group_queries=nil
+            """)
 
 
 def unified_discovery_tests():
@@ -1066,9 +1162,9 @@ def unified_discovery_tests():
                 if search then p.search = function(_, cursor, callback) return request(cursor, callback) end end
                 return p
             end
-            local first = source('fast', 'Fast Library', true)
-            local slow = source('slow', 'Slow Library', true)
-            local browse = source('browse', 'Browse Library', false)
+            local first = source('gutenberg', 'Project Gutenberg', true)
+            local slow = source('poetrydb', 'PoetryDB', true)
+            local browse = source('unglueit', 'Unglue.it', false)
             require('lilt.online.providers').list = function() return {first, slow, browse} end
             _G.lilt_unified_finish = function(index, err, titles, more)
                 local job = _G.lilt_unified_jobs[index]
@@ -1102,45 +1198,73 @@ def unified_discovery_tests():
             rows = choose("Discover online")
             check(any("Search title or author" in row for row in rows) and any("Explore" in row for row in rows),
                   "narrow Discover opens directly on content choices")
-            check("Library" not in text() and "Choose source" not in text(), "landing has no provider chooser")
-            choose("Explore")
-            finish(1, titles=["Early work " + str(i) for i in range(1, 13)], more="next")
-            check("Early work 1" in text() and "Loading more" in text(), "a successful source appears before slow peers settle")
+            check("Library" not in text() and "Choose source" not in text(), "Discover has no provider chooser")
+            titles = ["Early work " + str(i) for i in range(1, 13)]
+            titles[9] += " 天地é" * 20
+            finish(1, titles=titles, more="next")
+            check("Gutenberg" not in text(), "narrow results uniformly omit source hints")
+            width, height = 90, 24
+            nvim.ui_try_resize(width, height)
+            input_keys("")
+            labels = [line for line in nvim.current.buffer[:] if "Gutenberg" in line]
+            check(len(labels) == 12 and all(line.endswith("Gutenberg") for line in labels),
+                  "wide results place one short source hint on each item's first row")
+            check(all(nvim.funcs.strdisplaywidth(line) == nvim.current.window.width for line in labels),
+                  "trailing hints align by display columns including CJK and combining characters")
+            compact = "".join("".join(line.replace("Gutenberg", "").split()) for line in nvim.current.buffer[:])
+            check("".join(titles[9].split()) in compact, "wide source hints preserve the entire unspaced Unicode title")
+            check("Early work 1" in text() and sum("Loading…" in row for row in screen()) == 1
+                  and "Loading" not in text(), "a successful source appears before slow peers settle")
             check("[r]" not in text() and "Load more" not in text(), "batch actions stay hidden while peers load")
             result_row = next(row for row, line in enumerate(nvim.current.buffer[:], 1) if "Early work 10 " in line)
             input_keys(str(result_row) + "Gj")
             rows = screen()
-            provenance = next(row for row, line in enumerate(rows) if "Fast Library" in line)
-            check(group_at(provenance, rows[provenance].index("Fast Library"), "Comment"),
-                  "provenance is a readable secondary highlight in a narrow window")
+            provenance = next(row for row, line in enumerate(rows) if "Gutenberg" in line)
+            check(group_at(provenance, rows[provenance].index("Gutenberg"), "Comment"),
+                  "wide source hints use the muted Comment highlight")
             position = (nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"])
             finish(2, error="fixture service unavailable")
             finish(3)
             check((nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"]) == position,
                   "peer failure and completion preserve the selected wrapped result and scroll")
-            check("Partial coverage" in text() and "fixture service unavailable" in text(),
+            check("Some results unavailable" in text() and "fixture service unavailable" in text(),
                   "successful results retain honest partial coverage and failure causes")
             check("Private source ready title" not in text(), "normal source diagnostics do not crowd results")
             input_keys("<CR>")
-            check("fast:Early work 10" in text(), "selecting provenance opens the same exact-copy details")
+            check("gutenberg:Early work 10" in text(), "selecting a continuation opens the same exact-copy details")
             input_keys("h")
             check((nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"]) == position,
                   "details back restores the result viewport")
+            width, height = 28, 10
+            nvim.ui_try_resize(width, height)
+            input_keys("")
+            check("Gutenberg" not in text() and not any(line.rstrip().endswith("Unglue.it") for line in nvim.current.buffer[:]),
+                  "resizing narrow removes all source hints")
+            check(any("r retry" in row for row in screen()),
+                  "28x10 keeps retry discoverable while scrolled among successful results")
+            input_keys("<CR>")
+            check("gutenberg:Early" in "".join(text().split()), "resize keeps the continuation attached to its work")
+            input_keys("h")
             load_row = next(row for row, line in enumerate(nvim.current.buffer[:], 1) if "Load more" in line)
             input_keys(str(load_row) + "G")
             input_keys("<CR>")
-            check(nvim.current.window.cursor[0] > 20 and nvim.funcs.winsaveview()["topline"] > 1,
+            check(sum("Loading more…" in row for row in screen()) == 1 and "Loading" not in text(),
+                  "explicit paging keeps a single visible footer indicator while the heading is offscreen")
+            check(nvim.current.window.cursor[0] > 3 and nvim.funcs.winsaveview()["topline"] > 1,
                   "clicking Load more from the bottom retains the result boundary")
             finish(4, titles=["Later work"])
             check("Early work 1" in text() and "Later work" in text(), "next batch appends to the flat result list")
             choose("Retry failed")
-            check("Fast Library" in nvim.current.buffer[nvim.current.window.cursor[0] - 1]
+            check(sum("Retrying…" in row for row in screen()) == 1 and "Retrying" not in text(), "retry keeps one visible footer indicator")
+            check(nvim.current.buffer[nvim.current.window.cursor[0] - 1].strip() in ("Later work — A.", "Writer")
                   and nvim.funcs.winsaveview()["topline"] > 1,
                   "clicking Retry failed retains the scrolled result boundary")
-            check(nvim.exec_lua("return #_G.lilt_unified_jobs == 5 and _G.lilt_unified_jobs[5].id == 'slow'"),
+            check(nvim.exec_lua("return #_G.lilt_unified_jobs == 5 and _G.lilt_unified_jobs[5].id == 'poetrydb'"),
                   "Retry failed contacts only the failed peer")
             finish(5)
-            check("Partial coverage" not in text() and "Retry failed" not in text(), "empty retry success clears stale errors")
+            check("Some results unavailable" not in text() and "Retry failed" not in text(), "empty retry success clears stale errors")
+            width, height = 90, 24
+            nvim.ui_try_resize(width, height)
             input_keys("s")
             input_keys("query<CR>")
             input_keys("s")
@@ -1152,14 +1276,36 @@ def unified_discovery_tests():
                   and nvim.eval("mode()") == "i", "progressive and final callbacks keep native search input and focus")
             input_keys("<Esc>")
             compact = " ".join(text().split())
-            check("Search success" in compact and "Browse Library · browse only; not searched" in compact,
+            check("Search success" in compact and "Some collections are browse-only." in compact,
                   "search has one unobtrusive browse-only coverage note")
             input_keys("h")
-            check("Explore" in text(), "Back restores the category landing")
-            choose("Explore")
-            input_keys("hq")
-            finish(8, titles=["Late result"])
-            check(not floats() and nvim.exec_lua("return _G.lilt_unified_jobs[8].cancelled"),
+            check("Explore" in text(), "Back restores the browse layer")
+            width, height = 28, 10
+            nvim.ui_try_resize(width, height)
+            input_keys("s")
+            input_keys("empty<CR>")
+            finish(8)
+            rows = finish(9)
+            visible = " ".join(" ".join(row.split("│")[1] if "│" in row else row for row in rows).split())
+            check("matching works found." in visible and "browse-only." in visible,
+                  "28x10 empty search exposes its feedback and browse-only coverage without scrolling")
+            input_keys("s<C-u>failed<CR>")
+            finish(10, error="first search failure")
+            rows = finish(11, error="second search failure")
+            visible = " ".join(" ".join(row.split("│")[1] if "│" in row else row for row in rows).split())
+            check("complete search." in visible and "browse-only." in visible and "r retry" in visible,
+                  "28x10 failed search exposes incomplete feedback, coverage and recovery")
+            input_keys("r")
+            check(any("Retrying…" in row for row in screen()), "failed search retries without claiming an empty result")
+            rows = finish(12, titles=["Recovered work " + str(i) for i in range(1, 25)])
+            finish(13)
+            check("Recovered work 1" in nvim.current.buffer[nvim.current.window.cursor[0] - 1]
+                  and any("Recovered work 1" in row for row in screen())
+                  and nvim.current.window.options["cursorline"],
+                  "first successful results after empty/failed search focus a visible work rather than the coverage note")
+            input_keys("s<C-u>pending<CR>hq")
+            finish(14, titles=["Late result"])
+            check(not floats() and nvim.exec_lua("return _G.lilt_unified_jobs[14].cancelled"),
                   "closing a pending feed cancels its sources and cannot resurrect the picker")
             check(not Path(directory, "references").exists(), "fake discovery never acquires or changes a library")
         finally:
@@ -1330,6 +1476,7 @@ def run():
     information_tests()
     catalog_feedback_tests()
     online_tests()
+    group_presentation_tests()
     unified_discovery_tests()
     print(f"Lilt UI: {checks} assertions passed on {nvim.exec_lua('return tostring(vim.version())')}")
 

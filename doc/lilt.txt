@@ -35,8 +35,9 @@ Enter, l, Right  Select an action.
 h, BS, Left      Go back; close at the library page.
 q, Escape        Quit the Picker from any menu.
 d / a / e        Discover online / add local work / examples, from the library.
+b                Browse supported categories, from Discover results.
 s                Edit a catalog search while in Discover.
-[ / ]            Previous / next result page, when available.
+[ / ]            Previous / next group page; ] loads more aggregate results.
 a / o            Add to library / open the local copy, from online work details.
 i                Work information, from a reading-unit page.
 r                Retry a failed request.
@@ -44,7 +45,10 @@ r                Retry a failed request.
 Only actions receive a cursor-line highlight and respond to Enter/l/Right.
 Headings and metadata are informational; activating them does nothing. Menus
 initially focus an action; information pages start at the title. Use a/o to
-add/open directly. Action shortcuts appear beside their labels.
+add/open directly. Online Work information places availability and Add/Open
+before remaining metadata, source and rights. Its footer advertises the available
+primary shortcut even when a long title fills the viewport. Unsupported works
+do not advertise Add. Action shortcuts also appear beside their labels.
 Escape inside the search or directory-name editor cancels only that input.
 
 Works with a table of contents show its hierarchy on one page. Group headings
@@ -88,29 +92,42 @@ remain in the library list; Work information shows the actual directory.
 Repeated source entries open their existing copy, regardless of its directory.
 See doc/works.md in the plugin checkout for the manifest format and validation.
 
-Discover first selects a source, then opens that source's menu. Project Gutenberg
-offers Popular (download order), Newest (descending catalog IDs), Poetry and
-Short stories (popular works in those topics), and title/author search.
-Unglue.it offers Popular EPUBs and New EPUBs, listing eligible explicit English
-copies with direct EPUB links and recognized per-copy rights. Works with several
-eligible downloads open a copy list showing supplied titles, versions and rights;
-Lilt does not silently choose an edition. A filtered page may be empty and still
-offer Next. Unglue.it title search is not offered. See doc/sources/unglueit.md.
-PoetryDB offers author groups and title/author search. One poem becomes one native
-text unit; source line breaks and punctuation remain exact. It has no pagination.
-Search edits a line inside the float: Enter submits, Escape/CTRL-C cancels.
-An empty query preserves the current page. Native insertion and editing remain available.
-Next page and Previous page preserve the query. Changing a query, preset or page
-replaces the results; back returns to the parent group or source menu, then source
-selection and the library. Result titles and authors wrap
-fully; every continuation row opens the same work. Details add one level and back
-restores your result selection and scroll. A failed request offers retry in place;
-back, leaving the window, or closing cancels outstanding requests.
-Source-supplied descriptions, publisher/publication facts, rights and license URLs
-appear when available. Source copy title and Source version record advertised
-acquisition metadata, not an inferred bibliographic edition. Saved work
-information reads these facts
-offline and lists retained original source, catalog, attribution and license files.
+Discover immediately opens Explore, combining participating sources in one
+list. s opens Search and b opens Browse categories above results, even while
+loading. The menu includes only supported categories: Explore, Poetry, Short
+stories, Recently listed and Browse poets. Choosing the same category preserves
+its feed without a request; changing category replaces browse. Search pushes
+one layer above browse; editing its query replaces search. Back from search
+restores the exact browse position; back from browse returns to the library.
+Choosing a category from search returns to browse before applying it.
+
+Search covers Gutenberg and PoetryDB; Unglue.it contributes through browsing.
+Search edits a line inside the float: Enter submits, Escape/CTRL-C cancels. An
+empty query preserves the page. Native insertion and editing remain available.
+Load more appends a batch; Retry failed requests only failed sources and
+retains successful results. Progress appears once in the footer: Loading,
+Loading more for paging, or Retrying. The content heading shows Paused after
+cancellation. Footer navigation adapts to width, with r retry when failed
+sources can be retried. Partial results remain usable; failed searches do not
+claim there are no matches. Search notes browse-only collections. No combined
+total or cross-source ranking is inferred. Groups open a page titled with the
+poet or work, with one official source row and full-width entries.
+Next/Previous replaces only that group page. Multiple eligible downloads remain
+explicit choices, not a guessed edition. Gutenberg supplies public-domain
+EPUBs, Unglue.it eligible English EPUB copies with recognized rights, and
+PoetryDB poems as native text with exact source rows. See doc/sources.md for
+capabilities, eligibility and retained source artifacts. Wide windows show
+muted Gutenberg/Unglue.it/PoetryDB hints at the right of each result's first
+row; narrow windows omit them. Full titles and authors wrap; every continuation
+row opens the same work. Groups marked with › expand into choices. Work
+information retains official source names and exact identities. Details add one
+level; back restores your result selection and scroll. A failed request offers
+retry in place; back, leaving the window, or closing cancels outstanding
+requests. Source-supplied descriptions, publisher/publication facts, rights and
+license URLs appear when available. Source copy title and Source version record
+advertised acquisition metadata, not an inferred bibliographic edition. Saved
+work information reads these facts offline and lists retained original source,
+catalog, attribution and license files.
 
 SAVING                                                       *lilt-saving*
 

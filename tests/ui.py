@@ -1200,9 +1200,15 @@ def unified_discovery_tests():
                   "28x10 failed search exposes incomplete feedback, coverage and recovery")
             input_keys("r")
             check(any("Retrying…" in row for row in screen()), "failed search retries without claiming an empty result")
-            input_keys("hq")
-            finish(12, titles=["Late result"])
-            check(not floats() and nvim.exec_lua("return _G.lilt_unified_jobs[12].cancelled"),
+            rows = finish(12, titles=["Recovered work " + str(i) for i in range(1, 25)])
+            finish(13)
+            check("Recovered work 1" in nvim.current.buffer[nvim.current.window.cursor[0] - 1]
+                  and any("Recovered work 1" in row for row in screen())
+                  and nvim.current.window.options["cursorline"],
+                  "first successful results after empty/failed search focus a visible work rather than the coverage note")
+            input_keys("s<C-u>pending<CR>hq")
+            finish(14, titles=["Late result"])
+            check(not floats() and nvim.exec_lua("return _G.lilt_unified_jobs[14].cancelled"),
                   "closing a pending feed cancels its sources and cannot resurrect the picker")
             check(not Path(directory, "references").exists(), "fake discovery never acquires or changes a library")
         finally:

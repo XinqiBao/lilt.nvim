@@ -235,6 +235,7 @@ function M.open(s, root, catalog, units, refresh)
     local function present(snapshot, render)
       local items = vim.list_slice(menu)
       items[#items + 1] = context
+      local first_arrival = #rows == 0 and #snapshot.entries > 0
       for i, value in ipairs(snapshot.entries) do
         rows[i] = rows[i] or result_item(value.provider, value.entry)
         items[#items + 1] = rows[i]
@@ -293,7 +294,10 @@ function M.open(s, root, catalog, units, refresh)
         items[#items + 1] = item
       end
       local selected = page.selected
-      if selected == context then
+      if selected == context or (selected == coverage_note and first_arrival) then
+        if first_arrival then
+          page.offset = 0
+        end
         page.selected = rows[1] or (not pending and note) or context
         if page.selected == note then
           page.offset = math.huge

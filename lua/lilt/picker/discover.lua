@@ -237,7 +237,7 @@ function M.open(s, root, catalog, units, refresh)
     local coverage_note = { label = 'Some collections are browse-only.', wrap = 'full' }
     local load, retry
     local progress = 'Loading…'
-    local can_retry, active_progress = false, nil
+    local can_retry, can_continue, active_progress = false, false, nil
     page.footer = function(width)
       if active_progress then
         if width < 40 then
@@ -246,6 +246,17 @@ function M.open(s, root, catalog, units, refresh)
           return ' ' .. active_progress .. ' · h back · q/Esc quit '
         end
         return ' ' .. active_progress .. ' · s search · b browse · h back · q/Esc quit '
+      end
+      if can_continue then
+        local recovery = '] load · ' .. (can_retry and 'r retry · ' or '')
+        if width < 30 then
+          return ' ' .. recovery .. (can_retry and 'q ' or 'h back · q ')
+        elseif width < 50 then
+          return ' ' .. recovery .. 'h back · q '
+        elseif width < 68 then
+          return ' Enter · ' .. recovery .. 'h back · q '
+        end
+        return ' Enter · ' .. recovery .. 's search · b browse · h back · q '
       end
       if width < 30 then
         return can_retry and ' r retry · h back · q ' or ' Enter · h back · q '
@@ -304,6 +315,7 @@ function M.open(s, root, catalog, units, refresh)
       end
       context.label = title .. (status and (' · ' .. status) or '')
       can_retry = snapshot.retry and not snapshot.loading
+      can_continue = pending and snapshot.more and not snapshot.loading
       local note
       if browse_only then
         note = coverage_note

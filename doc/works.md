@@ -274,10 +274,11 @@ covers Gutenberg and PoetryDB; Unglue.it is available through browsing.
 **Retry failed** contacts only failed sources and retains successful results.
 Progress stays visible in the footer: Loading during the entire initial batch,
 Loading more for paging, or Retrying for failure recovery. The content heading
-shows Paused after cancellation. Footer navigation adapts to width and includes
-an `r` retry hint when available. Empty completed
-searches differ from incomplete searches; failures retain their causes and usable
-partial results. One muted search note explains browse-only collections.
+shows Paused after cancellation. The footer shows `]` load when paused sources
+can continue and `r` retry when failures can be retried, prioritizing recovery
+in narrow windows. Returning does not resume requests automatically. Empty
+completed searches differ from incomplete searches; failures retain their causes
+and usable partial results. One muted search note explains browse-only collections.
 An empty batch does not imply an exhausted catalog. No combined catalog total or
 ranking is inferred across sources.
 

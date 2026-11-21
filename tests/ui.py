@@ -1307,6 +1307,49 @@ def unified_discovery_tests():
             finish(14, titles=["Late result"])
             check(not floats() and nvim.exec_lua("return _G.lilt_unified_jobs[14].cancelled"),
                   "closing a pending feed cancels its sources and cannot resurrect the picker")
+
+            before = nvim.exec_lua("return #_G.lilt_unified_jobs")
+            width, height = 90, 24
+            nvim.ui_try_resize(width, height)
+            input_keys(":Lilt<CR>")
+            choose("Discover online")
+            finish(before + 1, titles=["Retained work " + str(i) for i in range(1, 33)], more="continue-first")
+            finish(before + 2, error="paused peer failed")
+            input_keys("b")
+            choose("Explore")
+            check(nvim.exec_lua("return #_G.lilt_unified_jobs == ... and _G.lilt_unified_jobs[#_G.lilt_unified_jobs].cancelled",
+                                before + 3),
+                  "returning to the paused category cancels its unfinished peer without auto-resuming")
+            for width, height in ((90, 24), (64, 20), (44, 14), (28, 10)):
+                nvim.ui_try_resize(width, height)
+                rows = input_keys("gg")
+                check("Paused" in text() and not any("Load more" in row for row in rows)
+                      and "] load" in "\n".join(rows) and "r retry" in "\n".join(rows),
+                      f"{width}-column paused footer exposes continuation and retry above offscreen actions")
+            input_keys("r")
+            check(nvim.exec_lua("return #_G.lilt_unified_jobs == ... and _G.lilt_unified_jobs[#_G.lilt_unified_jobs].id == 'poetrydb'",
+                                before + 4)
+                  and not any("] load" in row for row in screen()),
+                  "retry only contacts the failed peer and hides continuation while loading")
+            finish(before + 4)
+            check(any("] load" in row for row in screen())
+                  and not any("r retry" in row for row in screen()),
+                  "settled retry leaves the paused continuation hint without a stale retry hint")
+            input_keys("]")
+            check(nvim.exec_lua("""
+                local count, first = ...
+                local jobs = _G.lilt_unified_jobs
+                return #jobs == count and jobs[first].id == 'gutenberg'
+                    and jobs[first].cursor == 'continue-first' and jobs[first+1].id == 'unglueit'
+            """, before + 6, before + 5)
+                  and not any("] load" in row for row in screen()),
+                  "advertised continuation resumes cancelled and paginated sources without refetching the exhausted peer")
+            finish(before + 5)
+            finish(before + 6)
+            check("Paused" not in text()
+                  and not any("] load" in row for row in screen()),
+                  "completed feed clears the paused continuation hint")
+            input_keys("q")
             check(not Path(directory, "references").exists(), "fake discovery never acquires or changes a library")
         finally:
             input_keys("<Esc>")

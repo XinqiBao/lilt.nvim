@@ -98,11 +98,12 @@ Returning restores result selection and viewport.
 Progress appears only in the always-visible footer: Loading for the entire
 initial batch (including partial arrivals), Loading more for explicit paging,
 Retrying for failure recovery. Cancelled incomplete sources show Paused at the
-heading. Footer navigation adapts to available width; failed settled batches
-include an r retry hint even in 28-column terminals. Progress stays visible
-when paging from the bottom of long lists, without duplicating the heading or
-following scroll position. Partial successes stay usable; failures remain
-summarized near the content heading with complete source causes in scrollable
+heading. When paused sources can continue, the footer exposes ] load; failures
+retain r retry. Narrow footers prioritize these recovery actions, including
+both in 28-column terminals. Returning never resumes requests automatically.
+Progress stays visible when paging from the bottom of long lists, without
+duplicating the heading or following scroll position. Partial successes stay
+usable; failures remain summarized near the content heading with complete source causes in scrollable
 rows. Empty completed searches say No matching works found; failures say Could
 not complete search rather than claiming zero matches. Empty browse batches can
 still offer Load more. Search shows one muted Some collections are browse-only

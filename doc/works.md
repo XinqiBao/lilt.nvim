@@ -281,14 +281,20 @@ partial results. One muted search note explains browse-only collections.
 An empty batch does not imply an exhausted catalog. No combined catalog total or
 ranking is inferred across sources.
 
-Groups open a source's poet or exact-copy list; next/previous replaces that group
-page. Back restores the parent results and position. Category changes replace
+Groups open a page titled with the poet or work, with one official source
+context row and full-width entries; next/previous replaces that group page. Back restores the parent results and position. Category changes replace
 the browse layer; search pushes one layer above browse and query edits replace
 that search layer. Back from search restores the exact browse position; Back
 from browse returns to the library. Choosing a category from search returns to
 browse before applying it. Empty or cancelled input preserves the current page.
 Leaving a page cancels its pending requests; returning to paused results offers Load more
 to resume them without refetching completed pages.
+
+Online Work information puts title/authors, availability and Add to library or
+Open library copy before remaining metadata, source and rights. Its footer keeps
+the available primary shortcut visible even with very long titles; unsupported
+works do not advertise Add. Saved information (`i`) continues to use only the
+local snapshot offline.
 
 Shared acquisition stages each new work, checks selected provider/ID against the
 prepared source, validates all files, and checks names and identity again before

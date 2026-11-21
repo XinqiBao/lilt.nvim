@@ -32,8 +32,12 @@ unit labels remain bounded. Duplicate local titles show directory names only
 when needed to distinguish them. Unit percentages report saved rows.
 
 `picker/information.lua` formats shared bibliographic/source facts as inert page
-items. Online details label current catalog metadata and retain their acquisition
-actions. Local unit pages expose Work information with i, using only the saved
+items, with separate identity and remaining-field formatters. Online Work
+information leads with title/authors, availability and Add to library or Open
+library copy, followed by the remaining complete metadata, source and rights.
+The primary shortcut stays visible in the footer even when identity fields exceed
+the viewport. Unsupported or failed identity checks advertise no acquisition.
+Formatting knows no acquisition state; the caller places actions between facts. Local unit pages expose Work information with i, using only the saved
 manifest, followed by local directory and recorded preparation settings. Back
 restores the selected unit and viewport. Optional SOURCE.json is exposed by file
 location without parsing arbitrary provider fields, network requests or schema
@@ -85,24 +89,25 @@ rows retain the same item identity. Short names belong to presentation; official
 names and source identities remain in Work information. Groups end in › to
 advertise expansion; copy labels remain source-supplied.
 Load more appends a batch, while Retry failed requests only failed sources.
-Both actions are omitted while a batch is in flight. Groups push a provider's
-own page with Previous/Next actions; work details add one level and acquired units
-use the shared local flow. Returning restores result selection and viewport.
+Both actions are omitted while a batch is in flight. Groups push a page titled
+with the selected content, with Previous/Next actions. Single-source groups show
+one official Source context row and use full-width entries without trailing
+hints. Work information adds one level; acquired units use the shared local flow.
+Returning restores result selection and viewport.
 
-Progress appears only in the always-visible footer: Loading for the entire initial
-batch (including partial arrivals), Loading more for explicit paging, Retrying
-for failure recovery. Cancelled incomplete sources show Paused at the heading.
-Footer navigation adapts to available width; failed settled batches include an
-r retry hint even in
-28-column terminals. Progress stays visible when paging from the bottom of long
-lists, without duplicating the heading or following scroll position. Partial
-successes stay usable; failures remain summarized
-near the content heading with complete source causes in scrollable rows. Empty completed
-searches say No matching works found; failures say Could not complete search
-rather than claiming zero matches. Empty browse batches can still offer Load more.
-Search shows one muted Some collections are browse-only note. No cross-provider
-ranking or combined catalog totals are inferred. Local discovery errors wrap
-completely so native scrolling reaches the full cause.
+Progress appears only in the always-visible footer: Loading for the entire
+initial batch (including partial arrivals), Loading more for explicit paging,
+Retrying for failure recovery. Cancelled incomplete sources show Paused at the
+heading. Footer navigation adapts to available width; failed settled batches
+include an r retry hint even in 28-column terminals. Progress stays visible
+when paging from the bottom of long lists, without duplicating the heading or
+following scroll position. Partial successes stay usable; failures remain
+summarized near the content heading with complete source causes in scrollable
+rows. Empty completed searches say No matching works found; failures say Could
+not complete search rather than claiming zero matches. Empty browse batches can
+still offer Load more. Search shows one muted Some collections are browse-only
+note. No cross-provider ranking or combined catalog totals are inferred. Local
+discovery errors wrap completely so native scrolling reaches the full cause.
 
 `name.lua` converts a user-chosen title into directory spelling; it knows neither
 library files nor UI. `picker/name.lua` supplies editable official-title defaults,

@@ -424,6 +424,10 @@ local function unified_discovery(lilt)
     pending[6].id == 'group' and pending[6].query.author == 'one',
     'group expansion retains its provider query'
   )
+  assert(
+    vim.inspect(api.nvim_win_get_config(0).title):find('Selected author', 1, true),
+    'group page title leads with the selected content rather than the provider'
+  )
   finish(pending[6], 'temporary group failure')
   keys('r')
   finish(pending[7], nil, {
@@ -861,7 +865,7 @@ local function run()
   choose('Discover online')
   assert(
     table.concat(lines(), '\n'):find('Test Letters', 1, true),
-    'selected source menu opens popular results'
+    'Discover immediately opens Explore results'
   )
   keys(']')
   assert(table.concat(lines(), '\n'):find('Another page', 1, true), 'navigate additional results')
@@ -1038,6 +1042,10 @@ local function run()
   assert(
     live_details:find('Library copy keeps its saved metadata', 1, true),
     'existing-copy context'
+  )
+  assert(
+    vim.inspect(api.nvim_win_get_config(0).footer):find('o Open library copy', 1, true),
+    'existing online copy advertises the actual Open action'
   )
   keys('o')
   local info_request_count = #requests

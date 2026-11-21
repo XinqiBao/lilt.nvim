@@ -1,21 +1,31 @@
 -- Bibliographic presentation only. Callers own provenance, actions and resources.
 local M = {}
 
-function M.items(metadata, context)
+local function field(items, label, values)
+  if values and #values > 0 then
+    items[#items + 1] = { label = label .. ': ' .. table.concat(values, '; '), wrap = 'full' }
+  end
+end
+
+function M.identity(metadata, context)
   local items = {
     { label = metadata.title, hl = 'Title', wrap = 'full' },
     { label = context, wrap = 'full' },
   }
-  local function field(label, values)
-    if values and #values > 0 then
-      items[#items + 1] = { label = label .. ': ' .. table.concat(values, '; '), wrap = 'full' }
-    end
-  end
-  field(metadata.authors and #metadata.authors == 1 and 'Author' or 'Authors', metadata.authors)
-  field('Translators', metadata.translators)
-  field('Languages', metadata.languages)
-  field('Subjects', metadata.subjects)
-  field('Bookshelves', metadata.bookshelves)
+  field(
+    items,
+    metadata.authors and #metadata.authors == 1 and 'Author' or 'Authors',
+    metadata.authors
+  )
+  return items
+end
+
+function M.fields(metadata)
+  local items = {}
+  field(items, 'Translators', metadata.translators)
+  field(items, 'Languages', metadata.languages)
+  field(items, 'Subjects', metadata.subjects)
+  field(items, 'Bookshelves', metadata.bookshelves)
   for _, pair in ipairs({
     { 'Publisher', 'publisher' },
     { 'Published', 'published' },
@@ -52,6 +62,10 @@ function M.items(metadata, context)
     end
   end
   return items
+end
+
+function M.items(metadata, context)
+  return vim.list_extend(M.identity(metadata, context), M.fields(metadata))
 end
 
 return M

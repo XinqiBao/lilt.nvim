@@ -844,6 +844,7 @@ def online_tests():
         long_books = [dict(other_book, id=identity, title=long_title + ending,
                            authors=[{"name": long_author}])
                       for identity, ending in ((13, "上卷"), (14, "下卷"))]
+        long_books[0]["copyright"] = False
         catalog = json.dumps({"count": 4, "next": None, "results": [book, other_book, *long_books]})
         # Control only the process boundary; exercise the real floating search,
         # async redraw, catalog parser, converter, installation, and reading UI.
@@ -889,7 +890,7 @@ def online_tests():
             check((loading_size["width"], loading_size["height"]) == (loaded_size["width"], loaded_size["height"]),
                   "catalog completion keeps the float dimensions")
             check(any("Test Letters" in row for row in rows), "online entry browses works without a query")
-            width, height = 24, 8
+            width, height = 28, 10
             nvim.ui_try_resize(width, height)
             input_keys("")
             compact = "".join("".join(line.split()) for line in nvim.current.buffer[:])
@@ -906,6 +907,20 @@ def online_tests():
                 details = "".join("".join(line.split()) for line in nvim.current.buffer[:])
                 check("gutenberg:" + str(identity) in details,
                       "a continuation row opens the matching catalog work")
+                rows = screen()
+                if identity == 13:
+                    check(any("a Add" in row for row in rows),
+                          "28x10 information advertises Add despite a title longer than the viewport")
+                    before_name = nvim.exec_lua("return #_G.lilt_test_requests")
+                    input_keys("a")
+                    check(nvim.eval("mode()") == "i" and nvim.current.buffer[0] == long_books[0]["title"],
+                          "advertised Add opens naming directly without downloading text")
+                    input_keys("<Esc>")
+                    check(nvim.exec_lua("return #_G.lilt_test_requests") == before_name,
+                          "cancelling naming from long information makes no acquisition request")
+                else:
+                    check(not any("a Add" in row or "o Open" in row for row in rows),
+                          "unsupported information advertises no acquisition action")
                 input_keys("h")
                 check((nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"]) == result_view,
                       "details back restores the wrapped result row and viewport")
@@ -995,7 +1010,11 @@ def online_tests():
             check("Current online catalog metadata" in metadata_text
                   and "Translators: A. Translator" in metadata_text and "Bookshelves: Letters" in metadata_text,
                   "online details share bibliographic formatting with explicit catalog provenance")
-            check("[a] Add to library" in metadata_text, "online addition keeps its explicit a action")
+            check(metadata_text.index("[a] Add to library") < metadata_text.index("Translators:")
+                  and metadata_text.count("Author: A. Writer") == 1
+                  and metadata_text.count("Test Letters") == 1,
+                  "identity appears once and acquisition precedes remaining complete metadata")
+            check(any("Add to library" in row for row in rows), "online details expose their primary action on the first screen")
             width, height = 40, 10
             nvim.ui_try_resize(width, height)
             rows = input_keys("G")
@@ -1039,11 +1058,89 @@ def online_tests():
             nvim.command("LiltClose")
             input_keys(":Lilt<CR>")
             choose("Discover online")
-            input_keys("hq")
+            pause(130)
+            choose("Test Letters")
+            width, height = 28, 10
+            nvim.ui_try_resize(width, height)
+            rows = input_keys("")
+            check(any("o Open" in row for row in rows) and not any("a Add" in row for row in rows),
+                  "28x10 existing-copy information advertises Open rather than Add")
+            input_keys("G")
+            check(any("o Open" in row for row in screen()), "primary Open remains discoverable while reading long metadata")
+            input_keys("hhq")
             pause(130)
             check(not floats(), "leaving online discovery cancels delayed UI work")
         finally:
             nvim.exec_lua("require('lilt.online.providers').list=_G.lilt_test_providers; _G.lilt_test_providers=nil; vim.system=_G.lilt_test_system; _G.lilt_test_system=nil; _G.lilt_test_requests=nil")
+
+
+def group_presentation_tests():
+    global width, height
+    with tempfile.TemporaryDirectory(prefix="lilt-group-ui-") as directory:
+        nvim.exec_lua("""
+            _G.lilt_group_registry = require('lilt.online.providers').list
+            _G.lilt_group_queries = {}
+            local provider = {id='unglueit', name='Unglue.it', browse={}}
+            provider.browse.explore = function(_, cb)
+                cb(nil, {entries={{kind='group', id='collected',
+                    label='Collected poems · Choose a copy', query={page=1}}}})
+                return function() end
+            end
+            provider.expand = function(query, cb)
+                table.insert(_G.lilt_group_queries, query.page)
+                _G.lilt_group_finish = function()
+                    local entries = {}
+                    for i = 1, 2 do
+                        entries[i] = {kind='work', title='Collected poems',
+                            label='Collected poems · EPUB · CC BY 4.0 · supplied edition version '
+                                .. query.page .. ' · exact copy ' .. i,
+                            authors={'A. Poet'}, supported=false, availability='Unavailable: fixture',
+                            source={provider='unglueit', id=tostring(i), url='https://example.org/' .. i}}
+                    end
+                    cb(nil, {title='Collected poems · Choose a copy', entries=entries,
+                        count=2, next=query.page == 1 and {page=2} or nil})
+                end
+                return function() end
+            end
+            require('lilt.online.providers').list = function() return {provider} end
+            require('lilt').setup({library=...})
+        """, directory)
+        try:
+            width, height = 132, 30
+            nvim.ui_try_resize(width, height)
+            input_keys(":Lilt<CR>")
+            choose("Discover online")
+            check("Choose a copy ›" in "\n".join(nvim.current.buffer[:]), "aggregate groups visibly advertise expansion")
+            parent = (nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"])
+            rows = choose("Collected poems")
+            check(any("Collected poems" in row for row in rows)
+                  and sum("Loading…" in row for row in rows) == 1,
+                  "pending group leads with selected content and one visible progress indicator")
+            nvim.exec_lua("_G.lilt_group_finish()")
+            rows = screen()
+            content = nvim.current.buffer[:]
+            check(sum("Unglue.it" in line for line in content) == 1
+                  and any("Source: Unglue.it" in row for row in rows),
+                  "single-source group provides one official source context rather than repeated trailing hints")
+            first = next(line for line in content if "Collected poems · EPUB" in line)
+            check(nvim.funcs.strdisplaywidth(first) > 64, "copy labels use the full group width")
+            copy_row = next(i for i, line in enumerate(content, 1) if "copy 2" in line)
+            input_keys(str(copy_row) + "G<CR>")
+            check("unglueit:2" in "\n".join(nvim.current.buffer[:]), "copy continuation opens its exact identity")
+            input_keys("h]")
+            check(any("Loading more…" in row for row in screen()), "group continuation keeps visible progress")
+            nvim.exec_lua("_G.lilt_group_finish()")
+            input_keys("h")
+            check((nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"]) == parent
+                  and nvim.exec_lua("return _G.lilt_group_queries") == [1, 2],
+                  "group paging replaces one layer and Back restores its aggregate parent without a request")
+            input_keys("q")
+        finally:
+            input_keys("<Esc>")
+            nvim.exec_lua("""
+                require('lilt.online.providers').list = _G.lilt_group_registry
+                _G.lilt_group_registry=nil; _G.lilt_group_finish=nil; _G.lilt_group_queries=nil
+            """)
 
 
 def unified_discovery_tests():
@@ -1101,7 +1198,7 @@ def unified_discovery_tests():
             rows = choose("Discover online")
             check(any("Search title or author" in row for row in rows) and any("Explore" in row for row in rows),
                   "narrow Discover opens directly on content choices")
-            check("Library" not in text() and "Choose source" not in text(), "landing has no provider chooser")
+            check("Library" not in text() and "Choose source" not in text(), "Discover has no provider chooser")
             titles = ["Early work " + str(i) for i in range(1, 13)]
             titles[9] += " 天地é" * 20
             finish(1, titles=titles, more="next")
@@ -1379,6 +1476,7 @@ def run():
     information_tests()
     catalog_feedback_tests()
     online_tests()
+    group_presentation_tests()
     unified_discovery_tests()
     print(f"Lilt UI: {checks} assertions passed on {nvim.exec_lua('return tostring(vim.version())')}")
 

@@ -13,9 +13,9 @@ function M.open(s, root, catalog, units, refresh)
   local results, expand, browse
 
   local function details(provider, entry)
-    local items = information.items(entry, 'Current online catalog metadata')
-    items[#items + 1] = { label = '' }
-    local page = { title = provider.name .. ' · Work details', items = items, selected = items[1] }
+    local items = information.identity(entry, 'Current online catalog metadata')
+    local page = { title = 'Work information', items = items, selected = items[1] }
+    local primary
     local ok, existing = pcall(acquisition.existing, root, entry)
     local function open_copy(reading)
       return {
@@ -30,13 +30,16 @@ function M.open(s, root, catalog, units, refresh)
       items[#items + 1] = { label = tostring(existing), hl = 'DiagnosticError', wrap = 'full' }
     elseif existing then
       items[#items + 1] = { label = 'Available offline in your library', wrap = 'full' }
+      primary = open_copy(existing)
+      items[#items + 1] = primary
       items[#items + 1] = {
         label = 'Library copy keeps its saved metadata; use i from its reading units.',
         wrap = 'full',
       }
-      items[#items + 1] = open_copy(existing)
     else
-      items[#items + 1] = { label = entry.availability, wrap = 'full' }
+      if entry.availability then
+        items[#items + 1] = { label = entry.availability, wrap = 'full' }
+      end
       if entry.supported then
         local acquire
         acquire = {
@@ -55,8 +58,22 @@ function M.open(s, root, catalog, units, refresh)
             end)
           end,
         }
+        primary = acquire
         items[#items + 1] = acquire
       end
+    end
+    vim.list_extend(items, information.fields(entry))
+    page.footer = function(width)
+      if not primary then
+        return width < 40 and ' h back · q/Esc quit ' or ' j/k scroll · h back · q/Esc quit '
+      end
+      if width < 40 then
+        return ' '
+          .. primary.key
+          .. (primary.key == 'a' and ' Add' or ' Open')
+          .. ' · h back · q '
+      end
+      return ' ' .. primary.key .. ' ' .. primary.label .. ' · h back · q/Esc quit '
     end
     items[#items + 1] = {
       label = 'Back to results',
@@ -81,7 +98,7 @@ function M.open(s, root, catalog, units, refresh)
       wrap = 'full',
       select = function()
         if entry.kind == 'group' then
-          expand(provider, entry.query, true)
+          expand(provider, entry.query, true, entry.label or entry.title)
         else
           details(provider, entry)
         end
@@ -127,13 +144,23 @@ function M.open(s, root, catalog, units, refresh)
     }
   end
 
-  expand = function(provider, query, push)
+  expand = function(provider, query, push, title)
     local page = {
-      title = provider.name,
-      trailing_width = vim.fn.strdisplaywidth(source_labels[provider.id] or ''),
+      title = title,
+      blocking = false,
       items = {},
       height = 20,
     }
+    local progress = push and 'Loading…' or 'Loading more…'
+    page.footer = function(width)
+      if page.busy then
+        return ' ' .. progress .. (width < 40 and ' · h back ' or ' · h back · q/Esc quit ')
+      end
+      if page.status then
+        return width < 30 and ' r retry · h back · q ' or ' r retry · h back · q/Esc quit '
+      end
+      return width < 30 and ' Enter · h back · q ' or ' Enter · h back · q/Esc quit '
+    end
     if push then
       s:push(page)
     else
@@ -142,7 +169,8 @@ function M.open(s, root, catalog, units, refresh)
     s:request(page, function(callback)
       return provider.expand(query, callback)
     end, function(result)
-      page.items = { { label = result.title or provider.name, hl = 'Title', wrap = 'full' } }
+      page.items = { { label = result.title or title, hl = 'Title', wrap = 'full' } }
+      page.items[#page.items + 1] = { label = 'Source: ' .. provider.name, wrap = 'full' }
       if result.count then
         page.items[#page.items + 1] =
           { label = tostring(result.count) .. ' source records', wrap = 'full' }
@@ -165,13 +193,13 @@ function M.open(s, root, catalog, units, refresh)
             key = direction[2],
             label = direction[3],
             select = function()
-              expand(provider, result[direction[1]], false)
+              expand(provider, result[direction[1]], false, title)
             end,
           }
         end
       end
       s:render(true)
-    end, 'Loading group… · Esc cancels')
+    end, progress, function() end)
   end
 
   results = function(query, push)

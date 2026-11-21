@@ -114,7 +114,9 @@ Unglue.it contributes through browsing. Discover opens Explore immediately;
 `s` searches and `b` opens supported categories. Category changes replace browse;
 search edits replace one search layer. Back from search restores browse and its
 position; Back from browse returns to the library.
-Source details, supplied rights and descriptions remain readable offline;
+Online Work information puts availability and Add/Open before remaining metadata;
+the primary shortcut stays visible in its footer. Source details, supplied rights
+and descriptions remain readable offline;
 original downloads and source records are retained. See [online sources](doc/sources.md).
 
 Check copyright in your country before downloading or sharing. EPUB acquisitions

@@ -68,9 +68,14 @@ completion through Tab / Shift-Tab and expand tilde/environment variables
 without interpreting filename glob characters. Enter accepts a visible
 completion before submitting; Escape cancels the input and restores selection.
 Invalid paths stay editable with feedback. There is no global UI override.
-Discover opens on Search and supported content categories. Results keep Search
-above a content heading and flat accumulated entries with secondary provenance;
-Back restores the category landing. Queries replace the current results page.
+Discover immediately opens Explore with Search (s) and Browse categories (b)
+above the content heading. The category menu includes only supported categories.
+Selecting the current category retains the feed without a request; changing it
+replaces the browse layer. Search pushes one layer above browse; query edits
+replace that search layer. Back restores the exact browse selection and viewport.
+Choosing a category from search returns to browse before applying the category.
+Back from browse returns directly to the library; category/query edits do not
+accumulate history. Results are flat accumulated entries with secondary provenance.
 Load more appends a batch, while Retry failed requests only failed sources.
 Both actions are omitted while a batch is in flight. Groups push a provider's
 own page with Previous/Next actions; work details add one level and acquired units

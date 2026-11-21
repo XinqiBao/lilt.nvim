@@ -260,7 +260,10 @@ other path's parents yourself.
 
 ## Online acquisition
 
-Choose **Discover online…**, then search or select a supported content category.
+Choose **Discover online…** to open Explore immediately. Search (`s`) and
+Browse categories (`b`) remain above results, including while loading. The
+category menu lists only supported categories; selecting the current category
+preserves its feed without a request.
 Results arrive progressively in one list, with a secondary source label. Search
 covers Gutenberg and PoetryDB; Unglue.it is available through browsing.
 **Load more** appends another batch from sources with a continuation;
@@ -269,10 +272,12 @@ An empty batch does not imply an exhausted catalog. No combined catalog total or
 ranking is inferred across sources.
 
 Groups open a source's poet or exact-copy list; next/previous replaces that group
-page. Back restores the accumulated results and selection, then the category
-landing. Search (`s`) remains available from the landing and results, including
-while loading. Empty or cancelled input preserves the current page. Leaving a
-page cancels its pending requests; returning to paused results offers Load more
+page. Back restores the parent results and position. Category changes replace
+the browse layer; search pushes one layer above browse and query edits replace
+that search layer. Back from search restores the exact browse position; Back
+from browse returns to the library. Choosing a category from search returns to
+browse before applying it. Empty or cancelled input preserves the current page.
+Leaving a page cancels its pending requests; returning to paused results offers Load more
 to resume them without refetching completed pages.
 
 Shared acquisition stages each new work, checks selected provider/ID against the

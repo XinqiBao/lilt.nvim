@@ -8,7 +8,7 @@ local M = {}
 function M.open(s, root, catalog, units, refresh)
   local sources = providers.list(catalog)
   local categories = discovery.categories(sources)
-  local results, expand
+  local results, expand, browse
 
   local function details(provider, entry)
     local items = information.items(entry, 'Current online catalog metadata')
@@ -84,29 +84,42 @@ function M.open(s, root, catalog, units, refresh)
     }
   end
 
-  local function menu_items(push, search_value, landing)
-    local items = {
+  local function menu_items(query)
+    return {
       {
         key = 's',
         label = 'Search title or author…',
         select = function()
-          s:search(search_value or '', function(value)
+          s:search(query.search or '', function(value)
             if value ~= '' then
-              results({ search = value }, push)
+              results({ search = value }, s:page() == browse)
             end
           end)
         end,
       },
-    }
-    for _, category in ipairs(landing and categories or {}) do
-      items[#items + 1] = {
-        label = category.label,
+      {
+        key = 'b',
+        label = 'Browse categories…',
         select = function()
-          results({ category = category.id }, push)
+          local items = {}
+          for _, category in ipairs(categories) do
+            items[#items + 1] = {
+              label = category.label,
+              select = function()
+                s:back() -- category menu
+                if s:page() ~= browse then
+                  s:back() -- search layer
+                end
+                if browse.category ~= category.id then
+                  results({ category = category.id }, false)
+                end
+              end,
+            }
+          end
+          s:push({ title = 'Browse categories', items = items })
         end,
-      }
-    end
-    return items
+      },
+    }
   end
 
   expand = function(provider, query, push)
@@ -163,7 +176,7 @@ function M.open(s, root, catalog, units, refresh)
         title = category.label
       end
     end
-    local menu = menu_items(false, query.search)
+    local menu = menu_items(query)
     local context = { label = title, hl = 'Title', wrap = 'full' }
     local page = {
       title = 'Discover',
@@ -171,7 +184,11 @@ function M.open(s, root, catalog, units, refresh)
       selected = context,
       height = 20,
       blocking = false,
+      category = query.category,
     }
+    if query.category then
+      browse = page
+    end
     local rows, coverage = {}, {}
     local load, retry
     local function present(snapshot, render)
@@ -295,7 +312,7 @@ function M.open(s, root, catalog, units, refresh)
     request('load')
   end
 
-  s:push({ title = 'Discover online', items = menu_items(true, nil, true) })
+  results({ category = 'explore' }, true)
 end
 
 return M

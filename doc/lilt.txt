@@ -88,22 +88,26 @@ remain in the library list; Work information shows the actual directory.
 Repeated source entries open their existing copy, regardless of its directory.
 See doc/works.md in the plugin checkout for the manifest format and validation.
 
-Discover first selects a source, then opens that source's menu. Project Gutenberg
-offers Popular (download order), Newest (descending catalog IDs), Poetry and
-Short stories (popular works in those topics), and title/author search.
-Unglue.it offers Popular EPUBs and New EPUBs, listing eligible explicit English
-copies with direct EPUB links and recognized per-copy rights. Works with several
-eligible downloads open a copy list showing supplied titles, versions and rights;
-Lilt does not silently choose an edition. A filtered page may be empty and still
-offer Next. Unglue.it title search is not offered. See doc/sources/unglueit.md.
-PoetryDB offers author groups and title/author search. One poem becomes one native
-text unit; source line breaks and punctuation remain exact. It has no pagination.
+Discover immediately opens Explore, combining participating sources in one list.
+s opens Search and b opens Browse categories above results, even while loading.
+The menu includes only supported categories: Explore, Poetry, Short stories,
+Recently listed and Browse poets. Choosing the same category preserves its feed
+without a request; changing category replaces browse. Search pushes one layer
+above browse; editing its query replaces search. Back from search restores the
+exact browse position; back from browse returns to the library. Choosing a
+category from search returns to browse before applying it.
+
+Search covers Gutenberg and PoetryDB; Unglue.it contributes through browsing.
 Search edits a line inside the float: Enter submits, Escape/CTRL-C cancels.
-An empty query preserves the current page. Native insertion and editing remain available.
-Next page and Previous page preserve the query. Changing a query, preset or page
-replaces the results; back returns to the parent group or source menu, then source
-selection and the library. Result titles and authors wrap
-fully; every continuation row opens the same work. Details add one level and back
+An empty query preserves the page. Native insertion and editing remain available.
+Load more appends a batch; Retry failed requests only failed sources and retains
+successful results. No combined catalog total or cross-source ranking is inferred.
+Groups open a poet or exact-copy list; Next/Previous replaces only that group
+page. Multiple eligible downloads remain explicit choices, not a guessed edition.
+Gutenberg supplies public-domain EPUBs, Unglue.it eligible English EPUB copies
+with recognized rights, and PoetryDB poems as native text with exact source rows.
+See doc/sources.md for capabilities, eligibility and retained source artifacts.
+Result titles and authors wrap fully; every continuation row opens the same work. Details add one level and back
 restores your result selection and scroll. A failed request offers retry in place;
 back, leaving the window, or closing cancels outstanding requests.
 Source-supplied descriptions, publisher/publication facts, rights and license URLs

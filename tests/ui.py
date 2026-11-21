@@ -751,7 +751,7 @@ def catalog_feedback_tests():
             nvim.ui_try_resize(width, height)
             input_keys(":Lilt<CR>")
             choose("Discover online")
-            rows = choose("Explore")
+            rows = screen()
             check(any("Loading catalog" in row for row in rows), "short window shows pending catalog feedback")
             input_keys("s")
             check(nvim.eval("mode()") == "i", "Search is available while initial Explore request is pending")
@@ -792,7 +792,7 @@ def catalog_feedback_tests():
             check(any("Local catalog work" in row for row in rows), "new query recovers after timeout")
             input_keys("]")
             rows = settled("Second catalog page")
-            check(any("Second catalog page" in row for row in rows) and received[-1].get("page") == ["2"],
+            check("Second catalog page" in "\n".join(nvim.current.buffer[:]) and received[-1].get("page") == ["2"],
                   "paging preserves the search")
             check("Local catalog work" in "\n".join(nvim.current.buffer[:]),
                   "load more retains earlier results")
@@ -805,7 +805,6 @@ def catalog_feedback_tests():
             input_keys("s<C-u>slow<CR>hh")
             check("Discover online" in "\n".join(nvim.current.buffer[:]), "back leaves a pending search")
             choose("Discover online")
-            choose("Explore")
             input_keys("q")
             release.set()
             check(not floats(), "close releases the pending catalog window")
@@ -881,7 +880,7 @@ def online_tests():
         try:
             input_keys(":Lilt<CR>")
             choose("Discover online")
-            rows = choose("Explore")
+            rows = screen()
             loading_size = nvim.api.win_get_config(nvim.current.window.handle)
             check(any("Loading catalog" in row for row in rows), "catalog loading stays visible")
             rows = pause(130)
@@ -1039,7 +1038,6 @@ def online_tests():
             nvim.command("LiltClose")
             input_keys(":Lilt<CR>")
             choose("Discover online")
-            choose("Explore")  # close while request is pending
             input_keys("hq")
             pause(130)
             check(not floats(), "leaving online discovery cancels delayed UI work")
@@ -1103,7 +1101,6 @@ def unified_discovery_tests():
             check(any("Search title or author" in row for row in rows) and any("Explore" in row for row in rows),
                   "narrow Discover opens directly on content choices")
             check("Library" not in text() and "Choose source" not in text(), "landing has no provider chooser")
-            choose("Explore")
             finish(1, titles=["Early work " + str(i) for i in range(1, 13)], more="next")
             check("Early work 1" in text() and "Loading more" in text(), "a successful source appears before slow peers settle")
             check("[r]" not in text() and "Load more" not in text(), "batch actions stay hidden while peers load")
@@ -1155,9 +1152,9 @@ def unified_discovery_tests():
             check("Search success" in compact and "Browse Library · browse only; not searched" in compact,
                   "search has one unobtrusive browse-only coverage note")
             input_keys("h")
-            check("Explore" in text(), "Back restores the category landing")
-            choose("Explore")
-            input_keys("hq")
+            check("Explore" in text(), "Back restores the browse layer")
+            input_keys("s")
+            input_keys("pending<CR>hq")
             finish(8, titles=["Late result"])
             check(not floats() and nvim.exec_lua("return _G.lilt_unified_jobs[8].cancelled"),
                   "closing a pending feed cancels its sources and cannot resurrect the picker")

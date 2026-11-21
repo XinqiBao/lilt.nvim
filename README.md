@@ -109,7 +109,10 @@ require("lilt").setup({
 Discover combines participating sources in one list, with a source label beneath
 each result. **Load more** appends another batch; **Retry failed** retries failed
 sources while keeping successful results. Search covers Gutenberg and PoetryDB;
-Unglue.it contributes through browsing. Back returns to the category choices.
+Unglue.it contributes through browsing. Discover opens Explore immediately;
+`s` searches and `b` opens supported categories. Category changes replace browse;
+search edits replace one search layer. Back from search restores browse and its
+position; Back from browse returns to the library.
 Source details, supplied rights and descriptions remain readable offline;
 original downloads and source records are retained. See [online sources](doc/sources.md).
 

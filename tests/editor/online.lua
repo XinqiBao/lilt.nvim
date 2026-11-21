@@ -333,14 +333,13 @@ local function unified_discovery(lilt)
   lilt.open()
   keys('d')
   assert(
-    #pending == 0 and text():find('Poetry', 1, true),
-    'landing exposes supported content without requests'
+    #pending == 3 and text():find('[b] Browse categories', 1, true),
+    'Discover immediately requests Explore with search and categories available'
   )
   assert(
     not text():find('Choose source', 1, true) and not text():find('Browse poets', 1, true),
     'no source chooser or unsupported categories'
   )
-  choose('Explore')
   assert(
     #pending == 3 and not text():find('Load more', 1, true),
     'one concurrent request per source and no in-flight load action'
@@ -447,7 +446,20 @@ local function unified_discovery(lilt)
     text():find('Selected author', 1, true) and #pending == 9,
     'group back restores accumulated parent without a request'
   )
-  keys('h')
+  local parent_position, parent_view = api.nvim_win_get_cursor(0), vim.fn.winsaveview()
+  keys('b')
+  assert(
+    text():find('Poetry', 1, true) and not text():find('Browse poets', 1, true),
+    'category menu exposes supported categories only'
+  )
+  choose('Explore')
+  assert(
+    #pending == 9
+      and vim.deep_equal(api.nvim_win_get_cursor(0), parent_position)
+      and vim.fn.winsaveview().topline == parent_view.topline,
+    'same category preserves its feed, selection and viewport without a request'
+  )
+  keys('b')
   choose('Poetry')
   assert(
     #pending == 10 and pending[10].id == 'poetry',
@@ -478,7 +490,7 @@ local function unified_discovery(lilt)
     text():find('Second Library', 1, true) and text():find('second:recovered', 1, true),
     'recovered work keeps original provider identity'
   )
-  keys('hh')
+  keys('hhb')
   choose('Explore')
   local fast, slow, browse = pending[14], pending[15], pending[16]
   finish(fast, nil, { entries = { item('fast', 'Usable early result') } })
@@ -511,7 +523,7 @@ local function unified_discovery(lilt)
   api.nvim_buf_set_lines(0, 0, -1, false, { 'unsupported search' })
   keys('<CR>')
   assert(
-    #pending == 18
+    #pending == 19
       and text():find('Unsupported by available sources', 1, true)
       and text():find('browse only; not searched', 1, true)
       and not text():find('No works found', 1, true)
@@ -519,6 +531,105 @@ local function unified_discovery(lilt)
     'wholly unsupported search does not claim empty results or a request failure'
   )
   keys('q')
+end
+
+local function discovery_navigation()
+  local calls, cancellations = {}, 0
+  local function request(query, cb)
+    calls[#calls + 1] = query
+    local entries = {}
+    for i = 1, 24 do
+      entries[i] = {
+        title = query .. ' work ' .. i,
+        supported = false,
+        source = { provider = 'navigation', id = tostring(i), url = 'https://example.org/' .. i },
+      }
+    end
+    cb(nil, { entries = entries, next = 'next' })
+    return function()
+      cancellations = cancellations + 1
+    end
+  end
+  local saved = registry.list
+  registry.list = function()
+    return {
+      {
+        id = 'navigation',
+        name = 'Navigation fixture',
+        browse = {
+          explore = function(_, cb)
+            return request('Explore', cb)
+          end,
+          poetry = function(_, cb)
+            return request('Poetry', cb)
+          end,
+        },
+        search = function(query, _, cb)
+          return request(query, cb)
+        end,
+      },
+    }
+  end
+  local s = require('lilt.picker.ui').new(function() end)
+  s:push({ title = 'Library', items = { { label = 'Local works' } } })
+  require('lilt.picker.discover').open(s, home, nil, function() end, function() end)
+  assert(#s.pages == 2 and #calls == 1, 'Discover immediately opens one Explore browse layer')
+  choose('Explore work 20')
+  keys('h')
+  local browse = s:page()
+  local selected, view = browse.selected, vim.fn.winsaveview()
+  keys('b')
+  keys('h')
+  assert(
+    s:page() == browse
+      and browse.selected == selected
+      and vim.fn.winsaveview().topline == view.topline,
+    'category menu back restores browse exactly'
+  )
+  keys('s')
+  assert(lines()[1] == '', 'first search starts empty')
+  api.nvim_buf_set_lines(0, 0, -1, false, { 'first query' })
+  keys('<CR>')
+  assert(#s.pages == 3 and #calls == 2, 'search pushes once above browse')
+  keys('s')
+  assert(lines()[1] == 'first query', 'query editor starts from the current search')
+  api.nvim_buf_set_lines(0, 0, -1, false, { 'edited query' })
+  keys('<CR>')
+  assert(#s.pages == 3 and calls[3] == 'edited query', 'query edit replaces the search layer')
+  keys('h')
+  assert(
+    s:page() == browse
+      and browse.selected == selected
+      and vim.fn.winsaveview().topline == view.topline
+      and #calls == 3,
+    'Back from edited search restores exact browse selection and viewport without I/O'
+  )
+  keys('s')
+  api.nvim_buf_set_lines(0, 0, -1, false, { 'another query' })
+  keys('<CR>b')
+  choose('Explore')
+  assert(
+    #s.pages == 2 and s:page() == browse and browse.selected == selected and #calls == 4,
+    'same category from search returns to the retained browse without refetching'
+  )
+  keys('s')
+  api.nvim_buf_set_lines(0, 0, -1, false, { 'last query' })
+  keys('<CR>b')
+  choose('Poetry')
+  assert(
+    #s.pages == 2 and s:page() ~= browse and calls[6] == 'Poetry',
+    'different category from search replaces the browse layer'
+  )
+  keys('b')
+  choose('Explore')
+  assert(#s.pages == 2 and calls[7] == 'Explore', 'category switches never accumulate history')
+  keys('h')
+  assert(
+    #s.pages == 1 and s:page().title == 'Library' and cancellations == 0,
+    'browse Back returns directly to library; completed startup cancels are not called'
+  )
+  s:close()
+  registry.list = saved
 end
 
 local function run()
@@ -688,14 +799,12 @@ local function run()
   lilt.setup({ library = home, catalog = 'https://catalog.example.test/api/' })
   lilt.open()
   keys('d')
-  choose('Explore')
   assert(requests[#requests] == 'https://catalog.example.test/api/books/', 'custom Gutendex base')
   keys('hq')
   lilt.setup({ catalog = catalog.default_url })
   lilt.setup({ library = home })
   lilt.open()
   choose('Discover online')
-  choose('Explore')
   assert(
     table.concat(lines(), '\n'):find('Test Letters', 1, true),
     'selected source menu opens popular results'
@@ -710,28 +819,27 @@ local function run()
     table.concat(lines(), '\n'):find('Test Letters', 1, true),
     'load more retains earlier works'
   )
-  keys('h')
+  keys('b')
   choose('Recently listed')
   assert(
     requests[#requests]:find('sort=descending', 1, true),
     'newest means descending catalog IDs'
   )
-  keys('h')
+  keys('b')
   choose('Poetry')
   assert(requests[#requests]:find('topic=poetry', 1, true), 'poetry is a topic preset')
-  keys('h')
+  keys('b')
   choose('Short stories')
   assert(
     requests[#requests]:find('topic=short%20stories', 1, true),
     'short stories is a topic preset'
   )
-  keys('hh')
+  keys('h')
   assert(
     table.concat(lines(), '\n'):find('Discover online', 1, true),
-    'category changes return through the preserved Discover landing'
+    'category changes keep a single browse layer above the library'
   )
   choose('Discover online')
-  choose('Explore')
   keys('s')
   api.nvim_buf_set_lines(0, 0, -1, false, { 'no such book' })
   keys('<CR>')
@@ -751,7 +859,6 @@ local function run()
     'empty input preserves results'
   )
   keys('h')
-  choose('Explore')
   assert(
     table.concat(lines(), '\n'):find('Test Letters', 1, true),
     'empty query preserves the current results'
@@ -864,7 +971,6 @@ local function run()
   local saved_metadata = read_binary(installed.root .. '/lilt.json')
   lilt.open()
   keys('d')
-  choose('Explore')
   wait_for(function()
     return table.concat(lines(), '\n'):find('Catalog title changed', 1, true) ~= nil
   end, 'changed catalog metadata did not load')
@@ -958,7 +1064,6 @@ local function run()
 
   lilt.open()
   choose('Discover online')
-  choose('Explore')
   choose('Load more')
   choose('Another page')
   held = true
@@ -990,7 +1095,6 @@ local function run()
   }) do
     lilt.open()
     choose('Discover online')
-    choose('Explore')
     choose('Load more')
     choose('Another page')
     held = true
@@ -1017,7 +1121,6 @@ local function run()
   for _, quit in ipairs({ 'q', '<Esc>' }) do
     lilt.open()
     keys('d')
-    choose('Explore')
     keys(']')
     choose('Another page')
     held = true
@@ -1040,7 +1143,6 @@ local function run()
   held = true
   lilt.open()
   choose('Discover online')
-  choose('Explore')
   job = jobs[#jobs]
   keys('s')
   api.nvim_buf_set_lines(0, 0, -1, false, { 'query in progress' })
@@ -1054,10 +1156,10 @@ local function run()
     table.concat(lines(), '\n'):find('Test Letters', 1, true),
     'cancelled input reveals results completed behind the editor'
   )
-  keys('h')
+  keys('b')
   choose('Recently listed')
   local stale = jobs[#jobs]
-  keys('h')
+  keys('b')
   choose('Poetry')
   job = jobs[#jobs]
   stale.finish()
@@ -1081,7 +1183,6 @@ local function run()
   mode = 'network-error'
   lilt.open()
   choose('Discover online')
-  choose('Explore')
   assert(
     table.concat(lines(), '\n'):find('Retry failed', 1, true),
     'recoverable network error page'
@@ -1093,7 +1194,6 @@ local function run()
   held = true
   lilt.open()
   choose('Discover online')
-  choose('Explore')
   assert(table.concat(lines(), '\n'):find('Loading catalog', 1, true), 'nonblocking progress')
   job = jobs[#jobs]
   keys('hq')
@@ -1123,7 +1223,6 @@ local function run()
   }) do
     lilt.open()
     choose('Discover online')
-    choose('Explore')
     local menu = api.nvim_get_current_buf()
     keys('s')
     local search_buf, before_search_close = api.nvim_get_current_buf(), #requests
@@ -1142,6 +1241,7 @@ local function run()
     )
   end
   no_staging()
+  discovery_navigation()
   unified_discovery(lilt)
   print('Lilt online: catalog, cancellation, fidelity, installation and discover-to-reading passed')
 end

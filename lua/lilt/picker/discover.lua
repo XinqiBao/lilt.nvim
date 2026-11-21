@@ -4,8 +4,6 @@ local discovery = require('lilt.online.discovery')
 local acquisition = require('lilt.online.acquire')
 local information = require('lilt.picker.information')
 local M = {}
--- List hints are presentation only; official names and saved identities stay intact.
-local source_labels = { gutenberg = 'Gutenberg', unglueit = 'Unglue.it', poetrydb = 'PoetryDB' }
 
 function M.open(s, root, catalog, units, refresh)
   local sources = providers.list(catalog)
@@ -85,17 +83,15 @@ function M.open(s, root, catalog, units, refresh)
   end
 
   local function result_item(provider, entry)
-    local label = entry.label or entry.title
+    local detail
     if entry.kind ~= 'group' and not entry.label and entry.authors and #entry.authors > 0 then
-      label = label .. ' — ' .. table.concat(entry.authors, '; ')
-    end
-    if entry.kind == 'group' then
-      label = label .. ' ›'
+      detail = table.concat(entry.authors, '; ')
     end
     return {
-      label = label,
-      trailing = source_labels[provider.id],
-      wrap = 'full',
+      label = entry.label or entry.title,
+      detail = detail,
+      marker = entry.kind == 'group' and '›' or nil,
+      compact = true,
       select = function()
         if entry.kind == 'group' then
           expand(provider, entry.query, true, entry.label or entry.title)
@@ -150,6 +146,7 @@ function M.open(s, root, catalog, units, refresh)
       blocking = false,
       items = {},
       height = 20,
+      max_width = 96,
     }
     local progress = push and 'Loading…' or 'Loading more…'
     page.footer = function(width)
@@ -204,15 +201,6 @@ function M.open(s, root, catalog, units, refresh)
 
   results = function(query, push)
     local feed = discovery.new(sources, query)
-    local trailing_width = 0
-    for _, provider in ipairs(sources) do
-      local participates = query.search and provider.search
-        or query.category and provider.browse and provider.browse[query.category]
-      if participates then
-        trailing_width =
-          math.max(trailing_width, vim.fn.strdisplaywidth(source_labels[provider.id] or ''))
-      end
-    end
     local title = query.search and ('Search: ' .. query.search)
     for _, category in ipairs(categories) do
       if category.id == query.category then
@@ -223,7 +211,7 @@ function M.open(s, root, catalog, units, refresh)
     local context = { label = title, hl = 'Title', wrap = 'full' }
     local page = {
       title = 'Discover',
-      trailing_width = trailing_width,
+      max_width = 96,
       items = menu,
       selected = context,
       height = 20,
@@ -237,7 +225,7 @@ function M.open(s, root, catalog, units, refresh)
     local coverage_note = { label = 'Some collections are browse-only.', wrap = 'full' }
     local load, retry
     local progress = 'Loading…'
-    local can_retry, active_progress = false, nil
+    local can_retry, can_continue, active_progress = false, false, nil
     page.footer = function(width)
       if active_progress then
         if width < 40 then
@@ -246,6 +234,17 @@ function M.open(s, root, catalog, units, refresh)
           return ' ' .. active_progress .. ' · h back · q/Esc quit '
         end
         return ' ' .. active_progress .. ' · s search · b browse · h back · q/Esc quit '
+      end
+      if can_continue then
+        local recovery = '] load · ' .. (can_retry and 'r retry · ' or '')
+        if width < 30 then
+          return ' ' .. recovery .. (can_retry and 'q ' or 'h back · q ')
+        elseif width < 50 then
+          return ' ' .. recovery .. 'h back · q '
+        elseif width < 68 then
+          return ' Enter · ' .. recovery .. 'h back · q '
+        end
+        return ' Enter · ' .. recovery .. 's search · b browse · h back · q '
       end
       if width < 30 then
         return can_retry and ' r retry · h back · q ' or ' Enter · h back · q '
@@ -304,6 +303,7 @@ function M.open(s, root, catalog, units, refresh)
       end
       context.label = title .. (status and (' · ' .. status) or '')
       can_retry = snapshot.retry and not snapshot.loading
+      can_continue = pending and snapshot.more and not snapshot.loading
       local note
       if browse_only then
         note = coverage_note

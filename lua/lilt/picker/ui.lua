@@ -13,13 +13,33 @@ end
 local function clip(text, width)
   local part = text
   if vim.fn.strdisplaywidth(part) > width then
-    part = vim.fn.strcharpart(part, 0, math.max(0, width - 1))
+    part = vim.fn.strcharpart(part, 0, math.max(0, width - 1), 1)
     while vim.fn.strdisplaywidth(part) > width - 1 do
-      part = vim.fn.strcharpart(part, 0, vim.fn.strchars(part) - 1)
+      part = vim.fn.strcharpart(part, 0, vim.fn.strchars(part, 1) - 1, 1)
     end
     part = part .. '…'
   end
   return part
+end
+
+-- Compact results prioritize the label; secondary detail only uses spare room.
+-- Markers reserve their width so truncated groups still advertise expansion.
+local function compact(item, width)
+  local marker = item.marker and (' ' .. item.marker) or ''
+  local room = math.max(1, width - vim.fn.strdisplaywidth(marker))
+  local title = item.label:gsub('%c', ' ')
+  local detail = (item.detail or ''):gsub('%c', ' ')
+  local label = clip(title, room)
+  if vim.fn.strdisplaywidth(title .. '  ' .. detail) > room then
+    local remaining = room - vim.fn.strdisplaywidth(label) - 2
+    detail = remaining >= 12 and clip(detail, math.min(24, remaining)) or ''
+  end
+  local start
+  if detail ~= '' then
+    start = #label + 2
+    label = label .. '  ' .. detail
+  end
+  return label .. marker, start, #label
 end
 
 local function wrap(text, width, limit)
@@ -158,7 +178,8 @@ function M.new(on_close)
     local available = math.max(1, vim.o.columns - 4)
     local room = math.max(1, vim.o.lines - vim.o.cmdheight - 4)
     local side = page.preview and available >= 100 and room >= 8
-    local total = side and math.min(120, available) or math.min(76, available)
+    local total = side and math.min(120, available)
+      or math.min(not self.input and page.max_width or 76, available)
     local width = side and math.floor(total * 0.44) or total
     if self.input then
       self.preview:close()
@@ -218,9 +239,6 @@ function M.new(on_close)
       end
     end
     local items = vim.list_extend(vim.list_slice(page.items), page.status or {})
-    local trailing_width = page.trailing_width or 0
-    -- Keep at least 48 content columns, plus the action indent and a two-column gap.
-    local trailing = trailing_width > 0 and width >= 4 + 48 + 2 + trailing_width
     for _, item in ipairs(items) do
       local depth = math.min(item.depth or 0, math.max(0, math.floor((width - 24) / 2)))
       local indent = (item.select and '    ' or '  ') .. string.rep('  ', depth)
@@ -234,24 +252,18 @@ function M.new(on_close)
         local hint = item.key:match('%w') and ('[' .. item.key .. ']') or item.key
         indent = indent .. hint .. ' '
       end
-      if item.wrap == 'full' then
-        local reserved = trailing and item.trailing and trailing_width + 2 or 0
-        local content_width = math.max(1, width - vim.fn.strdisplaywidth(indent) - reserved)
-        for i, text in ipairs(full_wrap(item.label, content_width)) do
-          local label = indent .. text
-          if i == 1 and reserved > 0 then
-            label = label
-              .. string.rep(
-                ' ',
-                width - vim.fn.strdisplaywidth(label) - vim.fn.strdisplaywidth(item.trailing)
-              )
-            local start = #label
-            label = label .. item.trailing
-            row(label, item)
-            marks[#marks + 1] = { #lines - 1, 'Comment', start, #label }
-          else
-            row(label, item)
-          end
+      if item.compact then
+        local label, start, last =
+          compact(item, math.max(1, width - vim.fn.strdisplaywidth(indent) - 2))
+        row(indent .. label, item)
+        if start then
+          marks[#marks + 1] = { #lines - 1, 'Comment', #indent + start, #indent + last }
+        end
+      elseif item.wrap == 'full' then
+        for _, text in
+          ipairs(full_wrap(item.label, math.max(1, width - vim.fn.strdisplaywidth(indent))))
+        do
+          row(indent .. text, item)
         end
       elseif item.wrap then
         for _, text in ipairs(wrap(item.label, math.max(1, width - 4), item.max_lines or 4)) do

@@ -760,6 +760,51 @@ local function run()
   blocking_done(nil, 'Ready')
   blocking:close()
   no_picker()
+  local compact_columns = vim.o.columns
+  vim.o.columns = 80
+  local compact = ui.new(function() end)
+  local cambridge = 'The Works of William Shakespeare [Cambridge Edition] [Vol. 5 of 9]'
+  local items = {
+    { label = cambridge, detail = 'Shakespeare, William' },
+    { label = 'Frankenstein; or, The Modern Prometheus', detail = 'Shelley, Mary Wollstonecraft' },
+    {
+      label = 'Collaborative Futures',
+      detail = 'Michael Mandiberg; Mushon Zer-Aviv; Alan Toner; Ayşe Çavdar; Adam Hyde',
+    },
+    { label = '1234567890123456éZtail' },
+    { label = string.rep('Collected poems ', 10), marker = '›' },
+  }
+  for _, item in ipairs(items) do
+    item.compact, item.select = true, function() end
+  end
+  compact:push({ title = 'Compact results', max_width = 96, items = items })
+  assert(
+    #lines() == #items and lines()[1] == '    ' .. cambridge,
+    'one-row results preserve the full title before allocating author space'
+  )
+  assert(
+    lines()[2]:find('  Shelley, Mary Wollstonecraft', 1, true)
+      and lines()[3]:find('Michael Mandiberg;', 1, true)
+      and lines()[3]:sub(-#'…') == '…',
+    'complete pairs fit inline while oversized author lists use a bounded prefix'
+  )
+  vim.o.columns = 28
+  compact:render(true)
+  assert(
+    lines()[4] == '    1234567890123456é…' and lines()[5]:sub(-#'… ›') == '… ›',
+    'narrow clipping keeps composing accents and the group expansion marker intact'
+  )
+  vim.o.columns = 120
+  compact:render(true)
+  assert(api.nvim_win_get_width(compact.win) == 96, 'result pages can use the wider list allowance')
+  compact:prompt({ title = 'Search', default = '', footer = 'Enter search' }, function() end)
+  assert(api.nvim_win_get_width(compact.win) == 76, 'result input retains the ordinary width')
+  keys('<Esc>')
+  compact:push({ title = 'Information', items = { { label = cambridge, wrap = 'full' } } })
+  assert(api.nvim_win_get_width(compact.win) == 76, 'information retains the ordinary width')
+  compact:close()
+  vim.o.columns = compact_columns
+  no_picker()
   print('Lilt picker: XDG, hierarchy, multiple examples, buffer reuse and cleanup passed')
 end
 local ok, err = xpcall(run, debug.traceback)

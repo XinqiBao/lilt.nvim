@@ -108,7 +108,9 @@ Load more appends a batch; Retry failed requests only failed sources and
 retains successful results. Progress appears once in the footer: Loading,
 Loading more for paging, or Retrying. The content heading shows Paused after
 cancellation. Footer navigation adapts to width, with r retry when failed
-sources can be retried. Partial results remain usable; failed searches do not
+sources can be retried and ] load when paused sources can continue. Narrow
+footers prioritize these recovery actions. Returning does not resume requests
+automatically. Partial results remain usable; failed searches do not
 claim there are no matches. Search notes browse-only collections. No combined
 total or cross-source ranking is inferred. Groups open a page titled with the
 poet or work, with one official source row and full-width entries.
@@ -116,11 +118,13 @@ Next/Previous replaces only that group page. Multiple eligible downloads remain
 explicit choices, not a guessed edition. Gutenberg supplies public-domain
 EPUBs, Unglue.it eligible English EPUB copies with recognized rights, and
 PoetryDB poems as native text with exact source rows. See doc/sources.md for
-capabilities, eligibility and retained source artifacts. Wide windows show
-muted Gutenberg/Unglue.it/PoetryDB hints at the right of each result's first
-row; narrow windows omit them. Full titles and authors wrap; every continuation
-row opens the same work. Groups marked with › expand into choices. Work
-information retains official source names and exact identities. Details add one
+capabilities, eligibility and retained source artifacts. Each work or group uses
+one row. Titles take priority; muted authors use spare room and overflow ends
+with an ellipsis. Groups retain › even when clipped. Results and group pages
+can use up to 96 columns; input and information keep their regular widths.
+Native / searches visible text; s searches catalogs by complete title/author.
+Work information retains complete titles/authors and exact source identities;
+identical rows can be different source copies. Details add one
 level; back restores your result selection and scroll. A failed request offers
 retry in place; back, leaving the window, or closing cancels outstanding
 requests. Source-supplied descriptions, publisher/publication facts, rights and

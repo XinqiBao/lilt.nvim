@@ -27,9 +27,11 @@ the title so identity and availability can be inspected before acquisition.
 New pages reset the shared window's scroll. Returning, cancelling search, and
 resizing retain the cursor item and its wrapped-line offset (clamped when text
 reflows). Work-information and online bibliographic fields wrap completely,
-including unspaced UTF-8 and URLs. Discover results use compact rows. Local work and
-unit labels remain bounded. Duplicate local titles show directory names only
-when needed to distinguish them. Unit percentages report saved rows.
+including unspaced UTF-8 and URLs. Library, Examples and Discover work lists share
+compact title/detail rows. Unit labels remain bounded. Duplicate local titles
+reserve room for directory suffixes when they fit; oversized suffixes are omitted.
+Selection always uses the original work, including when rows look alike.
+Unit percentages report saved rows.
 
 `picker/information.lua` formats shared bibliographic/source facts as inert page
 items, with separate identity and remaining-field formatters. Online Work

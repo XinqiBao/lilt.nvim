@@ -94,6 +94,51 @@ Generated and installed manifests use two-space indentation, sorted object keys,
 literal UTF-8 and a final newline. Array order is preserved. Personal directory
 names, saved progress and last-opened state do not belong in this manifest.
 
+## Upgrading from v0.1.0
+
+**Old `author` fields and Gutenberg provider names are rejected in v0.2.0.**
+There is no automatic migration. An affected work reports a manifest error and
+cannot open until its manifest is updated; the error does not delete its
+reference or manuscript.
+
+1. Close reading buffers and back up both `references/` and `manuscripts/` from
+   your [configured library](../README.md#configuration).
+2. Edit each affected `references/<work>/lilt.json` **in place**. Replace
+   `"author": "A. Writer"` with `"authors": ["A. Writer"]`, removing the old key.
+   Keep the full old string as one entry unless individual names are verified;
+   do not guess how to split a combined credit. Update separately prepared work
+   directories too if you plan to import them again. Works without `author`
+   need no author-field change.
+3. For works acquired from Gutenberg by v0.1.0, change `source.provider` from
+   `"Project Gutenberg"` to `"gutenberg"`, keeping the existing `source.id` and
+   `source.url`. This lets the current provider find and reuse the installed copy.
+4. Keep the existing work directory names, `units`/`toc` paths, reference bytes
+   and manuscript files unchanged. Manuscript association uses the same
+   `<work>/<unit-path>`, and comparison uses physical reference rows. New
+   directory-name defaults apply only when adding works.
+5. [Validate](#validation) the updated installed work, then select its existing
+   unit through `:Lilt` and confirm that your saved writing resumes.
+
+`version`, `source.file`, the additional bibliographic fields and `preparation`
+are optional. Existing `source` objects with `provider`, `id` and `url` remain
+valid when the provider is a lowercase identifier matching `[a-z][a-z0-9-]*`
+(including `gutenberg`). v0.1.0 allowed other provider spellings. If you used a
+custom value outside that syntax, choose a valid identifier and update any
+scripts that refer to that source identity consistently; keep its ID and URL.
+Provider/ID control installed-copy reuse, so this changes that identity. Directory
+names and unit paths still determine the manuscript association.
+
+Leave unavailable provenance and preparation facts absent. New metadata does
+not need to be reconstructed, and adding it never reconverts reference text.
+The optional manifest `version: 1` is a format field, not the plugin version.
+v0.1.0's strict loader rejects `authors`, `version` and other new fields; retain
+your pre-upgrade backup if you need to return to that version.
+
+If you call the local EPUB converter from Lua, change its optional
+`author = "Author"` option to `authors = { "Author" }`. The old option no longer
+records an author. Conversion creates a new work; updating an existing manifest
+preserves its reference layout and saved manuscript paths.
+
 ## Text preparation
 
 Prepare physical lines for comfortable reading in an editor. Preserve paragraph

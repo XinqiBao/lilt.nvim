@@ -5,6 +5,9 @@ undo, redo, and :write. There are no scores, automatic corrections, or autosave.
 Requires Neovim 0.11 or newer. Online discovery/downloads need curl; EPUB acquisition
 also needs Pandoc 3.1.1+ on PATH. PoetryDB needs only curl; local reading needs neither.
 
+Upgrading from v0.1.0: old author fields and Gutenberg provider names require
+manual manifest updates. Back up your library first; see |lilt-upgrading|.
+
 START                                                        *lilt-start*
 
 Run :Lilt. Choose Examples, a work, and a reading unit for an offline first try.
@@ -162,6 +165,27 @@ Highlights respect explicit overrides and follow your colorscheme:
     LiltError     DiagnosticError
     LiltExtra     DiagnosticWarn
     LiltMissing   DiagnosticUnderlineWarn
+
+UPGRADING                                                   *lilt-upgrading*
+
+v0.2.0 rejects old author fields and Gutenberg provider names. With reading buffers
+closed, back up both references/ and manuscripts/, then edit each affected
+references/<work>/lilt.json in place: replace "author": "A. Writer" with
+"authors": ["A. Writer"]. Preserve the entire old string as one array entry
+unless you have verified individual names. Works without author need no such
+change. For Gutenberg acquisitions, also change source.provider from
+"Project Gutenberg" to "gutenberg", keeping source.id and source.url. There is
+no automatic migration.
+
+Keep work directory names, unit paths, reference text and manuscript files
+unchanged. Those paths and physical rows associate your writing with its reference.
+New directory-name defaults apply only when adding works. Optional source and
+preparation metadata need not be backfilled. Custom source.provider values now
+require a lowercase identifier; see doc/works.md#upgrading-from-v010 in the checkout
+for validation, custom-source guidance and the EPUB import option change.
+
+v0.1.0 rejects new manifest fields too. Retain the pre-upgrade backup if you
+need to return to that version.
 
 LIMITS AND SOURCES                                           *lilt-limits*
 

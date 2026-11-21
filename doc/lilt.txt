@@ -107,8 +107,11 @@ page. Multiple eligible downloads remain explicit choices, not a guessed edition
 Gutenberg supplies public-domain EPUBs, Unglue.it eligible English EPUB copies
 with recognized rights, and PoetryDB poems as native text with exact source rows.
 See doc/sources.md for capabilities, eligibility and retained source artifacts.
-Result titles and authors wrap fully; every continuation row opens the same work. Details add one level and back
-restores your result selection and scroll. A failed request offers retry in place;
+Wide windows show muted Gutenberg/Unglue.it/PoetryDB hints at the right of each
+result's first row; narrow windows omit them. Full titles and authors wrap; every
+continuation row opens the same work. Groups marked with › expand into choices.
+Work information retains official source names and exact identities. Details add
+one level and back restores your result selection and scroll. A failed request offers retry in place;
 back, leaving the window, or closing cancels outstanding requests.
 Source-supplied descriptions, publisher/publication facts, rights and license URLs
 appear when available. Source copy title and Source version record advertised

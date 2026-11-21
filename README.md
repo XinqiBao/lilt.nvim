@@ -106,8 +106,9 @@ require("lilt").setup({
 - [PoetryDB](doc/sources/poetrydb.md) offers author browsing and title/author
   search. Each poem becomes one plain-text unit with its original JSON retained.
 
-Discover combines participating sources in one list, with a source label beneath
-each result. **Load more** appends another batch; **Retry failed** retries failed
+Discover combines participating sources in one list. Wide windows show muted
+source hints at the right of each result; narrow windows omit them. Titles and
+authors wrap fully, with complete source identity in Work information. **Load more** appends another batch; **Retry failed** retries failed
 sources while keeping successful results. Search covers Gutenberg and PoetryDB;
 Unglue.it contributes through browsing. Discover opens Explore immediately;
 `s` searches and `b` opens supported categories. Category changes replace browse;

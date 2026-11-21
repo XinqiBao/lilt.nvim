@@ -75,7 +75,15 @@ replaces the browse layer. Search pushes one layer above browse; query edits
 replace that search layer. Back restores the exact browse selection and viewport.
 Choosing a category from search returns to browse before applying the category.
 Back from browse returns directly to the library; category/query edits do not
-accumulate history. Results are flat accumulated entries with secondary provenance.
+accumulate history. Results keep complete wrapped titles/authors. A muted short
+source label (Gutenberg, Unglue.it, PoetryDB) aligns right on the first visual row.
+The whole page omits hints when fewer than 48 display columns would remain for
+content after the action indent, source column and two-column gap. Each page
+reserves the participating sources' widest hint before requesting results, so
+later peers cannot reflow earlier entries at a fixed width. Continuation
+rows retain the same item identity. Short names belong to presentation; official
+names and source identities remain in Work information. Groups end in › to
+advertise expansion; copy labels remain source-supplied.
 Load more appends a batch, while Retry failed requests only failed sources.
 Both actions are omitted while a batch is in flight. Groups push a provider's
 own page with Previous/Next actions; work details add one level and acquired units

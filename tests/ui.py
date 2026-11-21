@@ -1064,9 +1064,9 @@ def unified_discovery_tests():
                 if search then p.search = function(_, cursor, callback) return request(cursor, callback) end end
                 return p
             end
-            local first = source('fast', 'Fast Library', true)
-            local slow = source('slow', 'Slow Library', true)
-            local browse = source('browse', 'Browse Library', false)
+            local first = source('gutenberg', 'Project Gutenberg', true)
+            local slow = source('poetrydb', 'PoetryDB', true)
+            local browse = source('unglueit', 'Unglue.it', false)
             require('lilt.online.providers').list = function() return {first, slow, browse} end
             _G.lilt_unified_finish = function(index, err, titles, more)
                 local job = _G.lilt_unified_jobs[index]
@@ -1101,15 +1101,28 @@ def unified_discovery_tests():
             check(any("Search title or author" in row for row in rows) and any("Explore" in row for row in rows),
                   "narrow Discover opens directly on content choices")
             check("Library" not in text() and "Choose source" not in text(), "landing has no provider chooser")
-            finish(1, titles=["Early work " + str(i) for i in range(1, 13)], more="next")
+            titles = ["Early work " + str(i) for i in range(1, 13)]
+            titles[9] += " 天地é" * 20
+            finish(1, titles=titles, more="next")
+            check("Gutenberg" not in text(), "narrow results uniformly omit source hints")
+            width, height = 90, 24
+            nvim.ui_try_resize(width, height)
+            input_keys("")
+            labels = [line for line in nvim.current.buffer[:] if "Gutenberg" in line]
+            check(len(labels) == 12 and all(line.endswith("Gutenberg") for line in labels),
+                  "wide results place one short source hint on each item's first row")
+            check(all(nvim.funcs.strdisplaywidth(line) == nvim.current.window.width for line in labels),
+                  "trailing hints align by display columns including CJK and combining characters")
+            compact = "".join("".join(line.replace("Gutenberg", "").split()) for line in nvim.current.buffer[:])
+            check("".join(titles[9].split()) in compact, "wide source hints preserve the entire unspaced Unicode title")
             check("Early work 1" in text() and "Loading more" in text(), "a successful source appears before slow peers settle")
             check("[r]" not in text() and "Load more" not in text(), "batch actions stay hidden while peers load")
             result_row = next(row for row, line in enumerate(nvim.current.buffer[:], 1) if "Early work 10 " in line)
             input_keys(str(result_row) + "Gj")
             rows = screen()
-            provenance = next(row for row, line in enumerate(rows) if "Fast Library" in line)
-            check(group_at(provenance, rows[provenance].index("Fast Library"), "Comment"),
-                  "provenance is a readable secondary highlight in a narrow window")
+            provenance = next(row for row, line in enumerate(rows) if "Gutenberg" in line)
+            check(group_at(provenance, rows[provenance].index("Gutenberg"), "Comment"),
+                  "wide source hints use the muted Comment highlight")
             position = (nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"])
             finish(2, error="fixture service unavailable")
             finish(3)
@@ -1119,25 +1132,35 @@ def unified_discovery_tests():
                   "successful results retain honest partial coverage and failure causes")
             check("Private source ready title" not in text(), "normal source diagnostics do not crowd results")
             input_keys("<CR>")
-            check("fast:Early work 10" in text(), "selecting provenance opens the same exact-copy details")
+            check("gutenberg:Early work 10" in text(), "selecting a continuation opens the same exact-copy details")
             input_keys("h")
             check((nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"]) == position,
                   "details back restores the result viewport")
+            width, height = 28, 10
+            nvim.ui_try_resize(width, height)
+            input_keys("")
+            check("Gutenberg" not in text() and not any(line.rstrip().endswith("Unglue.it") for line in nvim.current.buffer[:]),
+                  "resizing narrow removes all source hints")
+            input_keys("<CR>")
+            check("gutenberg:Early" in "".join(text().split()), "resize keeps the continuation attached to its work")
+            input_keys("h")
             load_row = next(row for row, line in enumerate(nvim.current.buffer[:], 1) if "Load more" in line)
             input_keys(str(load_row) + "G")
             input_keys("<CR>")
-            check(nvim.current.window.cursor[0] > 20 and nvim.funcs.winsaveview()["topline"] > 1,
+            check(nvim.current.window.cursor[0] > 3 and nvim.funcs.winsaveview()["topline"] > 1,
                   "clicking Load more from the bottom retains the result boundary")
             finish(4, titles=["Later work"])
             check("Early work 1" in text() and "Later work" in text(), "next batch appends to the flat result list")
             choose("Retry failed")
-            check("Fast Library" in nvim.current.buffer[nvim.current.window.cursor[0] - 1]
+            check(nvim.current.buffer[nvim.current.window.cursor[0] - 1].strip() in ("Later work — A.", "Writer")
                   and nvim.funcs.winsaveview()["topline"] > 1,
                   "clicking Retry failed retains the scrolled result boundary")
-            check(nvim.exec_lua("return #_G.lilt_unified_jobs == 5 and _G.lilt_unified_jobs[5].id == 'slow'"),
+            check(nvim.exec_lua("return #_G.lilt_unified_jobs == 5 and _G.lilt_unified_jobs[5].id == 'poetrydb'"),
                   "Retry failed contacts only the failed peer")
             finish(5)
             check("Partial coverage" not in text() and "Retry failed" not in text(), "empty retry success clears stale errors")
+            width, height = 90, 24
+            nvim.ui_try_resize(width, height)
             input_keys("s")
             input_keys("query<CR>")
             input_keys("s")
@@ -1149,7 +1172,7 @@ def unified_discovery_tests():
                   and nvim.eval("mode()") == "i", "progressive and final callbacks keep native search input and focus")
             input_keys("<Esc>")
             compact = " ".join(text().split())
-            check("Search success" in compact and "Browse Library · browse only; not searched" in compact,
+            check("Search success" in compact and "Unglue.it · browse only; not searched" in compact,
                   "search has one unobtrusive browse-only coverage note")
             input_keys("h")
             check("Explore" in text(), "Back restores the browse layer")

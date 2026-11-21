@@ -218,6 +218,9 @@ function M.new(on_close)
       end
     end
     local items = vim.list_extend(vim.list_slice(page.items), page.status or {})
+    local trailing_width = page.trailing_width or 0
+    -- Keep at least 48 content columns, plus the action indent and a two-column gap.
+    local trailing = trailing_width > 0 and width >= 4 + 48 + 2 + trailing_width
     for _, item in ipairs(items) do
       local depth = math.min(item.depth or 0, math.max(0, math.floor((width - 24) / 2)))
       local indent = (item.select and '    ' or '  ') .. string.rep('  ', depth)
@@ -232,10 +235,23 @@ function M.new(on_close)
         indent = indent .. hint .. ' '
       end
       if item.wrap == 'full' then
-        for _, text in
-          ipairs(full_wrap(item.label, math.max(1, width - vim.fn.strdisplaywidth(indent))))
-        do
-          row(indent .. text, item)
+        local reserved = trailing and item.trailing and trailing_width + 2 or 0
+        local content_width = math.max(1, width - vim.fn.strdisplaywidth(indent) - reserved)
+        for i, text in ipairs(full_wrap(item.label, content_width)) do
+          local label = indent .. text
+          if i == 1 and reserved > 0 then
+            label = label
+              .. string.rep(
+                ' ',
+                width - vim.fn.strdisplaywidth(label) - vim.fn.strdisplaywidth(item.trailing)
+              )
+            local start = #label
+            label = label .. item.trailing
+            row(label, item)
+            marks[#marks + 1] = { #lines - 1, 'Comment', start, #label }
+          else
+            row(label, item)
+          end
         end
       elseif item.wrap then
         for _, text in ipairs(wrap(item.label, math.max(1, width - 4), item.max_lines or 4)) do
@@ -250,12 +266,6 @@ function M.new(on_close)
           label = label .. item.suffix
         end
         row(clip(label, width), item)
-      end
-      if item.secondary then
-        for _, text in ipairs(full_wrap(item.secondary, math.max(1, width - #indent))) do
-          row(indent .. text, item)
-          marks[#marks + 1] = { #lines - 1, 'Comment' }
-        end
       end
     end
     if #lines == 0 then
@@ -318,7 +328,13 @@ function M.new(on_close)
     api.nvim_buf_set_lines(self.buf, 0, -1, false, lines)
     api.nvim_buf_clear_namespace(self.buf, namespace, 0, -1)
     for _, mark in ipairs(marks) do
-      api.nvim_buf_set_extmark(self.buf, namespace, mark[1], 0, { line_hl_group = mark[2] })
+      api.nvim_buf_set_extmark(
+        self.buf,
+        namespace,
+        mark[1],
+        mark[3] or 0,
+        mark[3] and { hl_group = mark[2], end_col = mark[4] } or { line_hl_group = mark[2] }
+      )
     end
     vim.bo[self.buf].modifiable = false
     vim.bo[self.buf].readonly = true

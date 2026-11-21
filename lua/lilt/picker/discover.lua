@@ -4,6 +4,8 @@ local discovery = require('lilt.online.discovery')
 local acquisition = require('lilt.online.acquire')
 local information = require('lilt.picker.information')
 local M = {}
+-- List hints are presentation only; official names and saved identities stay intact.
+local source_labels = { gutenberg = 'Gutenberg', unglueit = 'Unglue.it', poetrydb = 'PoetryDB' }
 
 function M.open(s, root, catalog, units, refresh)
   local sources = providers.list(catalog)
@@ -70,9 +72,12 @@ function M.open(s, root, catalog, units, refresh)
     if entry.kind ~= 'group' and not entry.label and entry.authors and #entry.authors > 0 then
       label = label .. ' — ' .. table.concat(entry.authors, '; ')
     end
+    if entry.kind == 'group' then
+      label = label .. ' ›'
+    end
     return {
       label = label,
-      secondary = provider.name,
+      trailing = source_labels[provider.id],
       wrap = 'full',
       select = function()
         if entry.kind == 'group' then
@@ -125,6 +130,7 @@ function M.open(s, root, catalog, units, refresh)
   expand = function(provider, query, push)
     local page = {
       title = provider.name,
+      trailing_width = vim.fn.strdisplaywidth(source_labels[provider.id] or ''),
       items = {},
       height = 20,
     }
@@ -170,6 +176,15 @@ function M.open(s, root, catalog, units, refresh)
 
   results = function(query, push)
     local feed = discovery.new(sources, query)
+    local trailing_width = 0
+    for _, provider in ipairs(sources) do
+      local participates = query.search and provider.search
+        or query.category and provider.browse and provider.browse[query.category]
+      if participates then
+        trailing_width =
+          math.max(trailing_width, vim.fn.strdisplaywidth(source_labels[provider.id] or ''))
+      end
+    end
     local title = query.search and ('Search: ' .. query.search)
     for _, category in ipairs(categories) do
       if category.id == query.category then
@@ -180,6 +195,7 @@ function M.open(s, root, catalog, units, refresh)
     local context = { label = title, hl = 'Title', wrap = 'full' }
     local page = {
       title = 'Discover',
+      trailing_width = trailing_width,
       items = menu,
       selected = context,
       height = 20,

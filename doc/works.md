@@ -264,7 +264,11 @@ Choose **Discover online…** to open Explore immediately. Search (`s`) and
 Browse categories (`b`) remain above results, including while loading. The
 category menu lists only supported categories; selecting the current category
 preserves its feed without a request.
-Results arrive progressively in one list, with a secondary source label. Search
+Results arrive progressively in one list. Wide windows show muted source hints
+at the right of each result's first row; narrow windows omit them. Full titles
+and authors wrap, and every continuation row selects the same item. Groups marked
+with › expand into poet or copy choices. Work information retains official source
+names and exact identities. Search
 covers Gutenberg and PoetryDB; Unglue.it is available through browsing.
 **Load more** appends another batch from sources with a continuation;
 **Retry failed** contacts only failed sources and retains successful results.

@@ -26,6 +26,10 @@ stays an ordinary buffer: edit, undo, and save as usual.
 
 Requires **Neovim 0.11.0+**. No setup call is required.
 
+**Upgrading from v0.1.0:** old `author` fields and Gutenberg provider names need
+manual manifest updates before affected works can open. Back up your library and
+follow the [upgrade guide](doc/works.md#upgrading-from-v010) to preserve existing writing.
+
 [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua

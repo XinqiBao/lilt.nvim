@@ -17,6 +17,21 @@ Online requests require curl on PATH; acquiring EPUBs also requires Pandoc
 3.1.1+. PoetryDB needs only curl. Saved library works remain available offline
 without either tool.
 
+## Discover layout
+
+Discover keeps each work on one row, giving titles priority and using spare
+space for muted authors. Narrow lists truncate with an ellipsis; open Work
+information for complete metadata. Native `/` searches visible text; `s`
+searches the catalogs by title or author.
+
+These layout examples use controlled catalog data and gruvbox, rendered from
+native Neovim redraw grids with the fonts named in each image. They illustrate
+normal and narrow layouts; they are not live catalog or terminal screenshots.
+
+![Discover at 80 columns: one row per work with titles and muted authors](../assets/discover-normal.png)
+
+[View the narrow, 64-column example](../assets/discover-narrow.png).
+
 ## Internal contract
 
 `lua/lilt/online/providers.lua` explicitly constructs the installed providers

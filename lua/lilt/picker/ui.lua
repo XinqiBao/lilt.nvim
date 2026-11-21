@@ -305,13 +305,11 @@ function M.new(on_close)
     elseif width >= 58 then
       footer = ' j/k move ·' .. footer
     end
-    if page.busy then
-      if page.blocking == false then
-        footer = width < 40 and ' Loading… · s search · h back '
-          or ' Loading… · s search · h back · q/Esc quit '
-      else
-        footer = width < 40 and ' Working · q/Esc cancels ' or (' ' .. page.status[1].label .. ' ')
-      end
+    if page.footer then
+      footer = page.footer(width)
+    end
+    if blocked(page) then
+      footer = width < 40 and ' Working · q/Esc cancels ' or (' ' .. page.status[1].label .. ' ')
     end
     local config = {
       relative = 'editor',

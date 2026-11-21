@@ -89,12 +89,20 @@ Both actions are omitted while a batch is in flight. Groups push a provider's
 own page with Previous/Next actions; work details add one level and acquired units
 use the shared local flow. Returning restores result selection and viewport.
 
-Empty batch feedback remains visible in short windows. Partial coverage keeps
-successful results usable and exposes failed-source causes and retry; successful
-empty responses alongside failures describe incomplete results. Unsupported
-categories are omitted. Search shows one coverage note for browse-only sources.
-Normal source status and catalog totals do not crowd the result list. Local
-discovery errors wrap completely so native scrolling reaches the full cause.
+Progress appears only in the always-visible footer: Loading for the entire initial
+batch (including partial arrivals), Loading more for explicit paging, Retrying
+for failure recovery. Cancelled incomplete sources show Paused at the heading.
+Footer navigation adapts to available width; failed settled batches include an
+r retry hint even in
+28-column terminals. Progress stays visible when paging from the bottom of long
+lists, without duplicating the heading or following scroll position. Partial
+successes stay usable; failures remain summarized
+near the content heading with complete source causes in scrollable rows. Empty completed
+searches say No matching works found; failures say Could not complete search
+rather than claiming zero matches. Empty browse batches can still offer Load more.
+Search shows one muted Some collections are browse-only note. No cross-provider
+ranking or combined catalog totals are inferred. Local discovery errors wrap
+completely so native scrolling reaches the full cause.
 
 `name.lua` converts a user-chosen title into directory spelling; it knows neither
 library files nor UI. `picker/name.lua` supplies editable official-title defaults,

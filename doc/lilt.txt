@@ -101,7 +101,11 @@ Search covers Gutenberg and PoetryDB; Unglue.it contributes through browsing.
 Search edits a line inside the float: Enter submits, Escape/CTRL-C cancels.
 An empty query preserves the page. Native insertion and editing remain available.
 Load more appends a batch; Retry failed requests only failed sources and retains
-successful results. No combined catalog total or cross-source ranking is inferred.
+successful results. Progress appears once in the footer: Loading, Loading more
+for paging, or Retrying. The content heading shows Paused after cancellation.
+Footer navigation adapts to width, with r retry when failed sources can be retried. Partial
+results remain usable; failed searches do not claim there are no matches. Search
+notes browse-only collections. No combined total or cross-source ranking is inferred.
 Groups open a poet or exact-copy list; Next/Previous replaces only that group
 page. Multiple eligible downloads remain explicit choices, not a guessed edition.
 Gutenberg supplies public-domain EPUBs, Unglue.it eligible English EPUB copies

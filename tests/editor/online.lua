@@ -377,7 +377,7 @@ local function unified_discovery(lilt)
     'partial and settled updates preserve selection/scroll'
   )
   assert(
-    text():find('Partial coverage', 1, true)
+    text():find('Some results unavailable', 1, true)
       and text():find('Second Library · Request failed: fixture peer failed', 1, true),
     'partial success retains the failed source cause'
   )
@@ -415,7 +415,8 @@ local function unified_discovery(lilt)
   assert(#pending == 5 and pending[5].id == 'second', 'retry requests failed sources only')
   finish(pending[5], nil, { entries = {}, empty = 'No eligible copies.' })
   assert(
-    not text():find('Partial coverage', 1, true) and not text():find('Retry failed', 1, true),
+    not text():find('Some results unavailable', 1, true)
+      and not text():find('Retry failed', 1, true),
     'successful empty retry clears stale failure without hiding works'
   )
   choose('Selected author')
@@ -480,8 +481,8 @@ local function unified_discovery(lilt)
   finish(pending[11], nil, { entries = {} })
   finish(pending[12], 'search failed')
   assert(
-    text():find('Incomplete results · No works found in this batch.', 1, true)
-      and text():find('Browse Library · browse only; not searched', 1, true),
+    text():find('Could not complete search.', 1, true)
+      and text():find('Some collections are browse-only.', 1, true),
     'partial empty search explains failures and browse-only coverage'
   )
   keys('r')
@@ -526,8 +527,8 @@ local function unified_discovery(lilt)
   assert(
     #pending == 19
       and text():find('Unsupported by available sources', 1, true)
-      and text():find('browse only; not searched', 1, true)
-      and not text():find('No works found', 1, true)
+      and text():find('Some collections are browse-only.', 1, true)
+      and not text():find('No matching works found', 1, true)
       and not text():find('Retry failed', 1, true),
     'wholly unsupported search does not claim empty results or a request failure'
   )
@@ -896,19 +897,19 @@ local function run()
   keys('s')
   api.nvim_buf_set_lines(0, 0, -1, false, { 'no such book' })
   keys('<CR>')
-  assert(table.concat(lines(), '\n'):find('No works found', 1, true), 'empty search')
+  assert(table.concat(lines(), '\n'):find('No matching works found', 1, true), 'empty search')
   keys('s')
   api.nvim_buf_set_lines(0, 0, -1, false, { 'cancelled' })
   keys('<Esc>')
   assert(
-    table.concat(lines(), '\n'):find('No works found', 1, true),
+    table.concat(lines(), '\n'):find('No matching works found', 1, true),
     'search cancellation preserves browsing'
   )
   keys('s')
   api.nvim_buf_set_lines(0, 0, -1, false, { '' })
   keys('<CR>')
   assert(
-    table.concat(lines(), '\n'):find('No works found', 1, true),
+    table.concat(lines(), '\n'):find('No matching works found', 1, true),
     'empty input preserves results'
   )
   keys('h')
@@ -1221,7 +1222,7 @@ local function run()
   end)
   assert(
     stale.killed
-      and table.concat(lines(), '\n'):find('Loading catalog', 1, true)
+      and vim.inspect(api.nvim_win_get_config(0).footer):find('Loading…', 1, true)
       and not table.concat(lines(), '\n'):find('Test Letters', 1, true),
     'late results cannot replace a newer pending catalog query'
   )
@@ -1247,7 +1248,10 @@ local function run()
   held = true
   lilt.open()
   choose('Discover online')
-  assert(table.concat(lines(), '\n'):find('Loading catalog', 1, true), 'nonblocking progress')
+  assert(
+    vim.inspect(api.nvim_win_get_config(0).footer):find('Loading…', 1, true),
+    'nonblocking progress'
+  )
   job = jobs[#jobs]
   keys('hq')
   job.finish()

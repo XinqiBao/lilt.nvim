@@ -205,8 +205,33 @@ function M.open(s, root, catalog, units, refresh)
     if query.category then
       browse = page
     end
-    local rows, coverage = {}, {}
+    local rows = {}
+    local coverage_note = { label = 'Some collections are browse-only.', wrap = 'full' }
     local load, retry
+    local progress = 'Loading…'
+    local can_retry, active_progress = false, nil
+    page.footer = function(width)
+      if active_progress then
+        if width < 40 then
+          return ' ' .. active_progress .. ' · h back '
+        elseif width < 68 then
+          return ' ' .. active_progress .. ' · h back · q/Esc quit '
+        end
+        return ' ' .. active_progress .. ' · s search · b browse · h back · q/Esc quit '
+      end
+      if width < 30 then
+        return can_retry and ' r retry · h back · q ' or ' Enter · h back · q '
+      elseif width < 50 then
+        return can_retry and ' r retry · h back · q/Esc quit '
+          or ' Enter · h back · q/Esc quit '
+      elseif width < 68 then
+        return can_retry and ' Enter · r retry · h back · q/Esc quit '
+          or ' Enter · s search · b browse · h back · q quit '
+      end
+      return ' Enter open · s search · b browse · '
+        .. (can_retry and 'r retry · ' or '')
+        .. 'h back · q/Esc quit '
+    end
     local function present(snapshot, render)
       local items = vim.list_slice(menu)
       items[#items + 1] = context
@@ -214,19 +239,18 @@ function M.open(s, root, catalog, units, refresh)
         rows[i] = rows[i] or result_item(value.provider, value.entry)
         items[#items + 1] = rows[i]
       end
-      local failed, ready, pending, supported = false, false, false, false
-      local browse_only = {}
-      coverage = {}
+      local failed, pending, supported = false, false, false
+      local browse_only = false
+      local errors = {}
       for _, source in ipairs(snapshot.sources) do
         local status = source.status
         supported = supported or status ~= 'unsupported'
         failed = failed or status == 'error'
-        ready = ready or status == 'ready'
         pending = pending or status == 'idle' or status == 'loading'
         if status == 'unsupported' and query.search then
-          browse_only[#browse_only + 1] = source.provider.name
+          browse_only = true
         elseif status == 'error' then
-          coverage[#coverage + 1] = {
+          errors[#errors + 1] = {
             label = source.provider.name
               .. ' · Request failed: '
               .. tostring(source.error):gsub('%c', ' '),
@@ -235,31 +259,27 @@ function M.open(s, root, catalog, units, refresh)
           }
         end
       end
-      if #browse_only > 0 then
-        coverage[#coverage + 1] = {
-          label = table.concat(browse_only, ', ') .. ' · browse only; not searched',
-          wrap = 'full',
-        }
+      local status
+      active_progress = snapshot.loading and progress or nil
+      if pending and not snapshot.loading then
+        status = 'Paused'
       end
-      local empty
-      if #rows == 0 then
-        if not supported then
-          context.label = title .. ' · Unsupported by available sources'
-        elseif pending then
-          context.label = title .. ' · ' .. (snapshot.loading and 'Loading catalog…' or 'Paused')
-        elseif failed then
-          context.label = title
-            .. ' · '
-            .. (ready and 'Incomplete results · No works found in this batch.' or 'Request failed')
-        else
-          context.label = title
-            .. (query.search and ' · No works found.' or ' · No works found in this batch.')
-        end
-        empty = context
-      else
-        context.label = title
-          .. (failed and ' · Partial coverage' or '')
-          .. (snapshot.loading and ' · Loading more…' or (pending and ' · Paused' or ''))
+      if failed then
+        local failure = #rows > 0 and 'Some results unavailable'
+          or (query.search and 'Could not complete search.' or 'Could not complete browse.')
+        status = status and (status .. ' · ' .. failure) or failure
+      elseif not supported then
+        status = 'Unsupported by available sources'
+      elseif #rows == 0 and not pending then
+        status = query.search and 'No matching works found.' or 'No works found in this batch.'
+      end
+      context.label = title .. (status and (' · ' .. status) or '')
+      can_retry = snapshot.retry and not snapshot.loading
+      local note
+      if browse_only then
+        note = coverage_note
+        -- Empty and failed searches keep their coverage note next to the feedback.
+        items[#items + 1] = note
       end
       if not snapshot.loading then
         if snapshot.more then
@@ -269,12 +289,15 @@ function M.open(s, root, catalog, units, refresh)
           items[#items + 1] = retry
         end
       end
-      for _, item in ipairs(coverage) do
+      for _, item in ipairs(errors) do
         items[#items + 1] = item
       end
       local selected = page.selected
       if selected == context then
-        page.selected = rows[1] or (failed and not pending and retry) or empty
+        page.selected = rows[1] or (not pending and note) or context
+        if page.selected == note then
+          page.offset = math.huge
+        end
       elseif not vim.tbl_contains(items, selected) then
         page.selected = rows[#rows] or context
         page.offset = math.huge
@@ -284,7 +307,9 @@ function M.open(s, root, catalog, units, refresh)
         s:render(true)
       end
     end
-    local function request(method)
+    local function request(method, initial)
+      progress = method == 'retry' and 'Retrying…'
+        or (initial and 'Loading…' or 'Loading more…')
       s:request(
         page,
         function(done, update)
@@ -295,7 +320,7 @@ function M.open(s, root, catalog, units, refresh)
         function(snapshot)
           present(snapshot, true)
         end,
-        'Loading catalog… · Esc cancels',
+        progress,
         function(snapshot)
           present(snapshot, true)
         end
@@ -325,7 +350,7 @@ function M.open(s, root, catalog, units, refresh)
     else
       s:replace(page)
     end
-    request('load')
+    request('load', true)
   end
 
   results({ category = 'explore' }, true)

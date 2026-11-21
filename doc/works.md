@@ -272,6 +272,12 @@ names and exact identities. Search
 covers Gutenberg and PoetryDB; Unglue.it is available through browsing.
 **Load more** appends another batch from sources with a continuation;
 **Retry failed** contacts only failed sources and retains successful results.
+Progress stays visible in the footer: Loading during the entire initial batch,
+Loading more for paging, or Retrying for failure recovery. The content heading
+shows Paused after cancellation. Footer navigation adapts to width and includes
+an `r` retry hint when available. Empty completed
+searches differ from incomplete searches; failures retain their causes and usable
+partial results. One muted search note explains browse-only collections.
 An empty batch does not imply an exhausted catalog. No combined catalog total or
 ranking is inferred across sources.
 

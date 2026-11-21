@@ -752,27 +752,28 @@ def catalog_feedback_tests():
             input_keys(":Lilt<CR>")
             choose("Discover online")
             rows = screen()
-            check(any("Loading catalog" in row for row in rows), "short window shows pending catalog feedback")
+            check(sum("Loading…" in row for row in rows) == 1
+                  and "h back" in "\n".join(rows), "initial progress appears once and footer advertises navigation")
             input_keys("s")
             check(nvim.eval("mode()") == "i", "Search is available while initial Explore request is pending")
             rows = input_keys("<Esc>")
-            check(any("Loading catalog" in row for row in rows)
+            check(any("Loading…" in row for row in rows)
                   and nvim.exec_lua("return #_G.lilt_catalog_jobs") == 1,
                   "cancelling search input preserves the pending catalog request")
             input_keys("s")
             input_keys("empty<CR>")
-            rows = settled("No works found")
-            check(any("No works found" in row for row in rows), "empty results are visible without scrolling")
-            check("No works found" in nvim.current.buffer[nvim.current.window.cursor[0] - 1],
+            rows = settled("No matching works found")
+            check(any("No matching works found" in row for row in rows), "empty results are visible without scrolling")
+            check("No matching works found" in nvim.current.buffer[nvim.current.window.cursor[0] - 1],
                   "empty results select their explanation")
             check(nvim.exec_lua("return _G.lilt_catalog_jobs[1].killed"), "search submission cancels initial browsing")
             release.set()
             pause(50)
-            check("No works found" in "\n".join(nvim.current.buffer[:]), "late Explore completion preserves empty search")
+            check("No matching works found" in "\n".join(nvim.current.buffer[:]), "late Explore completion preserves empty search")
 
             input_keys("s<C-u>error<CR>")
-            rows = settled("Request failed")
-            check(any("Retry failed" in row for row in rows) and not any("No works found" in row for row in rows),
+            rows = settled("Could not complete search.")
+            check(any("Retry failed" in row for row in rows) and not any("No matching works found" in row for row in rows),
                   "HTTP failures offer retry and never claim zero matches")
             check("503" in "\n".join(nvim.current.buffer[:]), "HTTP failure retains its transport cause")
             before_retry = len(received)
@@ -784,8 +785,8 @@ def catalog_feedback_tests():
 
             release.clear()
             input_keys("s<C-u>timeout<CR>")
-            rows = settled("Request failed")
-            check("timed out" in "\n".join(nvim.current.buffer[:]) and not any("No works found" in row for row in rows),
+            rows = settled("Could not complete search.")
+            check("timed out" in "\n".join(nvim.current.buffer[:]) and not any("No matching works found" in row for row in rows),
                   "real curl timeout ends loading with an error")
             input_keys("s<C-u>found<CR>")
             rows = settled("Local catalog work")
@@ -799,7 +800,7 @@ def catalog_feedback_tests():
 
             input_keys("s<C-u>slow<CR>")
             input_keys("s<C-u>empty<CR>")
-            settled("No works found")
+            settled("No matching works found")
             check(nvim.exec_lua("return _G.lilt_catalog_jobs[#_G.lilt_catalog_jobs-1].killed"),
                   "new search cancels a pending search")
             input_keys("s<C-u>slow<CR>hh")
@@ -882,7 +883,7 @@ def online_tests():
             choose("Discover online")
             rows = screen()
             loading_size = nvim.api.win_get_config(nvim.current.window.handle)
-            check(any("Loading catalog" in row for row in rows), "catalog loading stays visible")
+            check(any("Loading…" in row for row in rows), "catalog loading stays visible")
             rows = pause(130)
             loaded_size = nvim.api.win_get_config(nvim.current.window.handle)
             check((loading_size["width"], loading_size["height"]) == (loaded_size["width"], loaded_size["height"]),
@@ -1115,7 +1116,8 @@ def unified_discovery_tests():
                   "trailing hints align by display columns including CJK and combining characters")
             compact = "".join("".join(line.replace("Gutenberg", "").split()) for line in nvim.current.buffer[:])
             check("".join(titles[9].split()) in compact, "wide source hints preserve the entire unspaced Unicode title")
-            check("Early work 1" in text() and "Loading more" in text(), "a successful source appears before slow peers settle")
+            check("Early work 1" in text() and sum("Loading…" in row for row in screen()) == 1
+                  and "Loading" not in text(), "a successful source appears before slow peers settle")
             check("[r]" not in text() and "Load more" not in text(), "batch actions stay hidden while peers load")
             result_row = next(row for row, line in enumerate(nvim.current.buffer[:], 1) if "Early work 10 " in line)
             input_keys(str(result_row) + "Gj")
@@ -1128,7 +1130,7 @@ def unified_discovery_tests():
             finish(3)
             check((nvim.current.window.cursor, nvim.funcs.winsaveview()["topline"]) == position,
                   "peer failure and completion preserve the selected wrapped result and scroll")
-            check("Partial coverage" in text() and "fixture service unavailable" in text(),
+            check("Some results unavailable" in text() and "fixture service unavailable" in text(),
                   "successful results retain honest partial coverage and failure causes")
             check("Private source ready title" not in text(), "normal source diagnostics do not crowd results")
             input_keys("<CR>")
@@ -1141,24 +1143,29 @@ def unified_discovery_tests():
             input_keys("")
             check("Gutenberg" not in text() and not any(line.rstrip().endswith("Unglue.it") for line in nvim.current.buffer[:]),
                   "resizing narrow removes all source hints")
+            check(any("r retry" in row for row in screen()),
+                  "28x10 keeps retry discoverable while scrolled among successful results")
             input_keys("<CR>")
             check("gutenberg:Early" in "".join(text().split()), "resize keeps the continuation attached to its work")
             input_keys("h")
             load_row = next(row for row, line in enumerate(nvim.current.buffer[:], 1) if "Load more" in line)
             input_keys(str(load_row) + "G")
             input_keys("<CR>")
+            check(sum("Loading more…" in row for row in screen()) == 1 and "Loading" not in text(),
+                  "explicit paging keeps a single visible footer indicator while the heading is offscreen")
             check(nvim.current.window.cursor[0] > 3 and nvim.funcs.winsaveview()["topline"] > 1,
                   "clicking Load more from the bottom retains the result boundary")
             finish(4, titles=["Later work"])
             check("Early work 1" in text() and "Later work" in text(), "next batch appends to the flat result list")
             choose("Retry failed")
+            check(sum("Retrying…" in row for row in screen()) == 1 and "Retrying" not in text(), "retry keeps one visible footer indicator")
             check(nvim.current.buffer[nvim.current.window.cursor[0] - 1].strip() in ("Later work — A.", "Writer")
                   and nvim.funcs.winsaveview()["topline"] > 1,
                   "clicking Retry failed retains the scrolled result boundary")
             check(nvim.exec_lua("return #_G.lilt_unified_jobs == 5 and _G.lilt_unified_jobs[5].id == 'poetrydb'"),
                   "Retry failed contacts only the failed peer")
             finish(5)
-            check("Partial coverage" not in text() and "Retry failed" not in text(), "empty retry success clears stale errors")
+            check("Some results unavailable" not in text() and "Retry failed" not in text(), "empty retry success clears stale errors")
             width, height = 90, 24
             nvim.ui_try_resize(width, height)
             input_keys("s")
@@ -1172,14 +1179,30 @@ def unified_discovery_tests():
                   and nvim.eval("mode()") == "i", "progressive and final callbacks keep native search input and focus")
             input_keys("<Esc>")
             compact = " ".join(text().split())
-            check("Search success" in compact and "Unglue.it · browse only; not searched" in compact,
+            check("Search success" in compact and "Some collections are browse-only." in compact,
                   "search has one unobtrusive browse-only coverage note")
             input_keys("h")
             check("Explore" in text(), "Back restores the browse layer")
+            width, height = 28, 10
+            nvim.ui_try_resize(width, height)
             input_keys("s")
-            input_keys("pending<CR>hq")
-            finish(8, titles=["Late result"])
-            check(not floats() and nvim.exec_lua("return _G.lilt_unified_jobs[8].cancelled"),
+            input_keys("empty<CR>")
+            finish(8)
+            rows = finish(9)
+            visible = " ".join(" ".join(row.split("│")[1] if "│" in row else row for row in rows).split())
+            check("matching works found." in visible and "browse-only." in visible,
+                  "28x10 empty search exposes its feedback and browse-only coverage without scrolling")
+            input_keys("s<C-u>failed<CR>")
+            finish(10, error="first search failure")
+            rows = finish(11, error="second search failure")
+            visible = " ".join(" ".join(row.split("│")[1] if "│" in row else row for row in rows).split())
+            check("complete search." in visible and "browse-only." in visible and "r retry" in visible,
+                  "28x10 failed search exposes incomplete feedback, coverage and recovery")
+            input_keys("r")
+            check(any("Retrying…" in row for row in screen()), "failed search retries without claiming an empty result")
+            input_keys("hq")
+            finish(12, titles=["Late result"])
+            check(not floats() and nvim.exec_lua("return _G.lilt_unified_jobs[12].cancelled"),
                   "closing a pending feed cancels its sources and cannot resurrect the picker")
             check(not Path(directory, "references").exists(), "fake discovery never acquires or changes a library")
         finally:

@@ -182,8 +182,9 @@ local function browse(root, example_root, catalog)
     end
     for _, reading in ipairs(works) do
       items[#items + 1] = {
-        label = reading.title
-          .. (reading.author and reading.author ~= '' and (' — ' .. reading.author) or ''),
+        label = reading.title,
+        detail = reading.author,
+        compact = true,
         suffix = titles[reading.title] > 1 and ('[' .. reading.name .. ']') or nil,
         select = function()
           units(reading, temporary)

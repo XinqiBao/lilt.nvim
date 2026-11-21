@@ -551,6 +551,97 @@ def library_tests():
         input_keys("")
 
 
+def local_presentation_tests():
+    global width, height
+    with tempfile.TemporaryDirectory(prefix="lilt-local-presentation-") as directory:
+        home = Path(directory) / "library"
+        samples = Path(directory) / "examples"
+        long_title = "Collected letters from the Cambridge historical edition " * 3
+        long_author = "An Author With A Lengthy Bibliographical Name " * 4
+        accent_title = "Accent " + "e\u0301" * 100
+        records = [
+            ("letters", "Letters", ["First Writer", "Second Writer"]),
+            ("a", long_title, ["A. Writer"]),
+            ("b", long_title, ["A. Writer"]),
+            ("essays", "Essays", [long_author]),
+            ("accent", accent_title, []),
+            ("cjk", "天地玄黄宇宙洪荒" * 12, []),
+            ("anonymous", "Anonymous", []),
+            ("oversized-" * 12, long_title, ["A. Writer"]),
+        ]
+        for base in (home / "references", samples):
+            for name, title, authors in records:
+                target = base / name
+                target.mkdir(parents=True)
+                (target / "unit.txt").write_text("Reference.\n", encoding="utf-8")
+                (target / "lilt.json").write_text(json.dumps({
+                    "title": title, "authors": authors,
+                    "units": [{"title": "Unit " + name, "path": "unit.txt"}],
+                }), encoding="utf-8")
+
+        width, height = 120, 30
+        nvim.ui_try_resize(width, height)
+        nvim.exec_lua("require('lilt.picker').open(...)", str(home), str(samples))
+        screen()
+        local_rows = nvim.current.buffer[:]
+        check(nvim.current.window.width == 76, "Library retains its ordinary width")
+        for name in ("a", "b"):
+            row = next(line for line in local_rows if line.endswith("[" + name + "]"))
+            check("Collected letters" in row and "…" in row and "A. Writer" not in row,
+                  "duplicate directory suffix reserves room before title ellipsis and optional authors")
+        choose("Letters")
+        rows = input_keys("gg")
+        author_row = next(i for i, row in enumerate(rows) if "First Writer; Second Writer" in row)
+        check(group_at(author_row, rows[author_row].index("First Writer"), "Comment"),
+              "unit-page authors use Comment styling")
+        input_keys("h")
+        choose("Examples")
+        screen()
+        example_rows = nvim.current.buffer[:]
+        check(nvim.current.window.width == 76 and example_rows[1:] == local_rows[1:1 + len(records)],
+              "Examples and Library share the same single-row work presentation and width")
+        input_keys("hgg")
+        rows = screen()
+        author_row = next(i for i, row in enumerate(rows) if "First Writer; Second Writer" in row)
+        check(group_at(author_row, rows[author_row].index("First Writer"), "Comment")
+              and not group_at(author_row, rows[author_row].index("Letters"), "Comment"),
+              "compact local authors are muted while titles retain normal styling")
+        essay = next(row for row in local_rows if "Essays" in row)
+        check(essay.endswith("…") and "An Author" in essay, "long local authors use bounded ellipsis")
+        accent = next(row for row in local_rows if "Accent" in row)
+        check(accent.endswith("e\u0301…"), "local title ellipsis preserves composing characters")
+        check(all(nvim.funcs.strdisplaywidth(row) <= 76 for row in local_rows),
+              "local Unicode rows fit their display-cell width")
+
+        choose("[b]")
+        check("Unit b" in "\n".join(nvim.current.buffer[:]), "duplicate suffix opens the exact local work")
+        input_keys("ih")
+        input_keys("h")
+        width, height = 28, 12
+        nvim.ui_try_resize(width, height)
+        input_keys("")
+        check(nvim.current.buffer[nvim.current.window.cursor[0] - 1].endswith("[b]"),
+              "narrow resize retains exact duplicate selection and its short suffix")
+        rows = nvim.current.buffer[:]
+        check(all(nvim.funcs.strdisplaywidth(row) <= nvim.current.window.width for row in rows),
+              "narrow duplicate rows stay within the float")
+        duplicates = [(i, row) for i, row in enumerate(rows, 1) if "Collected" in row]
+        check(len(duplicates) == 3 and sum("[" in row for _, row in duplicates) == 2,
+              "oversized directory suffix retains the existing omission behavior")
+        oversized_row = next(i for i, row in duplicates if "[" not in row)
+        nvim.current.window.cursor = (oversized_row, 0)
+        input_keys("<CR>i")
+        info = "".join("".join(nvim.current.buffer[:]).split())
+        check("Directory:" + "oversized-" * 12 in info,
+              "omitted suffix still opens exact complete offline directory information")
+        input_keys("hh")
+        width, height = 120, 30
+        nvim.ui_try_resize(width, height)
+        input_keys("")
+        input_keys("q")
+        check(not (home / "manuscripts").exists(), "presentation and information create no writing")
+
+
 def library_diagnostic_tests():
     global width, height
     with tempfile.TemporaryDirectory(prefix="lilt-library-diagnostic-") as directory:
@@ -1520,6 +1611,7 @@ def run():
     check(nvim.api.buf_get_lines(buf, 0, -1, False) == authored, "close retains actual writing")
     check(not floats() and len(nvim.buffers) == 2, "close leaves no hint or reference buffers")
     library_tests()
+    local_presentation_tests()
     library_diagnostic_tests()
     information_tests()
     catalog_feedback_tests()

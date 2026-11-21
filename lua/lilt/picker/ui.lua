@@ -26,7 +26,12 @@ end
 -- Markers reserve their width so truncated groups still advertise expansion.
 local function compact(item, width)
   local marker = item.marker and (' ' .. item.marker) or ''
-  local room = math.max(1, width - vim.fn.strdisplaywidth(marker))
+  local suffix = item.suffix and item.suffix:gsub('%c', ' ')
+  local suffix_width = suffix and vim.fn.strdisplaywidth(suffix) or 0
+  -- As with ordinary rows, reserve fitting suffixes; oversized ones are omitted.
+  -- The usual right margin becomes the gap before a right-aligned suffix.
+  local reserved = suffix_width > 0 and width > suffix_width + 2 and suffix_width or 0
+  local room = math.max(1, width - vim.fn.strdisplaywidth(marker) - reserved - 2)
   local title = item.label:gsub('%c', ' ')
   local detail = (item.detail or ''):gsub('%c', ' ')
   local label = clip(title, room)
@@ -39,7 +44,13 @@ local function compact(item, width)
     start = #label + 2
     label = label .. '  ' .. detail
   end
-  return label .. marker, start, #label
+  local last = #label
+  label = label .. marker
+  if reserved > 0 then
+    label = label .. string.rep(' ', math.max(2, width - vim.fn.strdisplaywidth(label) - reserved))
+    label = label .. suffix
+  end
+  return clip(label, width), start, last
 end
 
 local function wrap(text, width, limit)
@@ -254,7 +265,7 @@ function M.new(on_close)
       end
       if item.compact then
         local label, start, last =
-          compact(item, math.max(1, width - vim.fn.strdisplaywidth(indent) - 2))
+          compact(item, math.max(1, width - vim.fn.strdisplaywidth(indent)))
         row(indent .. label, item)
         if start then
           marks[#marks + 1] = { #lines - 1, 'Comment', #indent + start, #indent + last }
